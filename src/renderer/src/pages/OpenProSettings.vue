@@ -7,6 +7,9 @@ import GpuAmd from '@renderer/components/ProSettingComponent/GpuAmd.vue'
 import GpuNvidia from '@renderer/components/ProSettingComponent/GpuNvidia.vue'
 import CenterTop from '@renderer/components/ProSettingComponent/CenterTop.vue'
 import WMIOperation from '@renderer/tools/WMIOperation'
+import { Message } from '@arco-design/web-vue'
+import useStore from '@renderer/store'
+const store = useStore()
 
 const MonitorInfo = ref<HardwareMonitorInfo>(await WMIOperation.GetHardwareMonitorInfo())
 onMounted(async () => {
@@ -15,6 +18,9 @@ onMounted(async () => {
 	}, 3000)
 	// 避免全局样式污染
 	document.body.setAttribute('arco-theme', 'light')
+	if (!store.$state.ServiceOption) {
+		Message.info('建议安装服务后使用')
+	}
 })
 </script>
 
@@ -22,7 +28,7 @@ onMounted(async () => {
 	<div class="dashboard">
 		<div class="left-top">
 			<!-- 左上区域 -->
-			<GpuAmd :data="MonitorInfo"></GpuAmd>
+			<GpuAmd v-if="MonitorInfo.GpuAmd != null" :data="MonitorInfo"></GpuAmd>
 		</div>
 		<div class="center-top">
 			<!-- 中上区域 -->

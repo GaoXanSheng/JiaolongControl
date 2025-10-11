@@ -6,23 +6,26 @@ const props = defineProps<{
 }>()
 function CpuHeatMapData() {
 	const data = props.data.Cpu
-	const CCD1 = {
-		name: 'CCD1',
-		values: data.Load.filter((item) => item.Name.includes('CPU Core #'))
-			.map((item) => item.Value)
-			.slice(0, 16)
+	const cores = data.Load.filter((item) => item.Name.includes('CPU Core #')).map(
+		(item) => item.Value
+	)
+
+	if (!cores.length) return []
+
+	// 检测 CCD 数量
+	const ccdCount = data.Temperature.filter((item) => item.Name.match(/^CCD\d+/i)).length || 1 // 如果没有 CCD 信息，默认 1
+
+	const coresPerCCD = Math.ceil(cores.length / ccdCount) // 核心数均分到每个 CCD
+	const CCDs: { name: string; values: number[] }[] = []
+
+	for (let i = 0; i < cores.length; i += coresPerCCD) {
+		CCDs.push({
+			name: `CCD${CCDs.length + 1}`,
+			values: cores.slice(i, i + coresPerCCD)
+		})
 	}
-	const CCD2 = {
-		name: 'CCD2',
-		values: data.Load.filter((item) => item.Name.includes('CPU Core #'))
-			.map((item) => item.Value)
-			.slice(16)
-	}
-	if (data.Load.length > 32) {
-		return [CCD1, CCD2]
-	} else {
-		return [CCD1]
-	}
+
+	return CCDs
 }
 </script>
 
