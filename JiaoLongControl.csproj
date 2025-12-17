@@ -1,0 +1,57 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net8.0-windows</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <UseWPF>true</UseWPF>
+        <ApplicationIcon>Server\Resources\Icons\app.ico</ApplicationIcon>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
+      <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.5-pre582" />
+      <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3712-prerelease" />
+      <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+      <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Page Update="src\Host\MainWindow.xaml">
+        <Generator>MSBuild:Compile</Generator>
+        <XamlRuntime>Wpf</XamlRuntime>
+        <SubType>Designer</SubType>
+      </Page>
+      <Page Update="Server\MainWindow.xaml">
+        <Generator>MSBuild:Compile</Generator>
+        <XamlRuntime>Wpf</XamlRuntime>
+        <SubType>Designer</SubType>
+      </Page>
+    </ItemGroup>
+    <ItemGroup>
+        <Content Include="Resources\WebRoot\**\*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+    <ItemGroup>
+      <EmbeddedResource Include="Server\Resources\Drivers\WinIo64.dll">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <EmbeddedResource Include="Server\Resources\Drivers\WinIo64.sys" />
+      <None Remove="Server\Resources\Icons\icon.ico" />
+      <EmbeddedResource Include="Server\Resources\Icons\app.ico" />
+    </ItemGroup>
+    <ItemGroup>
+      <ApplicationDefinition Include="Server\App.xaml">
+        <Generator>MSBuild:Compile</Generator>
+        <XamlRuntime>Wpf</XamlRuntime>
+        <SubType>Designer</SubType>
+      </ApplicationDefinition>
+    </ItemGroup>
+    <ItemGroup>
+      <Folder Include="Server\Resources\WebRoot\" />
+    </ItemGroup>
+
+</Project>

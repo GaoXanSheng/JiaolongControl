@@ -1,0 +1,44 @@
+JiaoLongControl/
+│
+├── JiaoLongControl.sln          # Visual Studio 解决方案文件
+│
+│   
+─────── Client/                  # [前端] 原 Electron 的 renderer 目录 (Vue/React)
+│       ├── src/                 # 前端源码
+│       │   ├── components/
+│       │   ├── views/
+│       │   └── main.ts
+│       ├── index.html
+│       ├── package.json
+│       ├── vite.config.ts       # 需要配置构建输出目录
+│       └── tsconfig.json
+│   
+─────── Server/                    # [后端/主程序] WPF .NET 8.0 项目
+│       │
+│       ├── Resources/           # [合并资源目录] 存放所有非代码资源
+│       │   ├── Drivers/         # 原 JiaoLongWMI.drivers (WinIo64.sys/dll)
+│       │   │   ├── WinIo64.dll  [生成操作: 嵌入的资源]
+│       │   │   └── WinIo64.sys  [生成操作: 嵌入的资源]
+│       │   ├── Icons/           # 托盘图标、App图标
+│       │   │   └── app.ico
+│       │   └── WebRoot/         # [构建生成] 前端 build 后的产物 (index.html, css, js)
+│       │       └── (此目录由 Client 构建脚本自动填充，不要手动修改)
+│       │
+│       ├── Core/                # [核心逻辑] 原 JiaoLongWMI 的核心代码迁移至此
+│       │   ├── Constants/       # 原 Constants (MethodName.cs, etc.)
+│       │   ├── Controllers/     # 原 Controllers (ECController.cs, etc.)
+│       │   ├── Drivers/         # 原 驱动加载逻辑 (WinIo.cs)
+│       │   ├── Repositories/    # 原 Repositories (CPU.cs, Fan.cs, etc.)
+│       │   ├── Services/        # 原 Services (FanControlService.cs)
+│       │   └── Utils/           # 原 Utils (Logger.cs, EmbeddedResourceHelper.cs)
+│       │
+│       ├── Interop/             # [桥接层] 处理 WebView2 与 C# 的通信
+│       │   └── IpcRouter.cs     # 路由消息到 Core 的逻辑
+│       │  
+│       │
+│       ├── App.xaml             # 单例锁逻辑 (Mutex) 在此实现
+│       ├── App.xaml.cs
+│       ├── MainWindow.xaml      # WebView2 控件容器
+│       └── MainWindow.xaml.cs   # 窗口逻辑、托盘初始化、驱动初始化
+│
+└── .gitignore                   # 忽略 node_modules, bin, obj 等
