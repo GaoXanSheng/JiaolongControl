@@ -1,4 +1,4 @@
-﻿namespace JiaoLongControl.Server.Core.Constants
+﻿namespace JiaoLongControl.Server.Core.Models
 {
     public enum CPUPower : byte
     {
@@ -6,30 +6,30 @@
         OpenState,
         SPLState,
         SPPTState,
-        CPUTempWallState,
+        CpuTempWallState,
         Unknow = 255
     }
 
-    public enum ECMemoryTable : ushort
+    public static class ECMemoryTable
     {
-        EC_ADDR_PORT = 0x4E,
-        EC_DATA_PORT = 0x4F,
-        Fan1_RPM_Level = 0xC836,
-        Fan2_RPM_Level = 0xC837,
-        Fan1_RPM = 0XC834,
-        Fan2_RPM = 0XC835,
-        Fan1_RPM_SET = 0xC83C,
-        Fan2_RPM_SET = 0xC83D,
-        EC_Version = 0xC411,
+        public const ushort EC_ADDR_PORT = 0x4E;
+        public const ushort EC_DATA_PORT = 0x4F;
+        public const ushort Fan1_RPM_Level = 0xC836;
+        public const ushort Fan2_RPM_Level = 0xC837;
+        public const ushort Fan1_RPM = 0xC834;
+        public const ushort Fan2_RPM = 0xC835;
+        public const ushort Fan1_RPM_SET = 0xC83C;
+        public const ushort Fan2_RPM_SET = 0xC83D;
+        public const ushort EC_Version = 0xC411;
     }
 
     public class FanCurvePoint
     {
-        public int temp { get; set; }
-        public int speed { get; set; }
+        public int Temp { get; set; }
+        public int Speed { get; set; }
     }
 
-    public enum GPUMode : byte
+    public enum GpuMode : byte
     {
         HybridMode = 0,
         DiscreteMode = 1,
@@ -39,8 +39,8 @@
     public enum MethodName
     {
         SystemPerMode = 8,
-        GPUMode,
-        RGBKeyboardStatus,
+        GpuMode,
+        RgbKeyboardStatus,
         FnLock,
         TPLock,
         CPUGPUFanSpeed,

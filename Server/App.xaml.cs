@@ -4,7 +4,7 @@ namespace JiaoLongControl.Server
 {
     public partial class App : Application
     {
-        private static Mutex? _mutex = null;
+        private static Mutex? _mutex;
 
         protected override void OnStartup(StartupEventArgs e)
         {

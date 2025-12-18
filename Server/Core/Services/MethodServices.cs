@@ -1,5 +1,5 @@
 ﻿using System.Management;
-using JiaoLongControl.Server.Core.Constants;
+using JiaoLongControl.Server.Core.Models;
 
 namespace JiaoLongControl.Server.Core.Services
 {
@@ -19,12 +19,10 @@ namespace JiaoLongControl.Server.Core.Services
         {
             var result = ExecuteMethod(MakeMethodParams(MethodType.Get, methodName));
 
-            if (!result.Item1 || result.Item2 == null)
+            if (!result.Item1)
                 return GetDefaultValue<T>();
 
             var data = result.Item2;
-            
-            // 模式匹配与原代码保持一致
             if (typeof(T) == typeof(Tuple<int, int>))
                 return (T)(object)new Tuple<int, int>((data[5] << 8) + data[4], (data[7] << 8) + data[6]);
             
@@ -58,8 +56,6 @@ namespace JiaoLongControl.Server.Core.Services
 
             try
             {
-                // WMI 调用在某些系统上较慢，但在 WPF UI 线程直接调用可能会卡顿
-                // 这里保留 Task.Run wrapping
                 return Task.Run(() =>
                 {
                     try
