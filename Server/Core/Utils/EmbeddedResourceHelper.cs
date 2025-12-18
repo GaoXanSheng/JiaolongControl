@@ -5,10 +5,9 @@ namespace JiaoLongControl.Server.Core.Utils
 {
     public static class EmbeddedResourceHelper
     {
-        public static void ExtractEmbeddedResourceToFile(string resourceName, string outputFilePath)
+        private static void ExtractEmbeddedResourceToFile(string resourceName, string outputFilePath)
         {
             var assembly = Assembly.GetExecutingAssembly();
-            // string[] names = assembly.GetManifestResourceNames(); 
 
             using Stream? resourceStream = assembly.GetManifestResourceStream(resourceName);
             if (resourceStream == null)

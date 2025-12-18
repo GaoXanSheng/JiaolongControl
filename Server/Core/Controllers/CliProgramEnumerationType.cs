@@ -1,5 +1,5 @@
 ﻿using System.Text.Json.Nodes;
-using JiaoLongControl.Server.Core.Constants;
+using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Repositories;
 
 namespace JiaoLongControl.Server.Core.Controllers
@@ -102,7 +102,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         private void HandleGpu(string method, string[] args)
         {
             if (method == "Get") callBack["result"] = GPU.Get().ToString();
-            else if (method == "Set" && args.Length > 0 && Enum.TryParse(args[0], out GPUMode m))
+            else if (method == "Set" && args.Length > 0 && Enum.TryParse(args[0], out GpuMode m))
                 callBack["result"] = GPU.Set(m).ToString();
         }
 

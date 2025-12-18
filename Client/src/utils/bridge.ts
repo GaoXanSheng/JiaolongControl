@@ -52,16 +52,5 @@ export const Bridge = {
             console.error('Bridge Invoke Failed:', e);
             throw e;
         }
-    },
-
-    /**
-     * 打开外部链接
-     */
-    openExternal(url: string) {
-        if (window.chrome?.webview) {
-            window.chrome.webview.postMessage({ channel: 'OpenExternal', url });
-        } else {
-            window.open(url, '_blank');
-        }
     }
 }

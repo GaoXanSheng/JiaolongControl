@@ -22,8 +22,7 @@ namespace JiaoLongControl.Server.Interop
                     string typeName = argsArr[0].ToString();
                     string methodName = argsArr[1].ToString();
                     
-                    // 解析剩余参数
-                    var paramList = new System.Collections.Generic.List<string>();
+                    var paramList = new List<string>();
                     for(int i = 2; i < argsArr.Count; i++) paramList.Add(argsArr[i].ToString());
 
                     return _cliExecutor.EumType(typeName, methodName, paramList.ToArray());

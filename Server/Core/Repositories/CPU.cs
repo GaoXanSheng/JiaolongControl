@@ -1,4 +1,4 @@
-﻿using JiaoLongControl.Server.Core.Constants;
+﻿using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Services;
 
 namespace JiaoLongControl.Server.Core.Repositories
@@ -39,7 +39,7 @@ namespace JiaoLongControl.Server.Core.Repositories
         {
             return MethodServices.SetValue(MethodName.CPUPower, new byte[2]
             {
-                (byte)CPUPower.CPUTempWallState,
+                (byte)CPUPower.CpuTempWallState,
                 tempwall
             });
         }

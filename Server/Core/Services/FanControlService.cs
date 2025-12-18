@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using JiaoLongControl.Server.Core.Constants;
+using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Controllers;
 using JiaoLongControl.Server.Core.Repositories;
 using JiaoLongControl.Server.Core.Utils;
@@ -75,13 +75,8 @@ namespace JiaoLongControl.Server.Core.Services
                     {
                         int temp = GetCpuTemperature();
                         int rpm = CalculateRpm(temp);
-
-                        // 调用 Fan Repository 设置转速
-                        // 注意：这里可能需要防抖动处理，目前保持原逻辑每 5 秒设置一次
                         string result = Fan.SetFanSpeed(rpm.ToString());
-                        
-                        // 调试日志 (生产环境可注释掉以减少 I/O)
-                        // Logger.Info($"Temp: {temp}°C -> Target: {rpm}%, Result: {result}");
+                        Logger.Info($"Temp: {temp}°C -> Target: {rpm}%, Result: {result}");
                     }
                 }
                 catch (Exception ex)
@@ -120,9 +115,7 @@ namespace JiaoLongControl.Server.Core.Services
             try
             {
 
-                JsonObject? root = ComputerInfo.GetHardwareMonitorInfo();
-                
-                if (root == null) return 0;
+                JsonObject root = ComputerInfo.GetHardwareMonitorInfo();
 
                 var cpuNode = root["Cpu"];
                 if (cpuNode == null) return 0;
@@ -150,24 +143,24 @@ namespace JiaoLongControl.Server.Core.Services
         /// </summary>
         private static int CalculateRpm(int temperature)
         {
-            if (_fanCurve == null || _fanCurve.Count == 0)
+            if (_fanCurve.Count == 0)
             {
                 return 50; // 默认安全值
             }
 
             // 确保按温度排序
-            var sortedCurve = _fanCurve.OrderBy(p => p.temp).ToList();
+            var sortedCurve = _fanCurve.OrderBy(p => p.Temp).ToList();
 
             // 1. 低于最低温度，使用最低转速
-            if (temperature <= sortedCurve[0].temp)
+            if (temperature <= sortedCurve[0].Temp)
             {
-                return sortedCurve[0].speed;
+                return sortedCurve[0].Speed;
             }
 
             // 2. 高于最高温度，使用最高转速
-            if (temperature >= sortedCurve[^1].temp)
+            if (temperature >= sortedCurve[^1].Temp)
             {
-                return sortedCurve[^1].speed;
+                return sortedCurve[^1].Speed;
             }
 
             for (int i = 0; i < sortedCurve.Count - 1; i++)
@@ -175,10 +168,10 @@ namespace JiaoLongControl.Server.Core.Services
                 var lower = sortedCurve[i];
                 var upper = sortedCurve[i + 1];
 
-                if (temperature >= lower.temp && temperature <= upper.temp)
+                if (temperature >= lower.Temp && temperature <= upper.Temp)
                 {
-                    double ratio = (double)(temperature - lower.temp) / (upper.temp - lower.temp);
-                    int interpolatedSpeed = (int)(lower.speed + ratio * (upper.speed - lower.speed));
+                    double ratio = (double)(temperature - lower.Temp) / (upper.Temp - lower.Temp);
+                    int interpolatedSpeed = (int)(lower.Speed + ratio * (upper.Speed - lower.Speed));
                     return interpolatedSpeed;
                 }
             }

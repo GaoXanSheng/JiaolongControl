@@ -33,7 +33,7 @@ namespace JiaoLongControl.Server
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"驱动初始化失败: {ex.Message}\n请确保以管理员运行。", "错误");
+                MessageBox.Show($"驱动初始化失败: {ex.Message} \n请确保以管理员运行。", "错误");
             }
         }
 
@@ -42,7 +42,7 @@ namespace JiaoLongControl.Server
             // 初始化 WebView2
             await webView.EnsureCoreWebView2Async();
 
-            // 注册 C# 桥接对象，名称为 "bridge"
+            // 注册 C# 桥接对象
             _bridge = new Bridge();
             webView.CoreWebView2.AddHostObjectToScript("bridge", _bridge);
             

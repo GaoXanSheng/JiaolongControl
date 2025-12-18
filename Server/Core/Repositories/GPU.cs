@@ -1,18 +1,18 @@
-﻿using JiaoLongControl.Server.Core.Constants;
+﻿using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Services;
 
 namespace JiaoLongControl.Server.Core.Repositories
 {
     public class GPU
     {
-        public static bool Set(GPUMode mode)
+        public static bool Set(GpuMode mode)
         {
-            return MethodServices.SetValue(MethodName.GPUMode, mode);
+            return MethodServices.SetValue(MethodName.GpuMode, mode);
         }
 
-        public static GPUMode Get()
+        public static GpuMode Get()
         {
-            return MethodServices.GetValue<GPUMode>(MethodName.GPUMode);
+            return MethodServices.GetValue<GpuMode>(MethodName.GpuMode);
         }
     }
 }

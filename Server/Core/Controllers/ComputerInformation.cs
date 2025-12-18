@@ -9,7 +9,6 @@ namespace JiaoLongControl.Server.Core.Controllers
         private Computer _computer = new Computer
         {
             IsCpuEnabled = true,
-            // 只需要 CPU 温度做风扇控制，其他可以关掉以节省资源，需要时再开
             IsGpuEnabled = true, 
             IsMemoryEnabled = false,
             IsMotherboardEnabled = false,

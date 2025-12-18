@@ -1,7 +1,7 @@
-import { Message } from '@arco-design/web-vue'
-import { Bridge } from '@/utils/bridge.ts'
-import type { HardwareMonitorInfo } from '@/stores/interfaces.ts'
-import type { Point } from '@/components/ProSettingComponent/FanCurve/useFanCurve.ts'
+import {Message} from '@arco-design/web-vue'
+import {Bridge} from '@/utils/bridge.ts'
+import type {HardwareMonitorInfo} from '@/stores/interfaces.ts'
+import type {Point} from '@/components/ProSettingComponent/FanCurve/useFanCurve.ts'
 
 export enum GPUMode {
     DiscreteMode,
@@ -25,8 +25,7 @@ export enum PerformaceMode {
 // 通用调用封装
 async function wmiInvoke(typeName: string, methodName: string, args: any[] = []) {
     try {
-        const res = await Bridge.invoke('HardwareControl', null, [typeName, methodName, ...args]);
-        return res;
+        return await Bridge.invoke('HardwareControl', null, [typeName, methodName, ...args]);
     } catch (error: any) {
         Message.error(error.message || '操作失败');
         return null;
@@ -101,7 +100,7 @@ const WMIOperation = {
             return await wmiInvoke('Fan', 'GetFanSpeed') || { CPUFanSpeed: 0, GPUFanSpeed: 0 };
         }
     },
-    GetHardwareMonitorInfo: async (): Promise<HardwareMonitorInfo> => {
+    GetHardwareMonitorInfo: async () => {
         // 这个调用可能比较耗时，C# 端已经做了优化
         return await Bridge.invoke('HardwareControl', null, ['GetHardwareMonitorInfo', 'GetHardwareMonitorInfo', '1']);
     }
