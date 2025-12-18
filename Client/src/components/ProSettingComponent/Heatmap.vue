@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { VueUiHeatmap, VueUiHeatmapConfig } from 'vue-data-ui'
+import { VueUiHeatmap, type VueUiHeatmapConfig } from 'vue-data-ui'
 
 type VueUiHeatmapDatasetItem = {
 	name: string
@@ -20,7 +20,6 @@ const config: VueUiHeatmapConfig = {
 		layout: {
 			padding: { top: 36, right: 12, bottom: 12, left: 48 },
 			cells: {
-				height: 36,
 				value: { show: true, fontSize: 8, bold: false, roundingValue: 0.1, color: '#1A1A1A' },
 				colors: { hot: '#ff6400', cold: '#5f8bee', underlayer: '#F3F4F6' },
 				spacing: 0.5,

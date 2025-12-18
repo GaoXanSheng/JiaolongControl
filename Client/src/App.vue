@@ -9,13 +9,10 @@ function loadConfig() {
     const value = localStorage.getItem(key)
     if (value) {
       try {
-        // @ts-ignore
         store.$state[key] = JSON.parse(value)
       } catch (e) { console.error('Config load error', e) }
     }
   })
-  // 强制关闭 RGB 循环状态，因为启动时后端也是关闭的
-  store.RgbEventLoop = false
 
   store.$subscribe(() => {
     Object.keys(store.$state).forEach((key) => {

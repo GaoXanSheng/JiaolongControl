@@ -1,7 +1,10 @@
-﻿using System.IO;
+﻿using System;
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
-using JiaoLongControl.Server.Core.Services;
 using JiaoLongControl.Server.Interop;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Wpf;
 
 namespace JiaoLongControl.Server
 {
@@ -9,80 +12,113 @@ namespace JiaoLongControl.Server
     {
         private Hardcodet.Wpf.TaskbarNotification.TaskbarIcon _taskbarIcon;
         private Bridge _bridge;
+        private string _webRoot;
 
         public MainWindow()
         {
             InitializeComponent();
-            InitializeHardware();
+            InitializePaths();
             InitializeWebView();
             InitializeTray();
-            
-            // 窗口关闭事件拦截
-            this.Closing += (s, e) => {
-                // 默认最小化到托盘
+
+            Closing += (_, e) =>
+            {
                 e.Cancel = true;
-                this.Hide();
+                Hide();
             };
         }
 
-        private void InitializeHardware()
+        private void InitializePaths()
         {
-            try
-            {
-                FanControlService.Start();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"驱动初始化失败: {ex.Message}\n请确保以管理员运行。", "错误");
-            }
+            var exeDir = Path.GetDirectoryName(
+                Process.GetCurrentProcess().MainModule!.FileName!
+            )!;
+            _webRoot = Path.Combine(exeDir, "WebRoot");
         }
+        
 
         private async void InitializeWebView()
         {
-            // 初始化 WebView2
             await webView.EnsureCoreWebView2Async();
 
-            // 注册 C# 桥接对象，名称为 "bridge"
             _bridge = new Bridge();
-            webView.CoreWebView2.AddHostObjectToScript("bridge", _bridge);
-            
-            // 加载页面
-            string htmlPath = Path.Combine(AppContext.BaseDirectory, "Resources", "WebRoot", "index.html");
-            
-            // 检测是否是开发环境
-            if (File.Exists(htmlPath))
+            ConfigureWebView(webView, _bridge);
+
+            webView.Source = Directory.Exists(_webRoot)
+                ? new Uri("https://app.local/index.html")
+                : new Uri("http://localhost:5173");
+
+            webView.CoreWebView2.NewWindowRequested += NewWindowRequested;
+        }
+
+        private async void NewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
+        {
+            e.Handled = true;
+
+            var win = new Window
             {
-                webView.Source = new Uri(htmlPath);
-            }
-            else
+                Width = 1600,
+                Height = 900
+            };
+            
+            var child = new WebView2();
+            win.Content = child;
+            win.Title = "JiaoLongControl";
+            win.Show();
+
+            await child.EnsureCoreWebView2Async();
+            ConfigureWebView(child, _bridge);
+            child.Source = new Uri(e.Uri);
+        }
+
+        private void ConfigureWebView(WebView2 view, Bridge bridge)
+        {
+            view.CoreWebView2.AddHostObjectToScript("bridge", bridge);
+
+            if (Directory.Exists(_webRoot))
             {
-                // 如果文件不存在，可能是开发模式，尝试连 localhost
-                webView.Source = new Uri("http://localhost:5173");
+                view.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                    "app.local",
+                    _webRoot,
+                    CoreWebView2HostResourceAccessKind.Allow
+                );
             }
         }
 
         private void InitializeTray()
         {
-            _taskbarIcon = new Hardcodet.Wpf.TaskbarNotification.TaskbarIcon();
-            _taskbarIcon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetEntryAssembly().Location);
-            _taskbarIcon.ToolTipText = "JiaoLong Control";
-            _taskbarIcon.TrayMouseDoubleClick += (s, e) => this.Show();
-
-            // 构建右键菜单 
-            var ctxMenu = new System.Windows.Controls.ContextMenu();
-            
-            var itemShow = new System.Windows.Controls.MenuItem { Header = "显示界面" };
-            itemShow.Click += (s, e) => { this.Show(); this.WindowState = WindowState.Normal; this.Activate(); };
-            
-            var itemExit = new System.Windows.Controls.MenuItem { Header = "退出" };
-            itemExit.Click += (s, e) => {
-                FanControlService.Stop();
-                Application.Current.Shutdown();
+            _taskbarIcon = new Hardcodet.Wpf.TaskbarNotification.TaskbarIcon
+            {
+                Icon = System.Drawing.Icon.ExtractAssociatedIcon(
+                    System.Reflection.Assembly.GetEntryAssembly()!.Location
+                ),
+                ToolTipText = "JiaoLong Control"
             };
 
-            ctxMenu.Items.Add(itemShow);
-            ctxMenu.Items.Add(itemExit);
-            _taskbarIcon.ContextMenu = ctxMenu;
+            _taskbarIcon.TrayMouseDoubleClick += (_, _) =>
+            {
+                Show();
+                WindowState = WindowState.Normal;
+                Activate();
+            };
+
+            var menu = new System.Windows.Controls.ContextMenu();
+
+            var show = new System.Windows.Controls.MenuItem { Header = "显示界面" };
+            show.Click += (_, _) =>
+            {
+                Show();
+                WindowState = WindowState.Normal;
+                Activate();
+            };
+
+            var exit = new System.Windows.Controls.MenuItem { Header = "退出" };
+            exit.Click += (_, _) => Application.Current.Shutdown();
+
+            menu.Items.Add(show);
+            menu.Items.Add(exit);
+
+            _taskbarIcon.ContextMenu = menu;
         }
     }
 }

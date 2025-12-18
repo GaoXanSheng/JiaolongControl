@@ -3,9 +3,15 @@ import RightSide from '@/components/rightSide.vue'
 import useStore, { HomeCardType } from '@/stores'
 import { HomeTab } from '@/stores/HomeTab.ts'
 const store = useStore()
-
+import information from '@/assets/information.png'
 function onClickMenuItem(key: any) {
-  store.SwitchPages = key as HomeTab;
+  if (key != HomeTab.OpenProSettings) {
+    store.$state.SwitchPages = key
+    return
+  }
+  if (HomeTab.OpenProSettings) {
+    return window.open(window.location.origin + '/#/OpenProSettings')
+  }
 }
 </script>
 
@@ -20,12 +26,12 @@ function onClickMenuItem(key: any) {
           {{ item.title }}
         </a-menu-item>
 
-<!--        <a-menu-item :key="HomeTab.OpenProSettings">-->
-<!--          <template #icon>-->
-<!--            <img class="menu-icon" :src="information" alt="icon" />-->
-<!--          </template>-->
-<!--          高级监控-->
-<!--        </a-menu-item>-->
+        <a-menu-item :key="HomeTab.OpenProSettings">
+          <template #icon>
+            <img class="menu-icon" :src="information" alt="icon" />
+          </template>
+          高级监控
+        </a-menu-item>
       </a-menu>
     </a-layout-sider>
 

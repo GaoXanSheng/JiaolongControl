@@ -8,6 +8,8 @@
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <UseWPF>true</UseWPF>
         <ApplicationIcon>Server\Resources\Icons\app.ico</ApplicationIcon>
+        <Configurations>Debug;Release</Configurations>
+        <Platforms>x64</Platforms>
     </PropertyGroup>
 
     <ItemGroup>
@@ -36,9 +38,7 @@
         </Content>
     </ItemGroup>
     <ItemGroup>
-      <EmbeddedResource Include="Server\Resources\Drivers\WinIo64.dll">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </EmbeddedResource>
+      <EmbeddedResource Include="Server\Resources\Drivers\WinIo64.dll" />
       <EmbeddedResource Include="Server\Resources\Drivers\WinIo64.sys" />
       <None Remove="Server\Resources\Icons\icon.ico" />
       <EmbeddedResource Include="Server\Resources\Icons\app.ico" />
@@ -51,7 +51,8 @@
       </ApplicationDefinition>
     </ItemGroup>
     <ItemGroup>
-      <Folder Include="Server\Resources\WebRoot\" />
+        <Content Include="Server/Resources/WebRoot/**">
+            <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
-
 </Project>

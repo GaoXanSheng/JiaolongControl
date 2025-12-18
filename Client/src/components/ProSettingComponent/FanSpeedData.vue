@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { VueUiSparklineDatasetItem } from 'vue-data-ui'
 import SparkLine from '@/components/ProSettingComponent/SparkLine.vue'
-import WMIOperation from '@/utils/WMIOperation.ts'
+import bridge, {type FanSpeedInfo} from '@/utils/bridge.ts'
 
 const CPUFanSpeedData = ref<VueUiSparklineDatasetItem[]>([
 	{
@@ -23,7 +23,8 @@ async function GetFanSpeed() {
 	if (GPUFanSpeedData.value.length > 20) {
 		GPUFanSpeedData.value.shift()
 	}
-	const { CPUFanSpeed, GPUFanSpeed } = await WMIOperation.Fan.GetFanSpeed()
+  const { CPUFanSpeed, GPUFanSpeed } = JSON.parse(await bridge.Fan.GetFanSpeed()) as FanSpeedInfo;
+
 	CPUFanSpeedData.value.push({
 		period: 'CPUFanSpeed',
 		value: CPUFanSpeed

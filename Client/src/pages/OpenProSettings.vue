@@ -7,8 +7,9 @@ import FanSpeedData from '@/components/ProSettingComponent/FanSpeedData.vue'
 import GpuAmd from '@/components/ProSettingComponent/GpuAmd.vue'
 import GpuNvidia from '@/components/ProSettingComponent/GpuNvidia.vue'
 import CenterTop from '@/components/ProSettingComponent/CenterTop.vue'
-import WMIOperation from '@/utils/WMIOperation'
 import { Message } from '@arco-design/web-vue'
+import {Hardware} from "@/utils/bridge.ts";
+
 
 // 初始空数据，防止渲染报错
 const MonitorInfo = ref<HardwareMonitorInfo | null>(null)
@@ -17,14 +18,14 @@ let timer: number | null = null
 onMounted(async () => {
   // 初始加载
   try {
-    MonitorInfo.value = await WMIOperation.GetHardwareMonitorInfo()
+    MonitorInfo.value = JSON.parse(await Hardware.GetHardwareMonitorInfo()) as HardwareMonitorInfo
   } catch {
     Message.error('无法连接硬件监控服务')
   }
 
   // 轮询
   timer = window.setInterval(async () => {
-    const info = await WMIOperation.GetHardwareMonitorInfo()
+    const info = JSON.parse(await Hardware.GetHardwareMonitorInfo()) as HardwareMonitorInfo
     if(info) MonitorInfo.value = info
   }, 3000)
 

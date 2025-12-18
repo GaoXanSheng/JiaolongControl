@@ -1,16 +1,18 @@
 <!doctype html>
 <html lang="en">
 <head>
-	<meta charset="UTF-8"/>
-	<title>Control Console</title>
-	<meta http-equiv="Content-Security-Policy" content="
-  default-src 'self' 'unsafe-inline' 'unsafe-eval' data: gap: https://ssl.gstatic.com;
-  media-src 'self' blob: file:;
-">
+    <meta charset="UTF-8"/>
+    <title>Control Console</title>
+
 </head>
 
 <body>
 <div id="app"></div>
+<script type="module">
+    await window.chrome.webview.ready;
+    console.log("WebView2 ready");
+    var bridge = window.chrome.webview.hostObjects.bridge;
+</script>
 <script type="module" src="src/main.ts"></script>
 </body>
 </html>

@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { Message } from '@arco-design/web-vue'
-import WMIOperation, { PerformaceMode } from '@/utils/WMIOperation.ts'
+import bridge, {PerformanceMode, SystemPerMode} from '@/utils/bridge.ts'
 import SettingCardComponent from '@/components/RightComponent/setting/SettingCardComponent.vue'
 import { ref } from 'vue'
 const loading = ref(false)
-async function PowerMode_handleClick(PowerMode: PerformaceMode) {
+async function PowerMode_handleClick(PowerMode: SystemPerMode) {
 	loading.value = true
-	const result = await WMIOperation.PerformaceMode.Set(PowerMode)
-	if (result == '拒绝访问') {
-		Message.error(result)
+	const result = await bridge.PerformanceMode.Set(PowerMode)
+	if (result) {
+    Message.success('应用成功')
 	} else {
-		Message.success('应用成功')
+    Message.error('应用失败')
 	}
 	loading.value = false
 }
@@ -23,13 +23,13 @@ async function PowerMode_handleClick(PowerMode: PerformaceMode) {
 				<a-dropdown>
 					<a-button :loading="loading">选择</a-button>
 					<template #content>
-						<a-doption @click="PowerMode_handleClick(PerformaceMode.OfficeMode)"
+						<a-doption @click="PowerMode_handleClick(SystemPerMode.BalanceMode)"
 							>办公模式
 						</a-doption>
-						<a-doption @click="PowerMode_handleClick(PerformaceMode.GamingMode)"
+						<a-doption @click="PowerMode_handleClick(SystemPerMode.PerformanceMode)"
 							>性能模式
 						</a-doption>
-						<a-doption @click="PowerMode_handleClick(PerformaceMode.RampageMode)"
+						<a-doption @click="PowerMode_handleClick(SystemPerMode.QuietMode)"
 							>狂飙模式
 						</a-doption>
 					</template>

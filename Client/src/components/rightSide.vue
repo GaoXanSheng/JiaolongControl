@@ -6,7 +6,6 @@ import Fan from '@/components/RightComponent/Fan.vue'
 import Keyboard from '@/components/RightComponent/KeyBoard.vue'
 import Settings from '@/components/RightComponent/settings.vue'
 import { HomeTab } from '@/stores/HomeTab.ts'
-import KeyboardNotice from '@/components/RightComponent/KeyboardNotice.vue'
 import { computed } from 'vue'
 
 const store = useStore()
@@ -19,7 +18,7 @@ const currentComponent = computed(() => {
 		case HomeTab.Fan:
 			return Fan
 		case HomeTab.Keyboard:
-			return store.RgbEventLoop ? KeyboardNotice : Keyboard
+			return Keyboard
 		case HomeTab.Settings:
 			return Settings
 		default:

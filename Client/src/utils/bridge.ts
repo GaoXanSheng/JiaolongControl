@@ -1,67 +1,104 @@
-// 定义 C# bridge 对象类型
-interface WebViewBridge {
-    Call(json: string): string;
+export enum GPUMode {
+  HybridMode = 0,
+  DiscreteMode = 1,
 }
 
+export enum ResultState {
+  OFF = 0,
+  ON = 1,
+}
+
+export enum SystemPerMode {
+  BalanceMode = 0,
+  PerformanceMode = 1,
+  QuietMode = 2,
+}
+
+export enum RGBKeyboardMode {
+  Mode_Off = 0,
+  Mode_RGBFixedMode = 2,
+}
+
+export enum RGBKeyboardBrightnessLevel {
+  Level_0 = 0,
+  Level_1 = 1,
+  Level_2 = 2,
+  Level_3 = 3,
+}
+
+export interface FanSpeedInfo {
+  CPUFanSpeed: number;
+  GPUFanSpeed: number;
+}
+
+export interface ColorInfo {
+  red: number;
+  green: number;
+  blue: number;
+}
+
+interface HostObjects  {
+        CPU: {
+          SetCpuShortPower(sp: number): Promise<boolean>;
+          SetCpuLongPower(lp: number): Promise<boolean>;
+          SetCustomMode(open: boolean): Promise<boolean>;
+          GetCustomMode(): Promise<boolean>;
+          SetCPUTempWall(tw: number): Promise<boolean>;
+        };
+        Fan: {
+          GetFanSpeed(): Promise<String>;
+          SetFanSpeed(fanSpeed: number): Promise<boolean>;
+          SetMaxFanSpeedSwitch(
+            maxFanSpeedSwitch: boolean
+          ): Promise<boolean>;
+          GetMaxFanSpeedSwitch(): Promise<boolean>;
+        };
+        GPU: {
+          Get(): Promise<GPUMode>;
+          Set(mode: GPUMode): Promise<boolean>;
+        };
+        LogoLight: {
+          Get(): Promise<number>;
+          Set(state: ResultState): Promise<boolean>;
+        };
+        Keyboard: {
+          GetColor(): Promise<String>;
+          SetColor(r: number, g: number, b: number): Promise<boolean>;
+          GetMode(): Promise<RGBKeyboardMode>;
+          SetMode(mode: RGBKeyboardMode): Promise<boolean>;
+          GetLightBrightness(): Promise<RGBKeyboardBrightnessLevel>;
+          SetLightBrightness(
+            br: RGBKeyboardBrightnessLevel
+          ): Promise<boolean>;
+        };
+        PerformanceMode: {
+          Get(): Promise<SystemPerMode>;
+          Set(mode: SystemPerMode): Promise<boolean>;
+        };
+        Hardware: {
+          GetHardwareMonitorInfo(): Promise<string>;
+        };
+}
 declare global {
     interface Window {
-        chrome: {
-            webview: {
-                hostObjects: {
-                    sync: {
-                        bridge: WebViewBridge
-                    }
+        chrome?: {
+            webview?: {
+                hostObjects:{
+                    bridge: HostObjects;
                 }
-                postMessage(message: any): void
-            }
-        }
-    }
-}
-
-export const Bridge = {
-    /**
-     * 调用 C# 方法
-     * @param channel 通道名称 (如 HardwareControl, RgbEventLoop)
-     * @param data
-     * @param args 参数列表
-     */
-    async invoke(channel: string, data?: any, args?: any[]) {
-        if (!window.chrome?.webview?.hostObjects?.sync?.bridge) {
-            console.warn('WebView2 Bridge not found. Dev mode?');
-            return null;
-        }
-
-        const payload = {
-            channel,
-            data,
-            args: args || []
+            };
         };
-
-        try {
-            // 同步调用 C# 方法 (虽然是 sync，但在 JS 侧为了防卡顿，业务逻辑最好 await)
-            const responseStr = window.chrome.webview.hostObjects.sync.bridge.Call(JSON.stringify(payload));
-            const response = JSON.parse(responseStr);
-
-            // 处理 C# 返回的通用结构 { result: any, msg: string }
-            if (response.msg && response.result === false) {
-                console.error('Bridge Error:', response.msg);
-                throw new Error(response.msg);
-            }
-            return response.result;
-        } catch (e) {
-            console.error('Bridge Invoke Failed:', e);
-            throw e;
-        }
-    },
-
-    /**
-     * 打开外部链接
-     */
-    openExternal(url: string) {
-        if (window.chrome?.webview) {
-            window.chrome.webview.postMessage({ channel: 'OpenExternal', url });
-        } else {
-            window.open(url, '_blank');
-        }
     }
 }
+const bridge = window.chrome!.webview!.hostObjects.bridge;
+
+export const CPU = bridge.CPU;
+export const Fan = bridge.Fan;
+export const GPU = bridge.GPU;
+export const LogoLight = bridge.LogoLight;
+export const Keyboard = bridge.Keyboard;
+export const PerformanceMode = bridge.PerformanceMode;
+export const Hardware = bridge.Hardware;
+
+
+export default bridge;

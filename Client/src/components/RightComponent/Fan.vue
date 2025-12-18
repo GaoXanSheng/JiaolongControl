@@ -1,39 +1,32 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Message } from '@arco-design/web-vue'
+import {ref} from 'vue'
+import {Message} from '@arco-design/web-vue'
 import useStore from '@/stores'
-import WMIOperation from '@/utils/WMIOperation'
+import {Fan} from '@/utils/bridge'
 
 const store = useStore()
 const loading = ref(false)
 
 async function handleClick() {
   loading.value = true
-  try {
-    // 先开启最大转速开关(手动模式)
-    await WMIOperation.Fan.SetMaxFanSpeedSwitch(true)
-    const msg = await WMIOperation.Fan.SetFanSpeed(store.FanSpeed)
-
-    if (msg === 'Fan Speed Set OK') {
-      Message.success('设置成功')
-    } else {
-      Message.error(msg || '设置失败')
-    }
-  } catch (e: any) {
-    Message.error(e.message || '通信错误')
-  } finally {
-    loading.value = false
+  await Fan.SetMaxFanSpeedSwitch(true)
+  const res = await Fan.SetFanSpeed(store.FanSpeed / 100)
+  if (res) {
+    Message.success('设置成功')
+  } else {
+    Message.error('设置失败')
   }
+  loading.value = false
 }
 </script>
 
 <template>
   <div class="fan-settings">
     <a-row justify="center" :gutter="[0, 20]">
-      <a-col :span="20">
-        <h2 class="title">Fan Control (Manual)</h2>
+      <a-col :span="16">
+        <a-typography-title class="title">风扇设置</a-typography-title>
       </a-col>
-      <a-col :span="20">
+      <a-col :span="16">
         <a-input-number
             v-model="store.FanSpeed"
             :min="1500"
@@ -46,7 +39,7 @@ async function handleClick() {
           <template #suffix>RPM</template>
         </a-input-number>
       </a-col>
-      <a-col :span="20">
+      <a-col :span="16">
         <a-button type="primary" long :loading="loading" @click="handleClick">Apply Speed</a-button>
       </a-col>
     </a-row>
@@ -56,10 +49,12 @@ async function handleClick() {
 <style lang="scss" scoped>
 .fan-settings {
   padding: 24px;
+
   .title {
     text-align: left;
     color: var(--color-text-1);
   }
+
   .full-width {
     width: 100%;
   }

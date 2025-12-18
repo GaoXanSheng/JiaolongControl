@@ -1,5 +1,6 @@
 ﻿using System.Text.Json.Nodes;
 using LibreHardwareMonitor.Hardware;
+using System.Timers;
 
 namespace JiaoLongControl.Server.Core.Controllers
 {
@@ -9,8 +10,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         private Computer _computer = new Computer
         {
             IsCpuEnabled = true,
-            // 只需要 CPU 温度做风扇控制，其他可以关掉以节省资源，需要时再开
-            IsGpuEnabled = true, 
+            IsGpuEnabled = true,
             IsMemoryEnabled = false,
             IsMotherboardEnabled = false,
             IsControllerEnabled = false,
@@ -19,53 +19,92 @@ namespace JiaoLongControl.Server.Core.Controllers
             IsBatteryEnabled = false,
         };
 
+        private System.Timers.Timer _refreshTimer;
+        private readonly object _lock = new object();
+
+        public event EventHandler<JsonObject> OnHardwareInfoRefreshed;
+
         public ComputerInformation()
         {
             _computer.Open();
+            // 初始刷新一次数据
+            UpdateHardwareMonitorInfo();
+
+            _refreshTimer = new System.Timers.Timer(1000); // 每秒刷新一次
+            _refreshTimer.Elapsed += _refreshTimer_Elapsed;
+            _refreshTimer.AutoReset = true;
         }
 
-        public JsonObject GetHardwareMonitorInfo()
+        private void _refreshTimer_Elapsed(object? sender, ElapsedEventArgs e)
         {
-            // 每次调用都刷新数据
-            foreach (var hardwareItem in _computer.Hardware)
+            UpdateHardwareMonitorInfo();
+            OnHardwareInfoRefreshed?.Invoke(this, _res);
+        }
+
+        private void UpdateHardwareMonitorInfo()
+        {
+            lock (_lock)
             {
-                hardwareItem.Update();
-                var hardwareJson = new JsonObject();
-
-                foreach (var sensor in hardwareItem.Sensors)
+                _res.Clear();
+                foreach (var hardwareItem in _computer.Hardware)
                 {
-                    if (sensor.Value.HasValue && sensor.Name != null)
-                    {
-                        string sensorType = sensor.SensorType.ToString();
-                        JsonArray data;
-                        if (hardwareJson.ContainsKey(sensorType))
-                        {
-                            data = hardwareJson[sensorType]?.AsArray()!;
-                        }
-                        else
-                        {
-                            data = new JsonArray();
-                            hardwareJson[sensorType] = data;
-                        }
+                    hardwareItem.Update();
+                    var hardwareJson = new JsonObject();
 
-                        data.Add(new JsonObject
+                    foreach (var sensor in hardwareItem.Sensors)
+                    {
+                        if (sensor.Value.HasValue && sensor.Name != null)
                         {
-                            ["Name"] = sensor.Name,
-                            ["Value"] = sensor.Value.Value
-                        });
+                            string sensorType = sensor.SensorType.ToString();
+                            JsonArray data;
+                            if (hardwareJson.ContainsKey(sensorType))
+                            {
+                                data = hardwareJson[sensorType]?.AsArray()!;
+                            }
+                            else
+                            {
+                                data = new JsonArray();
+                                hardwareJson[sensorType] = data;
+                            }
+
+                            data.Add(new JsonObject
+                            {
+                                ["Name"] = sensor.Name,
+                                ["Value"] = sensor.Value.Value
+                            });
+                        }
+                    }
+                    if (hardwareJson.Count > 0)
+                    {
+                        hardwareJson["Name"] = hardwareItem.Name;
+                        _res[hardwareItem.HardwareType.ToString()] = hardwareJson;
                     }
                 }
-                if (hardwareJson.Count > 0)
-                {
-                    hardwareJson["Name"] = hardwareItem.Name;
-                    _res[hardwareItem.HardwareType.ToString()] = hardwareJson;
-                }
             }
-            return _res;
+        }
+
+        public string GetHardwareMonitorInfo() 
+        {
+            lock (_lock)
+            {
+                return _res.ToJsonString(); 
+            }
+        }
+
+        public void StartMonitoring()
+        {
+            _refreshTimer.Start();
+        }
+
+        public void StopMonitoring()
+        {
+            _refreshTimer.Stop();
         }
 
         public void Dispose()
         {
+            _refreshTimer.Stop();
+            _refreshTimer.Dispose();
             _computer.Close();
         }
     }

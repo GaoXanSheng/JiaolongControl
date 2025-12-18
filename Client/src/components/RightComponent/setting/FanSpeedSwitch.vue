@@ -1,20 +1,23 @@
 <script async setup lang="ts">
-import { ref } from 'vue'
-import WMIOperation from '@/utils/WMIOperation.ts'
+import {onMounted, ref} from 'vue'
+import bridge from '@/utils/bridge.ts'
 import { Message } from '@arco-design/web-vue'
 import SettingCardComponent from '@/components/RightComponent/setting/SettingCardComponent.vue'
 
-const FanSpeedSwitch = ref((await WMIOperation.Fan.GetMaxFanSpeedSwitch()) == 1)
+const FanSpeedSwitch = ref(false)
+onMounted(async () => {
+	FanSpeedSwitch.value = await bridge.Fan.GetMaxFanSpeedSwitch()
+})
 const loading = ref(false)
 async function FanSpeedSwitch_handleClick() {
 	loading.value = true
-	const msg: string | boolean = await WMIOperation.Fan.SetMaxFanSpeedSwitch(FanSpeedSwitch.value)
-	if (msg == '拒绝访问') {
-		Message.error(msg)
-		FanSpeedSwitch.value = false
+	const res = await bridge.Fan.SetMaxFanSpeedSwitch(FanSpeedSwitch.value)
+	if (res) {
+    Message.success('应用成功')
 	} else {
-		Message.success('应用成功')
+    Message.success('应用失败')
 	}
+  FanSpeedSwitch.value = res
 	loading.value = false
 }
 // 调用该方法切换风扇最大转速开关？ 反正WMI中是这样写的方法

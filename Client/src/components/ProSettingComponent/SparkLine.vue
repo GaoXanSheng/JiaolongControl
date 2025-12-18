@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { VueUiSparklineConfig } from 'vue-data-ui'
+import { type VueUiSparklineConfig } from 'vue-data-ui'
 import { VueUiSparkline } from 'vue-data-ui'
-import { Ref, ref } from 'vue'
+import {type Ref, ref} from 'vue'
 
 interface Props {
 	title: string
