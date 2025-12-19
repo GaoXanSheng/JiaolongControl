@@ -1,5 +1,4 @@
-﻿using JiaoLongControl.Server.Core.Constants;
-using JiaoLongControl.Server.Core.Models;
+﻿using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Services;
 
 namespace JiaoLongControl.Server.Core.Controllers
@@ -8,15 +7,15 @@ namespace JiaoLongControl.Server.Core.Controllers
     public class GpuController
     {
 
-        public GPUMode Get()
+        public GpuMode Get()
         {
 
-            return MethodServices.GetValue<GPUMode>(MethodName.GPUMode);
+            return MethodServices.GetValue<GpuMode>(MethodName.GpuMode);
         }
 
-        public bool Set(GPUMode mode)
+        public bool Set(GpuMode mode)
         {
-            return MethodServices.SetValue(MethodName.GPUMode, mode);
+            return MethodServices.SetValue(MethodName.GpuMode, mode);
         }
     }
 }

@@ -25,7 +25,7 @@ JiaoLongControl/
 │       │       └── (此目录由 Client 构建脚本自动填充，不要手动修改)
 │       │
 │       ├── Core/                # [核心逻辑] 原 JiaoLongWMI 的核心代码迁移至此
-│       │   ├── Constants/       # 原 Constants (MethodName.cs, etc.)
+│       │   ├── Models/       # 原 Constants (MethodName.cs, etc.)
 │       │   ├── Controllers/     # 原 Controllers (ECController.cs, etc.)
 │       │   ├── Drivers/         # 原 驱动加载逻辑 (WinIo.cs)
 │       │   ├── Repositories/    # 原 Repositories (CPU.cs, Fan.cs, etc.)
@@ -33,7 +33,7 @@ JiaoLongControl/
 │       │   └── Utils/           # 原 Utils (Logger.cs, EmbeddedResourceHelper.cs)
 │       │
 │       ├── Interop/             # [桥接层] 处理 WebView2 与 C# 的通信
-│       │   └── IpcRouter.cs     # 路由消息到 Core 的逻辑
+│       │   └── Bridge.cs     # 路由消息到 Core 的逻辑
 │       │  
 │       │
 │       ├── App.xaml             # 单例锁逻辑 (Mutex) 在此实现

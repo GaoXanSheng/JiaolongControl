@@ -39,44 +39,44 @@ export interface ColorInfo {
 
 interface HostObjects  {
         CPU: {
-          SetCpuShortPower(sp: number): Promise<boolean>;
-          SetCpuLongPower(lp: number): Promise<boolean>;
-          SetCustomMode(open: boolean): Promise<boolean>;
-          GetCustomMode(): Promise<boolean>;
-          SetCPUTempWall(tw: number): Promise<boolean>;
+          SetCpuShortPower(sp: number): boolean;
+          SetCpuLongPower(lp: number): boolean;
+          SetCustomMode(open: boolean): boolean;
+          GetCustomMode(): boolean;
+          SetCPUTempWall(tw: number): boolean;
         };
         Fan: {
-          GetFanSpeed(): Promise<String>;
-          SetFanSpeed(fanSpeed: number): Promise<boolean>;
+          GetFanSpeed(): String;
+          SetFanSpeed(fanSpeed: number):boolean;
           SetMaxFanSpeedSwitch(
             maxFanSpeedSwitch: boolean
-          ): Promise<boolean>;
-          GetMaxFanSpeedSwitch(): Promise<boolean>;
+          ): boolean;
+          GetMaxFanSpeedSwitch(): boolean;
         };
         GPU: {
-          Get(): Promise<GPUMode>;
-          Set(mode: GPUMode): Promise<boolean>;
+          Get(): GPUMode;
+          Set(mode: GPUMode): boolean;
         };
         LogoLight: {
-          Get(): Promise<number>;
-          Set(state: ResultState): Promise<boolean>;
+          Get(): number;
+          Set(state: ResultState):boolean;
         };
         Keyboard: {
-          GetColor(): Promise<String>;
-          SetColor(r: number, g: number, b: number): Promise<boolean>;
-          GetMode(): Promise<RGBKeyboardMode>;
-          SetMode(mode: RGBKeyboardMode): Promise<boolean>;
-          GetLightBrightness(): Promise<RGBKeyboardBrightnessLevel>;
+          GetColor(): String;
+          SetColor(r: number, g: number, b: number): boolean;
+          GetMode(): RGBKeyboardMode;
+          SetMode(mode: RGBKeyboardMode): boolean;
+          GetLightBrightness(): RGBKeyboardBrightnessLevel;
           SetLightBrightness(
             br: RGBKeyboardBrightnessLevel
-          ): Promise<boolean>;
+          ): boolean;
         };
         PerformanceMode: {
-          Get(): Promise<SystemPerMode>;
-          Set(mode: SystemPerMode): Promise<boolean>;
+          Get(): SystemPerMode;
+          Set(mode: SystemPerMode): boolean;
         };
         Hardware: {
-          GetHardwareMonitorInfo(): Promise<string>;
+          GetHardwareMonitorInfo(): string;
         };
 }
 declare global {

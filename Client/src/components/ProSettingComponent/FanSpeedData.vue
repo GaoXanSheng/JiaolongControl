@@ -23,7 +23,7 @@ async function GetFanSpeed() {
 	if (GPUFanSpeedData.value.length > 20) {
 		GPUFanSpeedData.value.shift()
 	}
-  const { CPUFanSpeed, GPUFanSpeed } = JSON.parse(await bridge.Fan.GetFanSpeed()) as FanSpeedInfo;
+  const { CPUFanSpeed, GPUFanSpeed } = JSON.parse(bridge.Fan.GetFanSpeed()) as FanSpeedInfo;
 
 	CPUFanSpeedData.value.push({
 		period: 'CPUFanSpeed',
