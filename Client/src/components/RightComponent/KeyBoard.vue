@@ -14,7 +14,7 @@ async function loadInitialData() {
     Keyboard.GetColor(),
     Keyboard.GetLightBrightness()
   ])
-  color.value = { ...JSON.parse(colorData) }
+  color.value = { ...colorData }
   LightBrightness.value = brightness
   colorPicker.value = rgbToHex(color.value.red, color.value.green, color.value.blue)
 }

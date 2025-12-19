@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { Message } from '@arco-design/web-vue'
-import bridge, {PerformanceMode, SystemPerMode} from '@/utils/bridge.ts'
+import  {PerformanceMode, SystemPerMode} from '@/utils/bridge.ts'
 import SettingCardComponent from '@/components/RightComponent/setting/SettingCardComponent.vue'
 import { ref } from 'vue'
 const loading = ref(false)
 async function PowerMode_handleClick(PowerMode: SystemPerMode) {
 	loading.value = true
-	const result = await bridge.PerformanceMode.Set(PowerMode)
+	const result = await PerformanceMode.Set(PowerMode)
 	if (result) {
     Message.success('应用成功')
 	} else {

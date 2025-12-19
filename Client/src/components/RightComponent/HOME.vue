@@ -37,10 +37,7 @@ watchEffect(async () => {
 			<a-col :span="16">
 				<div class="mainDescription">
 					<a-typography>
-						<a-typography-title :heading="2">蛟龙16PRO工具箱</a-typography-title>
-						<a-typography-title :heading="5"
-							>该工具箱针对7945HX+4060版本进行开发，不保证其他版本可用，风险自负</a-typography-title
-						>
+						<a-typography-title :heading="2"></a-typography-title>
 						<a-typography-paragraph blockquote>
 							<a-typography-text>
 								Thaumaturgy... which giveth certain order to make strange works, of the sense to be
@@ -61,7 +58,7 @@ watchEffect(async () => {
 	text-align: left;
 }
 .title {
-	width: 620px;
+	width: 600px;
 	height: 350px;
 	margin: 0;
 	padding: 0;

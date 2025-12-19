@@ -1,17 +1,17 @@
 <script async setup lang="ts">
 import {onMounted, ref} from 'vue'
-import bridge from '@/utils/bridge.ts'
+import {Fan} from '@/utils/bridge.ts'
 import { Message } from '@arco-design/web-vue'
 import SettingCardComponent from '@/components/RightComponent/setting/SettingCardComponent.vue'
 
 const FanSpeedSwitch = ref(false)
 onMounted(async () => {
-	FanSpeedSwitch.value = await bridge.Fan.GetMaxFanSpeedSwitch()
+	FanSpeedSwitch.value =  Fan.GetMaxFanSpeedSwitch()
 })
 const loading = ref(false)
 async function FanSpeedSwitch_handleClick() {
 	loading.value = true
-	const res = await bridge.Fan.SetMaxFanSpeedSwitch(FanSpeedSwitch.value)
+	const res =  Fan.SetMaxFanSpeedSwitch(FanSpeedSwitch.value)
 	if (res) {
     Message.success('应用成功')
 	} else {

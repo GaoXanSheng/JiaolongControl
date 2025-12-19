@@ -1,17 +1,17 @@
 <script async setup lang="ts">
 import SettingCardComponent from '@/components/RightComponent/setting/SettingCardComponent.vue'
 import {onMounted, ref} from 'vue'
-import bridge, {CPU} from '@/utils/bridge.ts'
+import {CPU} from '@/utils/bridge.ts'
 
 const cpuboost = ref()
 onMounted(async () => {
-  cpuboost.value = await bridge.CPU.GetCustomMode();
+  cpuboost.value = CPU.GetCustomMode();
 });
 const loading = ref(false)
 
 async function CpuBoost_handleClick() {
   loading.value = true
-  await CPU.SetCustomMode(cpuboost.value)
+  CPU.SetCustomMode(cpuboost.value)
   loading.value = false
 }
 </script>

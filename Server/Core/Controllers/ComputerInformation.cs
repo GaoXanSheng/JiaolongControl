@@ -11,9 +11,9 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             IsCpuEnabled = true,
             IsGpuEnabled = true,
-            IsMemoryEnabled = false,
-            IsMotherboardEnabled = false,
-            IsControllerEnabled = false,
+            IsMemoryEnabled = true,
+            IsMotherboardEnabled = true,
+            IsControllerEnabled = true,
             IsNetworkEnabled = false,
             IsStorageEnabled = false,
             IsBatteryEnabled = false,

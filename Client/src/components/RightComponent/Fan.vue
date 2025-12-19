@@ -10,7 +10,7 @@ const loading = ref(false)
 async function handleClick() {
   loading.value = true
   await Fan.SetMaxFanSpeedSwitch(true)
-  const res = await Fan.SetFanSpeed(store.FanSpeed / 100)
+  const res = await Fan.SetFanSpeed(store.FanSpeed)
   if (res) {
     Message.success('设置成功')
   } else {

@@ -6,9 +6,9 @@ namespace JiaoLongControl.Server.Core.Controllers
     [System.Runtime.InteropServices.ComVisible(true)]
     public class LogoLightController
     {
-        public Byte Get()
+        public bool Get()
         {
-            return MethodServices.GetValue<byte>(MethodName.Ambientlight);
+            return MethodServices.GetValue<byte>(MethodName.Ambientlight) == (byte)ResultState.ON;
         }
 
         public bool Set(ResultState state)

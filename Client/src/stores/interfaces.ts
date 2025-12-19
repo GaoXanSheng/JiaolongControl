@@ -1,5 +1,5 @@
 // 单个项目的数据结构
-type MetricItem = {
+export type MetricItem = {
 	Name: string
 	Value: number
 }
