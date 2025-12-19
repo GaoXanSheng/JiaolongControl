@@ -63,7 +63,7 @@ namespace JiaoLongControl.Server
             
             var child = new WebView2();
             win.Content = child;
-            win.Title = "JiaoLongControl";
+            win.Title = "JiaoLong Control";
             win.Show();
 
             await child.EnsureCoreWebView2Async();
