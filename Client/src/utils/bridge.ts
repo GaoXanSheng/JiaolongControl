@@ -102,22 +102,16 @@ export const CPU = {
      * @constructor
      */
     SetCpuShortPower: async (sp: number) => {
-        if (sp > 0 && sp < 255) {
-            return await bridge.CPU.SetCpuShortPower(sp)
-        }
+        return await bridge.CPU.SetCpuShortPower(toByte(sp))
     },
 
     SetCpuLongPower: async (lp: number) => {
-        if (lp > 0 && lp < 255) {
-            return await bridge.CPU.SetCpuLongPower(lp)
-        }
+        return await bridge.CPU.SetCpuLongPower(toByte(lp))
     },
     SetCustomMode: bridge.CPU.SetCustomMode,
     GetCustomMode: bridge.CPU.GetCustomMode,
     SetCPUTempWall: async (tw: number) => {
-        if (tw > 0 && tw < 255) {
-            return bridge.CPU.SetCPUTempWall(tw)
-        }
+            return bridge.CPU.SetCPUTempWall(toByte(tw))
     },
 };
 export const Fan = {
@@ -125,15 +119,7 @@ export const Fan = {
         return JSON.parse(await bridge.Fan.GetFanSpeed()) as FanSpeedInfo
     },
     SetFanSpeed: async (fanSpeed: number): Promise<boolean> => {
-        if (!Number.isInteger(fanSpeed)) {
-            throw new Error('fanSpeed 必须是整数')
-        }
-
-        if (fanSpeed <= 0 || fanSpeed >= 5800) {
-            throw new Error('fanSpeed 范围必须在 1~5799')
-        }
-
-        return await bridge.Fan.SetFanSpeed(fanSpeed / 100)
+        return await bridge.Fan.SetFanSpeed(toByte(fanSpeed / 100))
     }
     ,
     SetMaxFanSpeedSwitch: bridge.Fan.SetMaxFanSpeedSwitch,
@@ -146,10 +132,7 @@ export const Keyboard = {
         return JSON.parse(await bridge.Keyboard.GetColor()) as ColorInfo
     },
     SetColor: async (r: number, g: number, b: number) => {
-        if (r > 255 || g > 255 || b > 255) {
-            throw new Error('颜色值必须在 0~255 之间')
-        }
-        return await bridge.Keyboard.SetColor(r, g, b)
+        return await bridge.Keyboard.SetColor(toByte(r), toByte(g), toByte(b))
     },
     GetMode: bridge.Keyboard.GetMode,
     SetMode: bridge.Keyboard.SetMode,
@@ -162,3 +145,14 @@ export const Hardware = {
         return JSON.parse(await bridge.Hardware.GetHardwareMonitorInfo()) as HardwareMonitorInfo
     },
 };
+
+function toByte(value:number):number {
+    if (!Number.isInteger(value)) {
+        throw new Error('必须是整数')
+    }
+
+    if (value <= 0 || value >= 255) {
+        throw new Error('范围必须在0-255')
+    }
+    return  value
+}
