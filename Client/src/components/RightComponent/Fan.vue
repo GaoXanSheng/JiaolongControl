@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import {ref} from 'vue'
+import {onMounted, ref} from 'vue'
 import {Message} from '@arco-design/web-vue'
 import useStore from '@/stores'
-import {Fan} from '@/utils/bridge'
+import {Config, Fan} from '@/utils/bridge'
+import FanCurveEditor from "@/components/ProSettingComponent/FanCurve/FanCurveEditor.vue";
 
 const store = useStore()
 const loading = ref(false)
@@ -18,10 +19,15 @@ async function handleClick() {
   }
   loading.value = false
 }
+const EnableAdvancedFanControlSystem = ref(false)
+onMounted(async () => {
+  const config = await Config.GetConfig()
+  EnableAdvancedFanControlSystem.value = config.EnableAdvancedFanControlSystem
+})
 </script>
 
 <template>
-  <div class="fan-settings">
+  <div class="fan-settings" v-if="!EnableAdvancedFanControlSystem">
     <a-row justify="center" :gutter="[0, 20]">
       <a-col :span="16">
         <a-typography-title class="title">风扇设置</a-typography-title>
@@ -44,6 +50,7 @@ async function handleClick() {
       </a-col>
     </a-row>
   </div>
+  <fan-curve-editor v-else></fan-curve-editor>
 </template>
 
 <style lang="scss" scoped>

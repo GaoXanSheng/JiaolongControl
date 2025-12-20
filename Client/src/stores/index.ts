@@ -18,8 +18,6 @@ const useStore = defineStore('store', {
 				tempWall: 88
 			},
 			theme: 'light',
-			ServiceOption: false,
-			customVideo: ''
 		}
 	}
 })

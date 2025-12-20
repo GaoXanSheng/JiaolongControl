@@ -17,14 +17,6 @@ function setTheme() {
 	document.body.setAttribute('arco-theme', store.$state.theme)
 	loading.value = false
 }
-async function setCustomVideo() {
-	loading.value = true
-
-	loading.value = false
-}
-function removeCustomVideo() {
-	store.$state.customVideo = ''
-}
 </script>
 
 <template>
@@ -38,12 +30,6 @@ function removeCustomVideo() {
 					<icon-close />
 				</template>
 			</a-switch>
-		</template>
-	</setting-card-component>
-	<setting-card-component title="自定义主页视频">
-		<template #extra>
-			<a-button :loading="loading" @click="removeCustomVideo">清空</a-button>
-			<a-button :loading="loading" @click="setCustomVideo">选择</a-button>
 		</template>
 	</setting-card-component>
 </template>

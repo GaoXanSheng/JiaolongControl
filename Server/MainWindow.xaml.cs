@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
+using JiaoLongControl.Server.Core.Controllers;
 using JiaoLongControl.Server.Interop;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
@@ -11,64 +14,155 @@ namespace JiaoLongControl.Server
     public partial class MainWindow : Window
     {
         private Hardcodet.Wpf.TaskbarNotification.TaskbarIcon _taskbarIcon;
-        private Bridge _bridge;
-        private string _webRoot;
+
+        private readonly Bridge _bridge = new();
+        private string _webRoot = string.Empty;
+
+        private WebView2? _webView;
+        private bool _webViewDestroyed = true;
+
+        private static bool IsBootStart =>
+            Environment.GetCommandLineArgs()
+                .Any(arg => arg.Equals("--boot", StringComparison.OrdinalIgnoreCase));
+
+        private readonly bool _startInTray;
+        private readonly bool _startInFan;
 
         public MainWindow()
         {
+            ConfigController.Load();
             InitializeComponent();
+
+            _startInTray =
+                IsBootStart &&
+                ConfigController.Config.MinimizedAfterBooting;
+
+            _startInFan =
+                ConfigController.Config.EnableAdvancedFanControlSystem &&
+                ConfigController.Config.BootStartAdvancedFanControlSystem;
+
             InitializePaths();
-            InitializeWebView();
             InitializeTray();
 
-            Closing += (_, e) =>
+            CreateWebView();
+
+            if (_startInTray)
             {
-                e.Cancel = true;
-                Hide();
-            };
+                Loaded += (_, _) => Hide();
+                WindowState = WindowState.Minimized;
+                ShowInTaskbar = false;
+            }
+
+            if (_startInFan)
+            {
+                _bridge.AutoFan.Start();
+            }
+
+            Closing += OnClosing;
         }
+
+        #region 初始化
 
         private void InitializePaths()
         {
             var exeDir = Path.GetDirectoryName(
                 Process.GetCurrentProcess().MainModule!.FileName!
             )!;
+
             _webRoot = Path.Combine(exeDir, "WebRoot");
         }
-        
 
-        private async void InitializeWebView()
+        private void CreateWebView()
         {
-            await webView.EnsureCoreWebView2Async();
+            if (!_webViewDestroyed)
+                return;
 
-            _bridge = new Bridge();
-            ConfigureWebView(webView, _bridge);
+            _webView = new WebView2();
+            WebViewHost.Children.Clear();
+            WebViewHost.Children.Add(_webView);
 
-            webView.Source = Directory.Exists(_webRoot)
-                ? new Uri("https://app.local/index.html")
-                : new Uri("http://localhost:5173");
+            InitializeWebView(_webView);
 
-            webView.CoreWebView2.NewWindowRequested += NewWindowRequested;
+            _webViewDestroyed = false;
         }
 
-        private async void NewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
+        private async void InitializeWebView(WebView2 view)
         {
-            e.Handled = true;
+            string userDataFolder = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "JiaoLongControl",
+                "WebView2"
+            );
 
-            var win = new Window
+            Directory.CreateDirectory(userDataFolder);
+
+            var env = await CoreWebView2Environment.CreateAsync(
+                null,
+                userDataFolder
+            );
+
+            await view.EnsureCoreWebView2Async(env);
+
+            ConfigureWebView(view, _bridge);
+
+            view.Source = Directory.Exists(_webRoot)
+                ? new Uri("https://app.local/index.html")
+                : new Uri("http://localhost:5173");
+        }
+
+        private void InitializeTray()
+        {
+            _taskbarIcon = new Hardcodet.Wpf.TaskbarNotification.TaskbarIcon
             {
-                Width = 1600,
-                Height = 900
+                Icon = System.Drawing.Icon.ExtractAssociatedIcon(
+                    System.Reflection.Assembly.GetEntryAssembly()!.Location
+                ),
+                ToolTipText = "JiaoLong Control"
             };
-            
-            var child = new WebView2();
-            win.Content = child;
-            win.Title = "JiaoLong Control";
-            win.Show();
 
-            await child.EnsureCoreWebView2Async();
-            ConfigureWebView(child, _bridge);
-            child.Source = new Uri(e.Uri);
+            _taskbarIcon.TrayMouseDoubleClick += (_, _) => ShowMainWindow();
+
+            var menu = new ContextMenu();
+
+            var show = new MenuItem { Header = "显示界面" };
+            show.Click += (_, _) => ShowMainWindow();
+
+            var exit = new MenuItem { Header = "退出" };
+            exit.Click += (_, _) =>
+            {
+                DestroyWebView();
+                _taskbarIcon.Dispose();
+                Application.Current.Shutdown();
+            };
+
+            menu.Items.Add(show);
+            menu.Items.Add(exit);
+
+            _taskbarIcon.ContextMenu = menu;
+        }
+
+        #endregion
+
+        #region WebView 管理
+
+        private void DestroyWebView()
+        {
+            if (_webViewDestroyed)
+                return;
+
+            try
+            {
+                _webView?.CoreWebView2?.Stop();
+                _webView?.Dispose();
+            }
+            catch
+            {
+                // 防止关闭阶段异常
+            }
+
+            WebViewHost.Children.Clear();
+            _webView = null;
+            _webViewDestroyed = true;
         }
 
         private void ConfigureWebView(WebView2 view, Bridge bridge)
@@ -85,40 +179,30 @@ namespace JiaoLongControl.Server
             }
         }
 
-        private void InitializeTray()
+        #endregion
+
+        #region 窗口控制
+
+        private void ShowMainWindow()
         {
-            _taskbarIcon = new Hardcodet.Wpf.TaskbarNotification.TaskbarIcon
+            if (_webViewDestroyed)
             {
-                Icon = System.Drawing.Icon.ExtractAssociatedIcon(
-                    System.Reflection.Assembly.GetEntryAssembly()!.Location
-                ),
-                ToolTipText = "JiaoLong Control"
-            };
+                CreateWebView();
+            }
 
-            _taskbarIcon.TrayMouseDoubleClick += (_, _) =>
-            {
-                Show();
-                WindowState = WindowState.Normal;
-                Activate();
-            };
-
-            var menu = new System.Windows.Controls.ContextMenu();
-
-            var show = new System.Windows.Controls.MenuItem { Header = "显示界面" };
-            show.Click += (_, _) =>
-            {
-                Show();
-                WindowState = WindowState.Normal;
-                Activate();
-            };
-
-            var exit = new System.Windows.Controls.MenuItem { Header = "退出" };
-            exit.Click += (_, _) => Application.Current.Shutdown();
-
-            menu.Items.Add(show);
-            menu.Items.Add(exit);
-
-            _taskbarIcon.ContextMenu = menu;
+            Show();
+            WindowState = WindowState.Normal;
+            ShowInTaskbar = true;
+            Activate();
         }
+
+        private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            e.Cancel = true;
+            DestroyWebView();
+            Hide();
+        }
+
+        #endregion
     }
 }
