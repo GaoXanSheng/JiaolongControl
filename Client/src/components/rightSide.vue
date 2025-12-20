@@ -4,7 +4,7 @@ import HOME from '@/components/RightComponent/HOME.vue'
 import CPU from '@/components/RightComponent/CPU.vue'
 import Fan from '@/components/RightComponent/Fan.vue'
 import Keyboard from '@/components/RightComponent/KeyBoard.vue'
-import Settings from '@/components/RightComponent/settings.vue'
+import Settings from '@/components/RightComponent/Settings.vue'
 import { HomeTab } from '@/stores/HomeTab.ts'
 import { computed } from 'vue'
 

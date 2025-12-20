@@ -24,13 +24,13 @@ async function PowerMode_handleClick(PowerMode: SystemPerMode) {
 					<a-button :loading="loading">选择</a-button>
 					<template #content>
 						<a-doption @click="PowerMode_handleClick(SystemPerMode.BalanceMode)"
-							>办公模式
-						</a-doption>
-						<a-doption @click="PowerMode_handleClick(SystemPerMode.PerformanceMode)"
 							>性能模式
 						</a-doption>
-						<a-doption @click="PowerMode_handleClick(SystemPerMode.QuietMode)"
+						<a-doption @click="PowerMode_handleClick(SystemPerMode.PerformanceMode)"
 							>狂飙模式
+						</a-doption>
+						<a-doption @click="PowerMode_handleClick(SystemPerMode.QuietMode)"
+							>办公模式
 						</a-doption>
 					</template>
 				</a-dropdown>

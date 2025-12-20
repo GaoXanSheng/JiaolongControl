@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using JiaoLongControl.Server.Core.Controllers;
 
 namespace JiaoLongControl.Server
 {
@@ -18,6 +19,8 @@ namespace JiaoLongControl.Server
                 Current.Shutdown();
                 return;
             }
+
+
             base.OnStartup(e);
         }
     }

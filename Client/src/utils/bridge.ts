@@ -80,6 +80,20 @@ interface HostObjects {
     Hardware: {
         GetHardwareMonitorInfo(): Promise<string>;
     };
+    Config: {
+        GetConfig(): Promise<string>;
+        SetConfig(config: string): Promise<void>;
+    };
+    AutoStart: {
+        Enable(): Promise<void>;
+        Disable(): Promise<void>;
+        IsEnabled(): Promise<boolean>;
+    };
+    AutoFan:{
+        Start:Promise<void>;
+        Stop:Promise<void>;
+        IsRunning:Promise<boolean>;
+    }
 }
 
 declare global {
@@ -95,12 +109,36 @@ declare global {
 }
 const bridge = window.chrome!.webview!.hostObjects.bridge;
 
+
+export interface ConfigInterface {
+    MinimizedAfterBooting: boolean,
+    EnableAdvancedFanControlSystem: boolean,
+    BootStartAdvancedFanControlSystem:boolean,
+    AdvancedFanControlSystemConfig: {
+        temp: number,
+        speed: number
+    }[]
+}
+
+export const Config = {
+    GetConfig: async (): Promise<ConfigInterface> => {
+        return JSON.parse(await bridge.Config.GetConfig()) as ConfigInterface
+    },
+    SetConfig: async (config: ConfigInterface) => {
+        return await bridge.Config.SetConfig(JSON.stringify(config))
+    },
+    Boot: {
+        Enable: bridge.AutoStart.Enable,
+        Disable: bridge.AutoStart.Disable,
+        IsEnabled: bridge.AutoStart.IsEnabled,
+    }
+}
+export const AutoFanControl = {
+    Start: bridge.AutoFan.Start,
+    Stop: bridge.AutoFan.Stop,
+    IsRunning: bridge.AutoFan.IsRunning,
+}
 export const CPU = {
-    /**
-     *  0 - 255
-     * @param sp
-     * @constructor
-     */
     SetCpuShortPower: async (sp: number) => {
         return await bridge.CPU.SetCpuShortPower(toByte(sp))
     },
@@ -111,11 +149,11 @@ export const CPU = {
     SetCustomMode: bridge.CPU.SetCustomMode,
     GetCustomMode: bridge.CPU.GetCustomMode,
     SetCPUTempWall: async (tw: number) => {
-            return bridge.CPU.SetCPUTempWall(toByte(tw))
+        return bridge.CPU.SetCPUTempWall(toByte(tw))
     },
 };
 export const Fan = {
-    GetFanSpeed:  async () => {
+    GetFanSpeed: async () => {
         return JSON.parse(await bridge.Fan.GetFanSpeed()) as FanSpeedInfo
     },
     SetFanSpeed: async (fanSpeed: number): Promise<boolean> => {
@@ -146,7 +184,7 @@ export const Hardware = {
     },
 };
 
-function toByte(value:number):number {
+function toByte(value: number): number {
     if (!Number.isInteger(value)) {
         throw new Error('必须是整数')
     }
@@ -154,5 +192,5 @@ function toByte(value:number):number {
     if (value <= 0 || value >= 255) {
         throw new Error('范围必须在0-255')
     }
-    return  value
+    return value
 }

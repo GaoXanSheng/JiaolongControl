@@ -24,10 +24,6 @@ function loadConfig() {
 
 onMounted(() => {
   loadConfig()
-  document.body.setAttribute('arco-theme', store.theme)
-  // 移除 index.html 可能存在的 loader
-  const loader = document.querySelector('.loader')
-  if (loader) loader.remove()
 })
 </script>
 
