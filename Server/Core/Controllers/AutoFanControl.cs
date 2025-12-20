@@ -1,4 +1,4 @@
-﻿using System.Management;
+﻿using System.Text.Json.Nodes;
 using JiaoLongControl.Server.Core.Utils;
 
 namespace JiaoLongControl.Server.Core.Controllers
@@ -72,8 +72,6 @@ namespace JiaoLongControl.Server.Core.Controllers
             }
         }
 
-        private float _lastLoggedTemp = -1000f;
-
         private void ControlLoop(CancellationToken token)
         {
             _isRunning = true;
@@ -88,7 +86,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                 {
                     try
                     {
-                        float rawTemp = GetCurrentCpuTempByWMI();
+                        float rawTemp = GetCurrentCpuTemp();
 
                         tempQueue.Enqueue(rawTemp);
                         if (tempQueue.Count > smoothSampleCount)
@@ -96,11 +94,7 @@ namespace JiaoLongControl.Server.Core.Controllers
 
                         float smoothTemp = tempQueue.Average();
 
-                        if (Math.Abs(smoothTemp - _lastLoggedTemp) >= 1.0f)
-                        {
-                            Logger.Info("CPU Temp: {0:F1}", smoothTemp);
-                            _lastLoggedTemp = smoothTemp;
-                        }
+                        Logger.Info("CPU Temp: {0:F1}", smoothTemp);
 
                         int targetByte = CalculateFanSpeed(smoothTemp);
 
@@ -126,24 +120,29 @@ namespace JiaoLongControl.Server.Core.Controllers
             }
         }
 
-        private float GetCurrentCpuTempByWMI()
+        private float GetCurrentCpuTemp()
         {
             try
             {
-                using var searcher = new ManagementObjectSearcher(
-                    @"root\WMI",
-                    "SELECT * FROM MSAcpi_ThermalZoneTemperature");
+                string json = HardwareController.ComputerInfo.GetHardwareMonitorInfo();
 
-                foreach (ManagementObject obj in searcher.Get())
+                var root = JsonNode.Parse(json);
+                var cpu = root?["Cpu"];
+                var temps = cpu?["Temperature"]?.AsArray();
+
+                if (temps == null)
+                    return -1f;
+                foreach (var t in temps)
                 {
-                    var tempObj = obj["CurrentTemperature"];
-                    if (tempObj == null) continue;
+                    if (t?["Name"]?.ToString() == "Core (Tctl/Tdie)")
+                        return t["Value"]!.GetValue<float>();
+                }
 
-                    double tempKelvin = Convert.ToDouble(tempObj);
-                    float tempCelsius = (float)((tempKelvin - 2732) / 10.0);
-
-                    if (tempCelsius > 0 && tempCelsius < 130)
-                        return tempCelsius;
+                // 兜底：CCDs Average
+                foreach (var t in temps)
+                {
+                    if (t?["Name"]?.ToString() == "CCDs Average (Tdie)")
+                        return t["Value"]!.GetValue<float>();
                 }
             }
             catch (Exception ex)
@@ -151,7 +150,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                 Logger.Error(ex);
             }
 
-            return 55.0f;
+            return 60.0f;
         }
 
         private int CalculateFanSpeed(float currentTemp)

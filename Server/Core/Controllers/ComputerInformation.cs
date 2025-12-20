@@ -1,23 +1,13 @@
 ﻿using System.Text.Json.Nodes;
-using LibreHardwareMonitor.Hardware;
 using System.Timers;
+using OpenHardwareMonitor.Hardware;
 
 namespace JiaoLongControl.Server.Core.Controllers
 {
     public class ComputerInformation : IDisposable
     {
         private JsonObject _res = new JsonObject();
-        private Computer _computer = new Computer
-        {
-            IsCpuEnabled = true,
-            IsGpuEnabled = true,
-            IsMemoryEnabled = true,
-            IsMotherboardEnabled = true,
-            IsControllerEnabled = true,
-            IsNetworkEnabled = false,
-            IsStorageEnabled = false,
-            IsBatteryEnabled = false,
-        };
+        private Computer _computer = new Computer { IsCpuEnabled = true,IsGpuEnabled = true,IsRing0Enabled = true};
 
         private System.Timers.Timer _refreshTimer;
         private readonly object _lock = new object();
@@ -26,7 +16,7 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         public ComputerInformation()
         {
-            _computer.Open();
+            _computer.Open(true);
             // 初始刷新一次数据
             UpdateHardwareMonitorInfo();
 
