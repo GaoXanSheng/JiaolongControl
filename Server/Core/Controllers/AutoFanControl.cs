@@ -11,7 +11,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         private CancellationTokenSource? _cts;
         private Task? _controlTask;
 
-        private const int IntervalMs = 3000;
+        private const int IntervalMs = 5000;
 
         private const int RPM_UNIT_DIVISOR = 100;
         private const int MAX_FAN_BYTE = 58;
@@ -94,11 +94,9 @@ namespace JiaoLongControl.Server.Core.Controllers
 
                         float smoothTemp = tempQueue.Average();
 
-                        Logger.Info("CPU Temp: {0:F1}", smoothTemp);
-
                         int targetByte = CalculateFanSpeed(smoothTemp);
 
-                        ApplyFanSpeed(targetByte);
+                        ApplyFanSpeed(targetByte,smoothTemp);
 
                         Task.Delay(IntervalMs, token).Wait(token);
                     }
@@ -200,7 +198,7 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         private int _lastAppliedByte = -1;
 
-        private void ApplyFanSpeed(int speedByte)
+        private void ApplyFanSpeed(int speedByte, float temp)
         {
             if (speedByte == _lastAppliedByte)
                 return;
@@ -209,6 +207,7 @@ namespace JiaoLongControl.Server.Core.Controllers
 
             if (_fanController.SetFanSpeed((byte)speedByte))
             {
+                Logger.Info("CPU Temp: {0}", temp);
                 Logger.Info(
                     "Fan Speed Applied: {0} RPM",
                     rpm

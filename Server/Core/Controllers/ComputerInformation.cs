@@ -23,6 +23,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             _refreshTimer = new System.Timers.Timer(1000); // 每秒刷新一次
             _refreshTimer.Elapsed += _refreshTimer_Elapsed;
             _refreshTimer.AutoReset = true;
+            _refreshTimer.Start();
         }
 
         private void _refreshTimer_Elapsed(object? sender, ElapsedEventArgs e)

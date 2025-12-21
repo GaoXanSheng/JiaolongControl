@@ -25,7 +25,7 @@ export interface CpuMonitorData {
 	/** 电压信息 (伏特 V) */
 	Voltage: SensorMetric[];
 	/** 温度信息 (摄氏度 °Ce) */
-	Temperature: SensorMtric[];
+	Temperature: SensorMetric[];
 	/** 硬件名称 (例如: "AMD Ryzen 9 7945HX...") */
 	Name: string;
 }

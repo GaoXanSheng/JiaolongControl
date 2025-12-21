@@ -450,7 +450,7 @@ function onEditConfirm() {
 
 <style lang="scss" scoped>
 .fan-curve-card {
-  height: 420px;
+  height: 400px;
   position: relative;
   user-select: none;
 
