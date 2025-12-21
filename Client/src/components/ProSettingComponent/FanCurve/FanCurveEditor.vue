@@ -182,12 +182,10 @@ interface Point {
   speed: number
 }
 
-// --- 基础配置 ---
 const tempRange = [60, 100]
 const speedRange = [1500, 5800]
 const padding = { top: 40, right: 40, bottom: 40, left: 60 }
 
-// --- 状态变量 ---
 const containerRef = ref<HTMLDivElement | null>(null)
 const width = ref(0)
 const height = ref(0)
@@ -218,9 +216,6 @@ const isValidRender = computed(() => {
   return width.value > 0 && height.value > 0 && points.value.every(p => !isNaN(p.temp) && !isNaN(p.speed))
 })
 
-// --- 方法逻辑 ---
-
-// 1. 服务控制逻辑
 const checkServiceStatus = async () => {
   try {
     isServiceRunning.value = await AutoFanControl.IsRunning()
@@ -255,7 +250,6 @@ const handleServiceToggle = async (newValue: any): Promise<boolean> => {
   }
 }
 
-// 2. 自动保存逻辑
 const autoSave = async () => {
   const config = await Config.GetConfig()
   config.AdvancedFanControlSystemConfig = points.value
@@ -456,7 +450,7 @@ function onEditConfirm() {
 
 <style lang="scss" scoped>
 .fan-curve-card {
-  height: 600px;
+  height: 420px;
   position: relative;
   user-select: none;
 

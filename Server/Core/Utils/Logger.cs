@@ -1,60 +1,58 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace JiaoLongControl.Server.Core.Utils;
+
 /// <summary>
-/// 日志记录器类，用于记录应用程序的日志信息。
+/// 简单日志记录器
 /// </summary>
-public class Logger
+public static class Logger
 {
+    private static readonly object _lock = new();
 
-        /// <summary>
-        /// 获取当前写日志的目录
-        /// - 用户交互模式（控制台或命令行）写入当前工作目录（即运行exe的目录或命令行所在目录）
-        /// - 服务模式写入程序目录（AppContext.BaseDirectory）
-        /// </summary>
-        private static string GetLogDirectory()
+    private static string GetLogDirectory()
+    {
+        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        string logDir = Path.Combine(baseDir, "log");
+        Directory.CreateDirectory(logDir);
+        return logDir;
+    }
+
+    private static string GetLogFilePath()
+    {
+        return Path.Combine(GetLogDirectory(), "service.log");
+    }
+
+    public static void Info(string format, params object[] args)
+    {
+        try
         {
-            return AppDomain.CurrentDomain.BaseDirectory;
+            string message = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] INFO  {string.Format(format, args)}";
+            WriteLine(message);
         }
-
-        private static string GetLogFilePath()
+        catch
         {
-            var logDir = GetLogDirectory();
-            return Path.Combine(logDir, "service.log");
-        }
-
-        /// <summary>
-        /// 记录普通信息日志
-        /// </summary>
-        public static void Info(string format, params object[] args)
-        {
-            string logFilePath = GetLogFilePath();
-
-            try
-            {
-                var  message = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] INFO: " + string.Format(format, args);
-
-                if (Environment.UserInteractive)
-                {
-                    Console.WriteLine(message);
-                }
-                else
-                {
-                    File.AppendAllText(logFilePath, message + Environment.NewLine);
-                }
-            }
-            catch
-            {
-                // 防止服务崩溃，写文件失败时静默处理
-            }
-        }
-
-
-        /// <summary>
-        /// 记录错误信息日志
-        /// </summary>
-        public static void Error<T>(T msg)
-        {
-            Info("ERROR: " + msg);
         }
     }
+
+    public static void Error(string message)
+    {
+        WriteLine(
+            $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] ERROR {message}"
+        );
+    }
+
+    private static void WriteLine(string message)
+    {
+        lock (_lock)
+        {
+            File.AppendAllText(
+                GetLogFilePath(),
+                message + Environment.NewLine
+            );
+#if DEBUG
+        Console.WriteLine(message);
+#endif
+        }
+    }
+}

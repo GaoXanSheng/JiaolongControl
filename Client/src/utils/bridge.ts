@@ -133,11 +133,7 @@ export const Config = {
         IsEnabled: bridge.AutoStart.IsEnabled,
     }
 }
-export const AutoFanControl = {
-    Start: bridge.AutoFan.Start,
-    Stop: bridge.AutoFan.Stop,
-    IsRunning: bridge.AutoFan.IsRunning,
-}
+export const AutoFanControl = bridge.AutoFan
 export const CPU = {
     SetCpuShortPower: async (sp: number) => {
         return await bridge.CPU.SetCpuShortPower(toByte(sp))

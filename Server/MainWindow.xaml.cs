@@ -48,9 +48,8 @@ namespace JiaoLongControl.Server
 
             if (_startInTray)
             {
+                DestroyWebView();
                 Loaded += (_, _) => Hide();
-                WindowState = WindowState.Minimized;
-                ShowInTaskbar = false;
             }
 
             if (_startInFan)

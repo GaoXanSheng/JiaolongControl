@@ -14,7 +14,9 @@ public class AutoStartController
     public void Enable()
     {
         using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, true);
-        key?.SetValue(AppName, GetExePath());
+        if (key == null) return;
+
+        key.SetValue(AppName, GetStartupCommand());
     }
 
     public void Disable()
@@ -29,8 +31,10 @@ public class AutoStartController
         return key?.GetValue(AppName) != null;
     }
 
-    private string GetExePath()
+    private static string GetStartupCommand()
     {
-        return Process.GetCurrentProcess().MainModule!.FileName!;
+        string exePath =
+            Process.GetCurrentProcess().MainModule!.FileName!;
+        return $"\"{exePath}\" --boot";
     }
 }

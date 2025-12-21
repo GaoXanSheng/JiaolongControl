@@ -4,6 +4,7 @@ import {Message} from '@arco-design/web-vue'
 import useStore from '@/stores'
 import {Config, Fan} from '@/utils/bridge'
 import FanCurveEditor from "@/components/ProSettingComponent/FanCurve/FanCurveEditor.vue";
+import FanSpeed from "@/components/ProSettingComponent/FanCurve/FanSpeed.vue";
 
 const store = useStore()
 const loading = ref(false)
@@ -51,6 +52,7 @@ onMounted(async () => {
     </a-row>
   </div>
   <fan-curve-editor v-else></fan-curve-editor>
+  <FanSpeed></FanSpeed>
 </template>
 
 <style lang="scss" scoped>

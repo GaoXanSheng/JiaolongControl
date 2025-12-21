@@ -108,7 +108,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                     }
                     catch (Exception ex)
                     {
-                        Logger.Error(ex);
+                        Logger.Error(ex.Message);
                         Thread.Sleep(2000);
                     }
                 }
@@ -147,7 +147,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex);
+                Logger.Error(ex.Message);
             }
 
             return 60.0f;
@@ -210,7 +210,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             if (_fanController.SetFanSpeed((byte)speedByte))
             {
                 Logger.Info(
-                    "Fan Speed Applied: {1} RPM",
+                    "Fan Speed Applied: {0} RPM",
                     rpm
                 );
 
