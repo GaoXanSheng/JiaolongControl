@@ -27,6 +27,7 @@ namespace JiaoLongControl.Server
 
         private readonly bool _startInTray;
         private readonly bool _startInFan;
+        private readonly bool _startInCPU;
 
         public MainWindow()
         {
@@ -40,7 +41,7 @@ namespace JiaoLongControl.Server
             _startInFan =
                 ConfigController.Config.EnableAdvancedFanControlSystem &&
                 ConfigController.Config.BootStartAdvancedFanControlSystem;
-
+            _startInCPU = ConfigController.Config.BootStartAdvancedCPUSystem;
             InitializePaths();
             InitializeTray();
 
@@ -55,6 +56,13 @@ namespace JiaoLongControl.Server
             if (_startInFan)
             {
                 _bridge.AutoFan.Start();
+            }
+
+            if (_startInCPU)
+            {
+                _bridge.CPU.SetCpuLongPower(ConfigController.Config.AdvancedCPUSystemConfig.CpuLongPower);
+                _bridge.CPU.SetCpuShortPower(ConfigController.Config.AdvancedCPUSystemConfig.CpuShortPower);
+                _bridge.CPU.SetCPUTempWall(ConfigController.Config.AdvancedCPUSystemConfig.CpuTempWall);
             }
 
             Closing += OnClosing;

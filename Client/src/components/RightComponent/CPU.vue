@@ -1,19 +1,18 @@
 <script async setup lang="ts">
 import {ref} from 'vue'
 import {Message} from '@arco-design/web-vue'
-import useStore from '@/stores'
-import {CPU} from '@/utils/bridge.ts'
-
-const store = useStore()
+import {Config, CPU} from '@/utils/bridge.ts'
 
 const loading = ref(false)
+const config = await Config.GetConfig()
+const CPUData = ref(config.AdvancedCPUSystemConfig)
 
 async function handleClick() {
   loading.value = true
   const result = [
-    await CPU.SetCpuLongPower(store.$state.CPUData.longPower),
-    await CPU.SetCpuShortPower(store.$state.CPUData.shortPower),
-    await CPU.SetCPUTempWall(store.$state.CPUData.tempWall)
+    await CPU.SetCpuLongPower(CPUData.value.CpuLongPower),
+    await CPU.SetCpuShortPower(CPUData.value.CpuShortPower),
+    await CPU.SetCPUTempWall(CPUData.value.CpuTempWall),
   ]
   result.map((item) => {
     if (item) {
@@ -22,6 +21,8 @@ async function handleClick() {
       Message.error('应用失败')
     }
   })
+  config.AdvancedCPUSystemConfig = CPUData.value;
+  await Config.SetConfig(config)
   loading.value = false
 }
 </script>
@@ -34,7 +35,7 @@ async function handleClick() {
       </a-col>
       <a-col :span="16" class="item">
         <a-input-number
-            v-model="store.$state.CPUData.shortPower"
+            v-model="CPUData.CpuShortPower"
             placeholder="ShortPower"
             :min="30"
             :max="255"
@@ -45,7 +46,7 @@ async function handleClick() {
       </a-col>
       <a-col :span="16" class="item">
         <a-input-number
-            v-model="store.$state.CPUData.longPower"
+            v-model="CPUData.CpuLongPower"
             placeholder="LongPower"
             :min="30"
             :max="255"
@@ -57,7 +58,7 @@ async function handleClick() {
       <a-space direction="vertical" size="large"></a-space>
       <a-col :span="16" class="item">
         <a-input-number
-            v-model="store.$state.CPUData.tempWall"
+            v-model="CPUData.CpuTempWall"
             placeholder="TempWall"
             :min="1"
             :max="100"

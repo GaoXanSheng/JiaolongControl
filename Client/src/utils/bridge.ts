@@ -89,10 +89,10 @@ interface HostObjects {
         Disable(): Promise<void>;
         IsEnabled(): Promise<boolean>;
     };
-    AutoFan:{
-        Start:Promise<void>;
-        Stop:Promise<void>;
-        IsRunning:Promise<boolean>;
+    AutoFan: {
+        Start: Promise<void>;
+        Stop: Promise<void>;
+        IsRunning: Promise<boolean>;
     }
 }
 
@@ -113,11 +113,17 @@ const bridge = window.chrome!.webview!.hostObjects.bridge;
 export interface ConfigInterface {
     MinimizedAfterBooting: boolean,
     EnableAdvancedFanControlSystem: boolean,
-    BootStartAdvancedFanControlSystem:boolean,
+    BootStartAdvancedFanControlSystem: boolean,
     AdvancedFanControlSystemConfig: {
         temp: number,
         speed: number
-    }[]
+    }[],
+    BootStartAdvancedCPUSystem: boolean,
+    AdvancedCPUSystemConfig: {
+        CpuShortPower: number,
+        CpuLongPower: number,
+        CpuTempWall: number
+    }
 }
 
 export const Config = {

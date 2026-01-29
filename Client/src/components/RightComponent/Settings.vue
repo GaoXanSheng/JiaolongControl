@@ -4,6 +4,7 @@ import LogoLight from '@/components/RightComponent/setting/LogoLight.vue'
 import BootAutoStart from "@/components/RightComponent/setting/BootAutoStart.vue";
 import PowerMode from "@/components/RightComponent/setting/PowerMode.vue";
 import AdvancedFanControlSystem from "@/components/RightComponent/setting/AdvancedFanControlSystem.vue";
+import BootCPUAutoStart from "@/components/RightComponent/setting/BootCPUAutoStart.vue";
 </script>
 
 <template>
@@ -17,6 +18,7 @@ import AdvancedFanControlSystem from "@/components/RightComponent/setting/Advanc
       <GPUDirectConnection></GPUDirectConnection>
       <PowerMode></PowerMode>
       <AdvancedFanControlSystem></AdvancedFanControlSystem>
+      <BootCPUAutoStart></BootCPUAutoStart>
     </a-row>
   </div>
 </template>

@@ -11,6 +11,11 @@ public class Config
     // 自动启动风扇控制
     public bool BootStartAdvancedFanControlSystem { get; set; } = false;
 
+    // 自动启动CPU配置
+    public bool BootStartAdvancedCPUSystem { get; set; } = false;
+
+    public CpuConfg AdvancedCPUSystemConfig { get; set; } = new();
+
     // 风扇控制配置
     public List<FanPoint> AdvancedFanControlSystemConfig { get; set; } = new()
     {
@@ -18,6 +23,13 @@ public class Config
         new FanPoint { temp = 80, speed = 3000 },
         new FanPoint { temp = 100, speed = 5800 }
     };
+}
+
+public class CpuConfg
+{
+    public byte CpuShortPower { get; set; } = 65;
+    public byte CpuLongPower { get; set; } = 70;
+    public byte CpuTempWall { get; set; } = 90;
 }
 
 public class FanPoint
