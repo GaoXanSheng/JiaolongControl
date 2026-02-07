@@ -3,7 +3,7 @@ using JiaoLongControl.Server.Core.Drivers;
 
 namespace JiaoLongControl.Server.Core.Controllers
 {
-    public class ECController : Bldring
+    public class ECController : BDLDriver
     {
         public ECController() : base()
         {

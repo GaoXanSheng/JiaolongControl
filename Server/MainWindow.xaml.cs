@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using JiaoLongControl.Server.Core.Controllers;
 using JiaoLongControl.Server.Core.Drivers;
 using JiaoLongControl.Server.Interop;
+using Microsoft.VisualBasic.Devices;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 
@@ -138,6 +139,7 @@ namespace JiaoLongControl.Server
             {
                 DestroyWebView();
                 _taskbarIcon.Dispose();
+                HardwareController.ComputerInfo.Dispose();
                 Application.Current.Shutdown();
             };
 

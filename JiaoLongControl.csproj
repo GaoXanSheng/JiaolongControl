@@ -39,10 +39,8 @@
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Include="Server\Resources\Icons\app.ico"/>
-        <None Remove="Server\Resources\Drivers\JiaoLongDriver64.dll" />
-        <EmbeddedResource Include="Server\Resources\Drivers\JiaoLongDriver64.dll" />
-        <None Remove="Server\Resources\Drivers\JiaoLongDriver64.sys" />
         <EmbeddedResource Include="Server\Resources\Drivers\JiaoLongDriver64.sys" />
+        <EmbeddedResource Include="Server\Resources\Drivers\JiaoLongDriver64.dll" />
     </ItemGroup>
     <ItemGroup>
         <ApplicationDefinition Include="Server\App.xaml">
