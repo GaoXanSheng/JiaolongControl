@@ -191,9 +191,5 @@ function toByte(value: number): number {
     if (!Number.isInteger(value)) {
         throw new Error('必须是整数')
     }
-
-    if (value <= 0 || value >= 255) {
-        throw new Error('范围必须在0-255')
-    }
     return value
 }
