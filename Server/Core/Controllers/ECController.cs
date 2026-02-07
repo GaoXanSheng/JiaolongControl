@@ -3,7 +3,7 @@ using JiaoLongControl.Server.Core.Drivers;
 
 namespace JiaoLongControl.Server.Core.Controllers
 {
-    public class ECController : WinIo
+    public class ECController : Bldring
     {
         public ECController() : base()
         {
@@ -20,7 +20,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             {
                 byte val = EC_RAM_READ(0x1060);
                 val = (byte)(val | 0x80);
-                EC_RAM_WRITE(0x1060, val); // enable EC RAM
+                EC_RAM_WRITE(0x1060, val);
             }
         }
 
@@ -36,6 +36,12 @@ namespace JiaoLongControl.Server.Core.Controllers
             EC_RAM_WRITE(ECMemoryTable.Fan2_RPM_SET, speed);
             var mask = EC_RAM_READ(0xB20) | 0x08;
             EC_RAM_WRITE(0xB20, (byte)mask);
+        }
+        public void RemoveFanSpeed()
+        {
+            Fan1SetSpeed(0);
+            Fan2SetSpeed(0);
+            EC_RAM_WRITE(0xB20, 0x00);
         }
     }
 }

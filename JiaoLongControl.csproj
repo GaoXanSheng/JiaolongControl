@@ -13,24 +13,24 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
-      <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3712-prerelease" />
-      <PackageReference Include="OpenHardwareMonitorLib" Version="1.0.9450" />
-      <PackageReference Include="System.Management" Version="10.0.1" />
-      <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.1" />
+        <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1"/>
+        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3712-prerelease"/>
+        <PackageReference Include="OpenHardwareMonitorLib" Version="1.0.9450"/>
+        <PackageReference Include="System.Management" Version="10.0.1"/>
+        <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.1"/>
     </ItemGroup>
 
     <ItemGroup>
-      <Page Update="src\Host\MainWindow.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
-      <Page Update="Server\MainWindow.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
+        <Page Update="src\Host\MainWindow.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+        <Page Update="Server\MainWindow.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
     </ItemGroup>
     <ItemGroup>
         <Content Include="Resources\WebRoot\**\*">
@@ -38,17 +38,18 @@
         </Content>
     </ItemGroup>
     <ItemGroup>
-      <EmbeddedResource Include="Server\Resources\Drivers\WinIo64.dll" />
-      <EmbeddedResource Include="Server\Resources\Drivers\WinIo64.sys" />
-      <None Remove="Server\Resources\Icons\icon.ico" />
-      <EmbeddedResource Include="Server\Resources\Icons\app.ico" />
+        <EmbeddedResource Include="Server\Resources\Icons\app.ico"/>
+        <None Remove="Server\Resources\Drivers\JiaoLongDriver64.dll" />
+        <EmbeddedResource Include="Server\Resources\Drivers\JiaoLongDriver64.dll" />
+        <None Remove="Server\Resources\Drivers\JiaoLongDriver64.sys" />
+        <EmbeddedResource Include="Server\Resources\Drivers\JiaoLongDriver64.sys" />
     </ItemGroup>
     <ItemGroup>
-      <ApplicationDefinition Include="Server\App.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </ApplicationDefinition>
+        <ApplicationDefinition Include="Server\App.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </ApplicationDefinition>
     </ItemGroup>
     <ItemGroup>
         <Content Include="Server/Resources/WebRoot/**">

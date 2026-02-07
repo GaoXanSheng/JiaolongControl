@@ -29,9 +29,21 @@ namespace JiaoLongControl.Server.Core.Controllers
                     return true;
                 }
             }
+
             return false;
         }
-
+        public bool RemoveFanSpeed()
+        {
+            using (ECController ec = new ECController())
+            {
+                if (ec.State)
+                {
+                    ec.RemoveFanSpeed();
+                    return true;
+                }
+            }
+            return false;
+        }
         public bool SetMaxFanSpeedSwitch(bool maxFanSpeedSwitch)
         {
             return MethodServices.SetValue(MethodName.MaxFanSpeedSwitch, (byte)(maxFanSpeedSwitch ? 1 : 0));

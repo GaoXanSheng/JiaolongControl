@@ -9,7 +9,17 @@ import FanSpeed from "@/components/ProSettingComponent/FanCurve/FanSpeed.vue";
 const store = useStore()
 const loading = ref(false)
 
-async function handleClick() {
+const visible = ref(false);
+
+const handleClick = () => {
+  if (store.FanSpeed > 5800) {
+    visible.value = true;
+  } else {
+    handleOk()
+  }
+};
+const handleOk = async () => {
+  visible.value = false;
   loading.value = true
   await Fan.SetMaxFanSpeedSwitch(true)
   const res = await Fan.SetFanSpeed(store.FanSpeed)
@@ -19,12 +29,23 @@ async function handleClick() {
     Message.error('设置失败')
   }
   loading.value = false
+};
+const handleCancel = () => {
+  visible.value = false;
 }
 const EnableAdvancedFanControlSystem = ref(false)
 onMounted(async () => {
   const config = await Config.GetConfig()
   EnableAdvancedFanControlSystem.value = config.EnableAdvancedFanControlSystem
 })
+
+async function handleRemoveFanClick() {
+  if (await Fan.RemoveFanSpeed()) {
+    Message.success('设置成功')
+  }else {
+    Message.error('设置失败')
+  }
+}
 </script>
 
 <template>
@@ -37,7 +58,7 @@ onMounted(async () => {
         <a-input-number
             v-model="store.FanSpeed"
             :min="1500"
-            :max="5800"
+            :max="8000"
             :step="100"
             size="large"
             class="full-width"
@@ -48,6 +69,15 @@ onMounted(async () => {
       </a-col>
       <a-col :span="16">
         <a-button type="primary" long :loading="loading" @click="handleClick">Apply Speed</a-button>
+        <a-modal v-model:visible="visible" @ok="handleOk" @cancel="handleCancel">
+          <template #title>
+            警告
+          </template>
+          <div>任何大于5800转速的应用都会导致系统异常，设置对应转速不代表有足够功率可以跑上去</div>
+        </a-modal>
+      </a-col>
+      <a-col :span="16">
+        <a-button type="primary" long @click="handleRemoveFanClick">Remove Speed</a-button>
       </a-col>
     </a-row>
   </div>

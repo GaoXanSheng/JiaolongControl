@@ -50,6 +50,7 @@ interface HostObjects {
     Fan: {
         GetFanSpeed(): Promise<string>;
         SetFanSpeed(fanSpeed: number): Promise<boolean>;
+        RemoveFanSpeed(): Promise<boolean>;
         SetMaxFanSpeedSwitch(
             maxFanSpeedSwitch: boolean
         ): Promise<boolean>;
@@ -160,10 +161,10 @@ export const Fan = {
     },
     SetFanSpeed: async (fanSpeed: number): Promise<boolean> => {
         return await bridge.Fan.SetFanSpeed(toByte(fanSpeed / 100))
-    }
-    ,
+    },
     SetMaxFanSpeedSwitch: bridge.Fan.SetMaxFanSpeedSwitch,
     GetMaxFanSpeedSwitch: bridge.Fan.GetMaxFanSpeedSwitch,
+    RemoveFanSpeed:bridge.Fan.RemoveFanSpeed
 };
 export const GPU = bridge.GPU;
 export const LogoLight = bridge.LogoLight;
