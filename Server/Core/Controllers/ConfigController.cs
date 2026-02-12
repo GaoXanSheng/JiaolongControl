@@ -32,7 +32,6 @@ public class ConfigController
 
     public static void Save()
     {
-        // 确保 config 目录存在
         if (!Directory.Exists(ConfigDir))
             Directory.CreateDirectory(ConfigDir);
 
@@ -47,13 +46,11 @@ public class ConfigController
 
     public static void Load()
     {
-        // 确保 config 目录存在
         if (!Directory.Exists(ConfigDir))
             Directory.CreateDirectory(ConfigDir);
 
         if (!File.Exists(ConfigPath))
         {
-            // 文件不存在，写入默认配置
             Save();
             return;
         }

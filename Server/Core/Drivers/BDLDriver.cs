@@ -40,7 +40,7 @@ namespace JiaoLongControl.Server.Core.Drivers
         public BDLDriver()
         {
             if (!IsAdministrator())
-                throw new UnauthorizedAccessException("初始化失败：权限不足");
+                throw new UnauthorizedAccessException("initialization Failed Insufficient Permissions");
 
             try
             {
@@ -51,13 +51,13 @@ namespace JiaoLongControl.Server.Core.Drivers
                     EmbeddedResourceHelper.ExtractResourceToExeDir($"{resourceBase}.{SysFileName}", SysFileName);
 
                 if (!File.Exists(fullSysPath))
-                    throw new FileNotFoundException($"未找到驱动文件: {fullSysPath}");
+                    throw new FileNotFoundException($"No Driver File Found: {fullSysPath}");
 
                 _dllHandle = LoadLibrary(fullDllPath);
                 if (_dllHandle == IntPtr.Zero)
                 {
                     int err = Marshal.GetLastWin32Error();
-                    throw new Exception($"无法加载 DLL ({DllFileName})。错误码: {err}。请检查是否安装了 VC++ 运行时库。");
+                    throw new Exception($"Unable Load DLLs ({DllFileName})。ErrorCode: {err}");
                 }
 
                 DriverLoader.LoadDriver(ServiceName, fullSysPath);
@@ -66,13 +66,13 @@ namespace JiaoLongControl.Server.Core.Drivers
 
                 if (!State)
                 {
-                    throw new Exception("DLL初始化失败");
+                    throw new Exception("DLL Initialization Failed");
                 }
             }
             catch (Exception ex)
             {
                 Dispose();
-                throw new Exception($"驱动初始化异常: {ex.Message}", ex);
+                throw new Exception($"Driver Initialization Exception: {ex.Message}", ex);
             }
         }
 
@@ -259,7 +259,7 @@ namespace JiaoLongControl.Server.Core.Drivers
                         {
                             int err = Marshal.GetLastWin32Error();
                             if (err == 1056) return;
-                            if (err == 1275) throw new Exception("数字签名验证失败");
+                            if (err == 1275) throw new Exception("Signature Verification Failed");
                             throw new Win32Exception(err);
                         }
                     }

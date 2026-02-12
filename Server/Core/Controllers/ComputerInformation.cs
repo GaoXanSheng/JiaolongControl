@@ -17,10 +17,8 @@ namespace JiaoLongControl.Server.Core.Controllers
         public ComputerInformation()
         {
             _computer.Open(true);
-            // 初始刷新一次数据
             UpdateHardwareMonitorInfo();
-
-            _refreshTimer = new System.Timers.Timer(1000); // 每秒刷新一次
+            _refreshTimer = new System.Timers.Timer(1000);
             _refreshTimer.Elapsed += _refreshTimer_Elapsed;
             _refreshTimer.AutoReset = true;
             _refreshTimer.Start();
