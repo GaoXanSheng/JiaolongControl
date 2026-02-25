@@ -3,9 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using JiaoLongControl.Server.Core.Controllers;
-using JiaoLongControl.Server.Core.Drivers;
 using JiaoLongControl.Server.Interop;
-using Microsoft.VisualBasic.Devices;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 
@@ -36,12 +34,12 @@ namespace JiaoLongControl.Server
 
             _startInTray =
                 IsBootStart &&
-                ConfigController.Config.MinimizedAfterBooting;
+                ConfigController.Config.BootMinimized;
 
             _startInFan =
-                ConfigController.Config.EnableAdvancedFanControlSystem &&
-                ConfigController.Config.BootStartAdvancedFanControlSystem;
-            _startInCPU = ConfigController.Config.BootStartAdvancedCPUSystem;
+                ConfigController.Config.AdvancedFanControlSystem &&
+                ConfigController.Config.BootAdvancedFanControlSystem;
+            _startInCPU = ConfigController.Config.BootAdvancedCPUSystem;
             InitializePaths();
             InitializeTray();
 

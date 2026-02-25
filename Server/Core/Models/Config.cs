@@ -3,16 +3,16 @@
 public class Config
 {
     // 最小化启动
-    public bool MinimizedAfterBooting { get; set; } = false;
+    public bool BootMinimized { get; set; } = false;
 
     // 是否启动
-    public bool EnableAdvancedFanControlSystem { get; set; } = false;
+    public bool AdvancedFanControlSystem { get; set; } = false;
 
     // 自动启动风扇控制
-    public bool BootStartAdvancedFanControlSystem { get; set; } = false;
+    public bool BootAdvancedFanControlSystem { get; set; } = false;
 
     // 自动启动CPU配置
-    public bool BootStartAdvancedCPUSystem { get; set; } = false;
+    public bool BootAdvancedCPUSystem { get; set; } = false;
 
     public CpuConfg AdvancedCPUSystemConfig { get; set; } = new();
 

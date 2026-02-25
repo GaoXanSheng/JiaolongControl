@@ -7,7 +7,7 @@ namespace JiaoLongControl.Server.Core.Controllers
     public class ComputerInformation : IDisposable
     {
         private JsonObject _res = new JsonObject();
-        private Computer _computer = new Computer { IsCpuEnabled = true,IsGpuEnabled = true,IsRing0Enabled = true};
+        private Computer _computer = new Computer  { IsCpuEnabled = true,IsGpuEnabled = true};
 
         private System.Timers.Timer _refreshTimer;
         private readonly object _lock = new object();

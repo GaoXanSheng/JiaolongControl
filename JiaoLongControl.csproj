@@ -14,10 +14,10 @@
 
     <ItemGroup>
         <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1"/>
-        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3712-prerelease"/>
-        <PackageReference Include="OpenHardwareMonitorLib" Version="1.0.9450"/>
-        <PackageReference Include="System.Management" Version="10.0.1"/>
-        <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.1"/>
+        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3800.47" />
+        <PackageReference Include="OpenHardwareMonitorLib" Version="1.0.9513" />
+        <PackageReference Include="System.Management" Version="10.0.3" />
+        <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.3" />
     </ItemGroup>
 
     <ItemGroup>
