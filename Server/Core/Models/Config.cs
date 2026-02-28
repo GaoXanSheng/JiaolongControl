@@ -20,7 +20,14 @@ public class Config
     public List<FanPoint> AdvancedFanControlSystemConfig { get; set; } = new()
     {
         new FanPoint { temp = 60, speed = 1500 },
-        new FanPoint { temp = 80, speed = 3000 },
+        new FanPoint { temp = 65, speed = 2104 },
+        new FanPoint { temp = 70, speed = 2778 },
+        new FanPoint { temp = 75, speed = 3158 },
+        new FanPoint { temp = 80, speed = 3365 },
+        new FanPoint { temp = 86, speed = 3607 },
+        new FanPoint { temp = 91, speed = 3849 },
+        new FanPoint { temp = 94, speed = 4828 },
+        new FanPoint { temp = 97, speed = 5415 },
         new FanPoint { temp = 100, speed = 5800 }
     };
 }
