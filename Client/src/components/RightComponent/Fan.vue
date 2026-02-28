@@ -8,7 +8,6 @@ import FanSpeed from "@/components/ProSettingComponent/FanCurve/FanSpeed.vue";
 
 const store = useStore()
 const loading = ref(false)
-const isServiceRunning = ref(false)
 const visible = ref(false);
 
 const handleClick = () => {
@@ -21,6 +20,9 @@ const handleClick = () => {
 const handleOk = async () => {
   visible.value = false;
   loading.value = true
+  if (await AutoFanControl.IsRunning()) {
+    await AutoFanControl.Stop()
+  }
   await Fan.SetMaxFanSpeedSwitch(true)
   const res = await Fan.SetFanSpeed(store.FanSpeed)
   if (res) {
@@ -37,10 +39,6 @@ const EnableAdvancedFanControlSystem = ref(false)
 onMounted(async () => {
   const config = await Config.GetConfig()
   EnableAdvancedFanControlSystem.value = config.AdvancedFanControlSystem
-  await checkServiceStatus();
-  if (isServiceRunning) {
-    await AutoFanControl.Stop()
-  }
 })
 
 async function handleRemoveFanClick() {
@@ -48,14 +46,6 @@ async function handleRemoveFanClick() {
     Message.success('设置成功')
   } else {
     Message.error('设置失败')
-  }
-}
-
-const checkServiceStatus = async () => {
-  try {
-    isServiceRunning.value = await AutoFanControl.IsRunning()
-  } catch (e) {
-    console.error('Failed to check fan control status:', e)
   }
 }
 </script>
