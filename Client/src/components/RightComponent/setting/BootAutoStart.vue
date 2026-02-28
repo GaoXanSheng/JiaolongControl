@@ -32,7 +32,7 @@ async function MinimizedAfterBootingChange<T>(value: T) {
   if (typeof value != "boolean") return
   loading.value = true
   const config = await Config.GetConfig()
-  config.MinimizedAfterBooting = value
+  config.BootMinimized = value
   await Config.SetConfig(config)
   MinimizedAfterBooting.value = value
   loading.value = false

@@ -26,7 +26,7 @@ async function SetBootStartAdvancedFanControlSystem(value: string | number | boo
   if (typeof value !== 'boolean') return
   loading.value = true
   const config = await Config.GetConfig()
-  config.AdvancedFanControlSystem = value;
+  config.BootAdvancedFanControlSystem = value;
   await Config.SetConfig(config)
   BootStartAdvancedFanControlSystem.value = value
   loading.value = false
