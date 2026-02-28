@@ -2,17 +2,17 @@
 import {onMounted, ref} from 'vue'
 import {Message} from '@arco-design/web-vue'
 import useStore from '@/stores'
-import {Config, Fan} from '@/utils/bridge'
+import {AutoFanControl, Config, Fan} from '@/utils/bridge'
 import FanCurveEditor from "@/components/ProSettingComponent/FanCurve/FanCurveEditor.vue";
 import FanSpeed from "@/components/ProSettingComponent/FanCurve/FanSpeed.vue";
 
 const store = useStore()
 const loading = ref(false)
-
+const isServiceRunning = ref(false)
 const visible = ref(false);
 
 const handleClick = () => {
-  if (store.FanSpeed > 5800) {
+  if (store.FanSpeed > 5800 || store.FanSpeed < 1500) {
     visible.value = true;
   } else {
     handleOk()
@@ -37,13 +37,25 @@ const EnableAdvancedFanControlSystem = ref(false)
 onMounted(async () => {
   const config = await Config.GetConfig()
   EnableAdvancedFanControlSystem.value = config.EnableAdvancedFanControlSystem
+  await checkServiceStatus();
+  if (isServiceRunning) {
+    await AutoFanControl.Stop()
+  }
 })
 
 async function handleRemoveFanClick() {
   if (await Fan.RemoveFanSpeed()) {
     Message.success('设置成功')
-  }else {
+  } else {
     Message.error('设置失败')
+  }
+}
+
+const checkServiceStatus = async () => {
+  try {
+    isServiceRunning.value = await AutoFanControl.IsRunning()
+  } catch (e) {
+    console.error('Failed to check fan control status:', e)
   }
 }
 </script>
@@ -57,7 +69,7 @@ async function handleRemoveFanClick() {
       <a-col :span="16">
         <a-input-number
             v-model="store.FanSpeed"
-            :min="1500"
+            :min="0"
             :max="8000"
             :step="100"
             size="large"
@@ -73,7 +85,7 @@ async function handleRemoveFanClick() {
           <template #title>
             警告
           </template>
-          <div>任何大于5800转速的应用都会导致系统异常，设置对应转速不代表有足够功率可以跑上去</div>
+          <div>任何大于5800或小于1500转速的应用都会导致系统异常，设置对应转速不代表有足够功率可以跑上去</div>
         </a-modal>
       </a-col>
       <a-col :span="16">

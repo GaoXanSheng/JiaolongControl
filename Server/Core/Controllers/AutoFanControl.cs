@@ -29,7 +29,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             if (_isRunning)
                 return;
 
-            if (!ConfigController.Config.EnableAdvancedFanControlSystem)
+            if (!ConfigController.Config.AdvancedFanControlSystem)
             {
                 Logger.Info("Auto Fan Control is disabled by config.");
                 return;
