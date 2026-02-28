@@ -2,8 +2,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Fan, Hardware } from '@/utils/bridge.ts'
 
-const MAX_POINTS = 20
-const INTERVAL = 3000
+const MAX_POINTS = 10
+const INTERVAL = 2000
 const PADDING_X = 40
 const PADDING_Y = 20
 
@@ -18,8 +18,6 @@ const height = ref(250)
 const cpuFan = ref<number[]>([])
 const gpuFan = ref<number[]>([])
 const cpuTemp = ref<number[]>([])
-const gpuTemp = ref<number[]>([])
-
 const hoverIndex = ref<number | null>(null)
 let timer: number | null = null
 let running = true
@@ -42,14 +40,6 @@ function getCpuTemp(info: any): number {
   return round2(v)
 }
 
-function getGpuTemp(info: any): number {
-  let v = 0
-  if (info?.GpuNvidia?.Temperature?.length)
-    v = info.GpuNvidia.Temperature[0].Value
-  else if (info?.GpuAmd?.Temperature?.length)
-    v = info.GpuAmd.Temperature[0].Value
-  return round2(v)
-}
 
 const chartW = computed(() => Math.max(0, width.value - PADDING_X * 2))
 const chartH = computed(() => Math.max(0, height.value - PADDING_Y * 2))
@@ -79,7 +69,6 @@ const makePath = (data: number[], max: number) => {
 const cpuFanPath = computed(() => makePath(cpuFan.value, MAX_FAN_RPM))
 const gpuFanPath = computed(() => makePath(gpuFan.value, MAX_FAN_RPM))
 const cpuTempPath = computed(() => makePath(cpuTemp.value, MAX_TEMP_C))
-const gpuTempPath = computed(() => makePath(gpuTemp.value, MAX_TEMP_C))
 
 function onMouseMove(e: MouseEvent) {
   if (!container.value || cpuFan.value.length === 0) return
@@ -103,7 +92,6 @@ async function poll() {
     push(cpuFan.value, fan.CPUFanSpeed)
     push(gpuFan.value, fan.GPUFanSpeed)
     push(cpuTemp.value, getCpuTemp(hw))
-    push(gpuTemp.value, getGpuTemp(hw))
   } catch (e) {
     console.error(e)
   }
@@ -152,13 +140,10 @@ onUnmounted(() => {
       <polyline :points="cpuFanPath" fill="none" stroke="#1f77b4" stroke-width="2" />
       <polyline :points="gpuFanPath" fill="none" stroke="#ff7f0e" stroke-width="2" />
       <polyline :points="cpuTempPath" fill="none" stroke="#2ca02c" stroke-width="2" />
-      <polyline :points="gpuTempPath" fill="none" stroke="#d62728" stroke-width="2" />
-
       <g v-for="(x, i) in xs" :key="'nodes-'+i">
         <circle :cx="x" :cy="getY(cpuFan[i], MAX_FAN_RPM)" r="3" fill="#1f77b4"/>
         <circle :cx="x" :cy="getY(gpuFan[i], MAX_FAN_RPM)" r="3" fill="#ff7f0e"/>
         <circle :cx="x" :cy="getY(cpuTemp[i], MAX_TEMP_C)" r="3" fill="#2ca02c"/>
-        <circle :cx="x" :cy="getY(gpuTemp[i], MAX_TEMP_C)" r="3" fill="#d62728"/>
       </g>
 
       <line
@@ -176,7 +161,6 @@ onUnmounted(() => {
         <circle :cx="xs[hoverIndex]" :cy="getY(cpuFan[hoverIndex], MAX_FAN_RPM)" r="5" fill="#fff" stroke="#1f77b4" stroke-width="2"/>
         <circle :cx="xs[hoverIndex]" :cy="getY(gpuFan[hoverIndex], MAX_FAN_RPM)" r="5" fill="#fff" stroke="#ff7f0e" stroke-width="2"/>
         <circle :cx="xs[hoverIndex]" :cy="getY(cpuTemp[hoverIndex], MAX_TEMP_C)" r="5" fill="#fff" stroke="#2ca02c" stroke-width="2"/>
-        <circle :cx="xs[hoverIndex]" :cy="getY(gpuTemp[hoverIndex], MAX_TEMP_C)" r="5" fill="#fff" stroke="#d62728" stroke-width="2"/>
       </g>
 
       <g v-if="hoverIndex !== null" style="pointer-events: none">
@@ -186,7 +170,7 @@ onUnmounted(() => {
 
           <rect
               width="180"
-              height="120"
+              height="100"
               rx="6"
               fill="rgba(255, 255, 255, 0.95)"
               stroke="#ccc"
@@ -205,10 +189,6 @@ onUnmounted(() => {
           <g transform="translate(15, 85)">
             <circle r="4" fill="#2ca02c" cy="-4" />
             <text x="15" font-size="12" fill="#333">CPU Temp: {{ cpuTemp[hoverIndex] }} °C</text>
-          </g>
-          <g transform="translate(15, 105)">
-            <circle r="4" fill="#d62728" cy="-4" />
-            <text x="15" font-size="12" fill="#333">GPU Temp: {{ gpuTemp[hoverIndex] }} °C</text>
           </g>
         </g>
       </g>

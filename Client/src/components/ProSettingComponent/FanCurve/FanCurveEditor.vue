@@ -47,7 +47,7 @@
       >
         <defs>
           <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.3"/>
+            <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.3" />
           </filter>
         </defs>
 
@@ -161,8 +161,7 @@
 
     <a-modal v-model:visible="showEdit" title="编辑节点" :mask-closable="false" @ok="onEditConfirm">
       <a-space v-if="selectedIndex !== null" direction="vertical" size="large" style="width: 100%">
-        <a-input-number v-model="editForm.temp" :min="getMinTemp(selectedIndex)" :max="getMaxTemp(selectedIndex)"
-                        style="width: 100%">
+        <a-input-number v-model="editForm.temp" :min="getMinTemp(selectedIndex)" :max="getMaxTemp(selectedIndex)" style="width: 100%">
           <template #prepend>温度 (°C)</template>
         </a-input-number>
         <a-input-number v-model="editForm.speed" :min="speedRange[0]" :max="speedRange[1]" style="width: 100%">
@@ -174,18 +173,18 @@
 </template>
 
 <script lang="ts" setup>
-import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
-import {Message} from '@arco-design/web-vue'
-import {AutoFanControl, Config} from '@/utils/bridge.ts'
+import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue'
+import { Message } from '@arco-design/web-vue'
+import { Config, AutoFanControl } from '@/utils/bridge.ts'
 
 interface Point {
   temp: number
   speed: number
 }
 
-const tempRange: number[] = [60, 100]
+const tempRange = [60, 100]
 const speedRange = [1500, 5800]
-const padding = {top: 40, right: 40, bottom: 40, left: 60}
+const padding = { top: 40, right: 60, bottom: 40, left: 60 }
 
 const containerRef = ref<HTMLDivElement | null>(null)
 const width = ref(0)
@@ -193,17 +192,17 @@ const height = ref(0)
 let resizeObserver: ResizeObserver | null = null
 
 const points = ref<Point[]>([
-  {temp: 60, speed: 1500},
-  {temp: 80, speed: 3000},
-  {temp: 100, speed: 5800}
+  { temp: 60, speed: 1500 },
+  { temp: 80, speed: 3000 },
+  { temp: 100, speed: 5800 }
 ])
 
 const draggingIndex = ref<number | null>(null)
 const menuVisible = ref(false)
-const menuPos = reactive({x: 0, y: 0})
+const menuPos = reactive({ x: 0, y: 0 })
 const selectedIndex = ref<number | null>(null)
 const showEdit = ref(false)
-const editForm = reactive({temp: 0, speed: 0})
+const editForm = reactive({ temp: 0, speed: 0 })
 
 // --- 自动控制服务状态 ---
 const isServiceRunning = ref(false)
@@ -264,7 +263,7 @@ watch(points, () => {
   autoSaveTimer = setTimeout(() => {
     autoSave()
   }, 500)
-}, {deep: true})
+}, { deep: true })
 
 // 3. 坐标映射逻辑
 function safeMapX(val: number): number {
@@ -332,7 +331,7 @@ onMounted(async () => {
       const cleanData = rawData.map((item: any) => {
         const t = Number(item.temp ?? item.Temp ?? item.Temperature ?? item.temperature ?? 0)
         const s = Number(item.speed ?? item.Speed ?? item.FanSpeed ?? item.rpm ?? 0)
-        return {temp: t, speed: s}
+        return { temp: t, speed: s }
       })
 
       const validData = cleanData.filter((p: Point) => !isNaN(p.temp) && !isNaN(p.speed) && p.temp > 0)
@@ -415,7 +414,7 @@ function onAddNode() {
   if (selectedIndex.value === null) return
   const curr = points.value[selectedIndex.value]
   const next = points.value[selectedIndex.value + 1]
-
+  if (curr == undefined) return;
   if (!next || next.temp <= curr.temp + 1) return
 
   points.value.splice(selectedIndex.value + 1, 0, {
@@ -517,15 +516,9 @@ function onEditConfirm() {
 }
 
 @keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(0, 180, 42, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 4px rgba(0, 180, 42, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(0, 180, 42, 0);
-  }
+  0% { box-shadow: 0 0 0 0 rgba(0, 180, 42, 0.4); }
+  70% { box-shadow: 0 0 0 4px rgba(0, 180, 42, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 180, 42, 0); }
 }
 
 .svg-container {
