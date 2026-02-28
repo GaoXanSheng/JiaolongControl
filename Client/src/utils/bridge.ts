@@ -112,14 +112,14 @@ const bridge = window.chrome!.webview!.hostObjects.bridge;
 
 
 export interface ConfigInterface {
-    MinimizedAfterBooting: boolean,
-    EnableAdvancedFanControlSystem: boolean,
-    BootStartAdvancedFanControlSystem: boolean,
+    BootMinimized: boolean,
+    AdvancedFanControlSystem: boolean,
+    BootAdvancedFanControlSystem: boolean,
     AdvancedFanControlSystemConfig: {
         temp: number,
         speed: number
     }[],
-    BootStartAdvancedCPUSystem: boolean,
+    BootAdvancedCPUSystem: boolean,
     AdvancedCPUSystemConfig: {
         CpuShortPower: number,
         CpuLongPower: number,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import RightSide from '@/components/rightSide.vue'
 import useStore, { HomeCardType } from '@/stores'
-import { HomeTab } from '@/stores/HomeTab.ts'
+
 const store = useStore()
 function onClickMenuItem(key: any) {
     store.$state.SwitchPages = key

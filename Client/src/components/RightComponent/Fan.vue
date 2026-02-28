@@ -36,7 +36,8 @@ const handleCancel = () => {
 const EnableAdvancedFanControlSystem = ref(false)
 onMounted(async () => {
   const config = await Config.GetConfig()
-  EnableAdvancedFanControlSystem.value = config.EnableAdvancedFanControlSystem
+  EnableAdvancedFanControlSystem.value = config.AdvancedFanControlSystem
+  console.log(EnableAdvancedFanControlSystem.value)
   await checkServiceStatus();
   if (isServiceRunning) {
     await AutoFanControl.Stop()

@@ -7,14 +7,14 @@ const loading = ref(false)
 const BootStartAdvancedCPUSystem = ref(false)
 onMounted(async () => {
   const config = await Config.GetConfig()
-  BootStartAdvancedCPUSystem.value = config.BootStartAdvancedCPUSystem
+  BootStartAdvancedCPUSystem.value = config.BootAdvancedCPUSystem
 })
 
 async function SetBootStartAdvancedCPUSystem(value: string | number | boolean) {
   if (typeof value !== 'boolean') return
   loading.value = true
   const config = await Config.GetConfig()
-  config.BootStartAdvancedCPUSystem = value;
+  config.BootAdvancedCPUSystem = value;
   await Config.SetConfig(config)
   BootStartAdvancedCPUSystem.value = value
   loading.value = false

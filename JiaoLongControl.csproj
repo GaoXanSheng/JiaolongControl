@@ -10,6 +10,7 @@
         <ApplicationIcon>Server\Resources\Icons\app.ico</ApplicationIcon>
         <Configurations>Debug;Release</Configurations>
         <Platforms>x64</Platforms>
+        <SatelliteResourceLanguages>zh-CN</SatelliteResourceLanguages>
     </PropertyGroup>
 
     <ItemGroup>
