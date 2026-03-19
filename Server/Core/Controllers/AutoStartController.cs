@@ -1,40 +1,59 @@
-﻿using System.Diagnostics;
-using Microsoft.Win32;
-
+﻿using Microsoft.Win32;
+using Microsoft.Win32.TaskScheduler;
 namespace JiaoLongControl.Server.Core.Controllers;
 
 [System.Runtime.InteropServices.ComVisible(true)]
 public class AutoStartController
 {
-    private const string RunKeyPath =
-        @"Software\Microsoft\Windows\CurrentVersion\Run";
+    private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
 
     private const string AppName = "JiaoLongControl";
 
     public void Enable()
     {
-        using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, true);
-        if (key == null) return;
+        RemoveLegacyRegistry();
+        using var ts = new TaskService();
+        var td = ts.NewTask();
+        td.RegistrationInfo.Description = "JiaoLongControl AutoStart";
+        td.Triggers.Add(new LogonTrigger
+        {
+            Delay = TimeSpan.FromSeconds(10)
+        });
 
-        key.SetValue(AppName, GetStartupCommand());
+        string exePath = Environment.ProcessPath!;
+
+        td.Actions.Add(new ExecAction(exePath, "--boot", null));
+        td.Principal.RunLevel = TaskRunLevel.Highest;
+        td.Settings.MultipleInstances = TaskInstancesPolicy.IgnoreNew;
+        ts.RootFolder.RegisterTaskDefinition(
+            AppName,
+            td,
+            TaskCreation.CreateOrUpdate,
+            null,
+            null,
+            TaskLogonType.InteractiveToken
+        );
     }
 
     public void Disable()
     {
-        using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, true);
-        key?.DeleteValue(AppName, false);
+        using var ts = new TaskService();
+        ts.RootFolder.DeleteTask(AppName, false);
+        RemoveLegacyRegistry();
     }
 
     public bool IsEnabled()
     {
-        using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, false);
-        return key?.GetValue(AppName) != null;
+        using var ts = new TaskService();
+        return ts.GetTask(AppName) != null;
     }
 
-    private static string GetStartupCommand()
+    /// <summary>
+    /// 清理旧版本 Run 注册表启动
+    /// </summary>
+    private void RemoveLegacyRegistry()
     {
-        string exePath =
-            Process.GetCurrentProcess().MainModule!.FileName!;
-        return $"\"{exePath}\" --boot";
+        using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, true);
+        key?.DeleteValue(AppName, false);
     }
 }

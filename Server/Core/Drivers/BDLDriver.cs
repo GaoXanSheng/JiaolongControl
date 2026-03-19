@@ -148,7 +148,6 @@ namespace JiaoLongControl.Server.Core.Drivers
                 }
                 catch
                 {
-                    
                 }
 
                 State = false;
@@ -232,25 +231,33 @@ namespace JiaoLongControl.Server.Core.Drivers
             public static void LoadDriver(string serviceName, string sysPath)
             {
                 IntPtr scmHandle = OpenSCManager(null, null, SC_MANAGER_ALL_ACCESS);
-                if (scmHandle == IntPtr.Zero) throw new Win32Exception();
+                if (scmHandle == IntPtr.Zero)
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
 
                 try
                 {
-                    IntPtr serviceHandle = CreateService(scmHandle, serviceName, serviceName, SERVICE_ALL_ACCESS,
-                        SERVICE_KERNEL_DRIVER, SERVICE_DEMAND_START, SERVICE_ERROR_NORMAL, sysPath, null, IntPtr.Zero,
-                        null, null, null);
+                    IntPtr serviceHandle = OpenService(scmHandle, serviceName, SERVICE_ALL_ACCESS);
 
                     if (serviceHandle == IntPtr.Zero)
                     {
-                        if (Marshal.GetLastWin32Error() == 1073)
-                        {
-                            serviceHandle = OpenService(scmHandle, serviceName, SERVICE_ALL_ACCESS);
-                            if (serviceHandle == IntPtr.Zero) throw new Win32Exception();
-                        }
-                        else
-                        {
-                            throw new Win32Exception();
-                        }
+                        serviceHandle = CreateService(
+                            scmHandle,
+                            serviceName,
+                            serviceName,
+                            SERVICE_ALL_ACCESS,
+                            SERVICE_KERNEL_DRIVER,
+                            SERVICE_DEMAND_START,
+                            SERVICE_ERROR_NORMAL,
+                            sysPath,
+                            null,
+                            IntPtr.Zero,
+                            null,
+                            null,
+                            null
+                        );
+
+                        if (serviceHandle == IntPtr.Zero)
+                            throw new Win32Exception(Marshal.GetLastWin32Error());
                     }
 
                     try
@@ -258,8 +265,18 @@ namespace JiaoLongControl.Server.Core.Drivers
                         if (!StartService(serviceHandle, 0, null))
                         {
                             int err = Marshal.GetLastWin32Error();
-                            if (err == 1056) return;
-                            if (err == 1275) throw new Exception("Signature Verification Failed");
+
+                            if (err == 1056)
+                            {
+                                // 已经在运行
+                                return;
+                            }
+
+                            if (err == 1275)
+                            {
+                                throw new Exception("Driver signature verification failed");
+                            }
+
                             throw new Win32Exception(err);
                         }
                     }
