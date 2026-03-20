@@ -31,7 +31,7 @@ async function handleClick() {
   <div class="CPU">
     <a-row justify="center">
       <a-col :span="16">
-        <a-typography-title class="title"> CPU Settings</a-typography-title>
+        <a-typography-title class="title"> CPU 设置</a-typography-title>
       </a-col>
       <a-col :span="16" class="item">
         <a-input-number

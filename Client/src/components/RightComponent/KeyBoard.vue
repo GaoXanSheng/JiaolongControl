@@ -1,11 +1,11 @@
 <script async setup lang="ts">
-import { ref, watch } from 'vue'
-import { Message } from '@arco-design/web-vue'
+import {ref, watch} from 'vue'
+import {Message} from '@arco-design/web-vue'
 import {Keyboard} from "@/utils/bridge.ts";
 
 const loading = ref(false)
 
-const color = ref({ red: 0, green: 0, blue: 0 })
+const color = ref({red: 0, green: 0, blue: 0})
 const LightBrightness = ref(0)
 const colorPicker = ref('#000000')
 
@@ -14,7 +14,7 @@ async function loadInitialData() {
     Keyboard.GetColor(),
     Keyboard.GetLightBrightness()
   ])
-  color.value = { ...colorData }
+  color.value = {...colorData}
   LightBrightness.value = brightness
   colorPicker.value = rgbToHex(color.value.red, color.value.green, color.value.blue)
 }
@@ -29,9 +29,9 @@ function hexToRgb(hex: string) {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
   return result
       ? {
-        red: parseInt(result[1], 16),
-        green: parseInt(result[2], 16),
-        blue: parseInt(result[3], 16)
+        red: parseInt(result[1]!, 16),
+        green: parseInt(result[2]!, 16),
+        blue: parseInt(result[3]!, 16)
       }
       : null
 }
@@ -66,48 +66,67 @@ async function handleClick() {
   <div class="Keyboard">
     <a-row justify="center">
       <a-col :span="16">
-        <a-typography-title class="title">KeyBoard Settings</a-typography-title>
+        <a-typography-title class="title">键盘设置</a-typography-title>
       </a-col>
 
-      <div
-          class="keys"
-          :style="{ backgroundColor: `rgb(${color.red}, ${color.green}, ${color.blue})` }"
-      >
-        <div class="Preview">
-          <a-color-picker v-model="colorPicker" size="mini">
-            <a-tag :color="colorPicker">
-              <p
-                  :style="{
-									color: `rgb(${255 - color.blue}, ${255 - color.green}, ${255 - color.red})`
-								}"
-              >
-                Preview
-              </p>
-            </a-tag>
-          </a-color-picker>
+      <div class="keys-container">
+        <!-- 模拟键盘外壳 -->
+        <div
+            class="keyboard-shell"
+            :style="{
+        '--kb-color': `rgb(${color.red}, ${color.green}, ${color.blue})`,
+        '--kb-glow': `rgba(${color.red}, ${color.green}, ${color.blue}, ${LightBrightness / 3 * 0.5})`
+      }"
+        >
+          <!-- 背景发光层 -->
+          <div class="glow-layer"></div>
+
+          <!-- 按键格子网格 -->
+          <div class="key-grid">
+            <div v-for="i in 52" :key="i" class="key-cap"></div>
+          </div>
+
+          <!-- 原有的 Color Picker 悬浮在键盘中央 -->
+          <div class="Preview-overlay">
+            <a-color-picker v-model="colorPicker" size="mini">
+              <a-tag :color="colorPicker" class="picker-tag">
+          <span :style="{ color: color.red + color.green + color.blue > 380 ? '#000' : '#fff' }">
+            调整颜色
+          </span>
+              </a-tag>
+            </a-color-picker>
+          </div>
         </div>
       </div>
-
-      <a-col v-for="c in ['red', 'green', 'blue']" :key="c" :span="16" class="item">
-        <a-input-number v-model="color[c]" :min="0" :max="255" :placeholder="c" model-event="input">
-          <template #append>{{ c }}</template>
-        </a-input-number>
+      <a-col v-for="c in ['red', 'green', 'blue'] as const" :key="c" :span="16" class="item">
+        <div class="slider-wrapper">
+          <span class="slider-label" :class="c">{{ c.toUpperCase() }}</span>
+          <a-slider
+              v-model="color[c]"
+              :min="0"
+              :max="255"
+              show-input
+              class="custom-slider"
+          />
+        </div>
       </a-col>
-
       <a-col :span="16" class="item">
-        <a-input-number
-            v-model="LightBrightness"
-            :min="0"
-            :max="3"
-            placeholder="LightBrightness"
-            model-event="input"
-        >
-          <template #append>LightBrightness</template>
-        </a-input-number>
+        <div class="slider-wrapper">
+          <span class="slider-label brightness">BRIGHTNESS</span>
+          <a-slider
+              v-model="LightBrightness"
+              :min="0"
+              :max="3"
+              step="1"
+              show-ticks
+              class="custom-slider"
+          />
+        </div>
       </a-col>
-
-      <a-col :span="16" class="item">
-        <a-button type="primary" :loading="loading" @click="handleClick">确认</a-button>
+      <a-col :span="16" class="item" style="text-align: center;">
+        <a-button type="primary" :loading="loading" @click="handleClick">
+          确认
+        </a-button>
       </a-col>
     </a-row>
   </div>
@@ -121,20 +140,134 @@ async function handleClick() {
     text-align: left;
   }
 
-  .keys {
-    width: 600px;
-    height: 200px;
+  .keys-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 20px 0;
 
-    .Preview {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100%;
-      text-align: center;
+    .keyboard-shell {
+      position: relative;
+      width: 600px;
+      height: 200px;
+      background: #1a1a1a; // 键盘底座颜色
+      border-radius: 12px;
+      padding: 15px;
+      border: 2px solid #333;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 20px var(--kb-glow); // 外部发光
+      transition: all 0.3s ease;
+
+      // 背景发光晕染
+      .glow-layer {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at center, var(--kb-glow) 0%, transparent 80%);
+        pointer-events: none;
+      }
+
+      // 按键网格
+      .key-grid {
+        display: grid;
+        grid-template-columns: repeat(13, 1fr); // 模拟13列按键
+        grid-template-rows: repeat(4, 1fr);    // 模拟4行
+        gap: 6px;
+        height: 100%;
+        opacity: 0.9;
+
+        .key-cap {
+          background: rgba(40, 40, 40, 0.8); // 半透明黑色键帽
+          border-radius: 4px;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          position: relative;
+
+          // 键帽底部的背光溢出效果
+          &::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 4px;
+            background: var(--kb-color);
+            filter: blur(4px);
+            opacity: 0.3; // 灯光强度由亮度变量控制
+            z-index: -1;
+          }
+        }
+      }
+
+      // 交互层：中间的颜色选择器
+      .Preview-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+
+        .picker-tag {
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255,255,255,0.2);
+          cursor: pointer;
+          padding: 0 15px;
+          height: 32px;
+          line-height: 30px;
+          font-weight: bold;
+        }
+      }
     }
   }
   .item {
-    margin-top: 10px;
+    margin-top: 15px;
+
+    .slider-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 20px; // 标签和滑块之间的间距
+
+      .slider-label {
+        flex-basis: 100px; // 固定标签宽度，确保滑块左对齐
+        flex-shrink: 0; // 防止标签被压缩
+        font-size: 12px;
+        font-weight: bold;
+        color: #86909c; // 次要文字颜色
+        letter-spacing: 0.5px;
+        text-align: right; // 文字右对齐，紧贴滑块
+
+        // 为不同通道增加点缀色（可选，增加高级感）
+        &.red {
+          color: #f53f3f;
+          border-right: 2px solid #f53f3f;
+          padding-right: 8px;
+        }
+
+        &.green {
+          color: #00b42a;
+          border-right: 2px solid #00b42a;
+          padding-right: 8px;
+        }
+
+        &.blue {
+          color: #165dff;
+          border-right: 2px solid #165dff;
+          padding-right: 8px;
+        }
+
+        &.brightness {
+          color: #ff7d00;
+          border-right: 2px solid #ff7d00;
+          padding-right: 8px;
+        }
+      }
+
+      .custom-slider {
+        flex: 1; // 占据剩余全部空间
+      }
+    }
+  }
+
+  // 针对 Arco Slider 的内部输入框样式微调（可选）
+  :deep(.arco-slider-input) {
+    background-color: var(--color-fill-2);
+    border-radius: 4px;
   }
 }
 </style>

@@ -137,7 +137,6 @@ namespace JiaoLongControl.Server
             {
                 DestroyWebView();
                 _taskbarIcon.Dispose();
-                HardwareController.ComputerInfo.Dispose();
                 Application.Current.Shutdown();
             };
 

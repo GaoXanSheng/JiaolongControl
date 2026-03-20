@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Fan, Hardware } from '@/utils/bridge.ts'
+import { Fan,CPU } from '@/utils/bridge.ts'
+import {Message} from "@arco-design/web-vue";
 
 const MAX_POINTS = 10
 const INTERVAL = 2000
@@ -27,18 +28,7 @@ function push(arr: number[], v: number) {
   if (arr.length >= MAX_POINTS) arr.shift()
   arr.push(v)
 }
-function round2(v: number): number {
-  return Math.round(v * 100) / 100
-}
 
-function getCpuTemp(info: any): number {
-  const t = info?.Cpu?.Temperature ?? []
-  const v =
-      t.find((x: any) => x.Name.includes('Package'))?.Value ??
-      t[0]?.Value ??
-      0
-  return round2(v)
-}
 
 
 const chartW = computed(() => Math.max(0, width.value - PADDING_X * 2))
@@ -88,10 +78,10 @@ async function poll() {
   if (!running) return
   try {
     const fan = await Fan.GetFanSpeed()
-    const hw = await Hardware.GetHardwareMonitorInfo()
+    const hw = await CPU.GetCPUThermometer()
     push(cpuFan.value, fan.CPUFanSpeed)
     push(gpuFan.value, fan.GPUFanSpeed)
-    push(cpuTemp.value, getCpuTemp(hw))
+    push(cpuTemp.value, hw)
   } catch (e) {
     console.error(e)
   }
@@ -116,6 +106,7 @@ onUnmounted(() => {
   if (timer) clearTimeout(timer)
   if (resizeObserver) resizeObserver.disconnect()
 })
+
 </script>
 
 <template>
@@ -141,15 +132,14 @@ onUnmounted(() => {
       <polyline :points="gpuFanPath" fill="none" stroke="#ff7f0e" stroke-width="2" />
       <polyline :points="cpuTempPath" fill="none" stroke="#2ca02c" stroke-width="2" />
       <g v-for="(x, i) in xs" :key="'nodes-'+i">
-        <circle :cx="x" :cy="getY(cpuFan[i], MAX_FAN_RPM)" r="3" fill="#1f77b4"/>
-        <circle :cx="x" :cy="getY(gpuFan[i], MAX_FAN_RPM)" r="3" fill="#ff7f0e"/>
-        <circle :cx="x" :cy="getY(cpuTemp[i], MAX_TEMP_C)" r="3" fill="#2ca02c"/>
+        <circle :cx="x" :cy="getY(cpuFan[i]!, MAX_FAN_RPM)" r="3" fill="#1f77b4"/>
+        <circle :cx="x" :cy="getY(gpuFan[i]!, MAX_FAN_RPM)" r="3" fill="#ff7f0e"/>
+        <circle :cx="x" :cy="getY(cpuTemp[i]!, MAX_TEMP_C)" r="3" fill="#2ca02c"/>
       </g>
 
       <line
-          v-if="hoverIndex !== null"
-          :x1="xs[hoverIndex]"
-          :x2="xs[hoverIndex]"
+          :x1="xs[hoverIndex!]"
+          :x2="xs[hoverIndex!]"
           :y1="PADDING_Y"
           :y2="height - PADDING_Y"
           stroke="#999"
@@ -157,15 +147,15 @@ onUnmounted(() => {
           stroke-dasharray="4"
       />
 
-      <g v-if="hoverIndex !== null">
-        <circle :cx="xs[hoverIndex]" :cy="getY(cpuFan[hoverIndex], MAX_FAN_RPM)" r="5" fill="#fff" stroke="#1f77b4" stroke-width="2"/>
-        <circle :cx="xs[hoverIndex]" :cy="getY(gpuFan[hoverIndex], MAX_FAN_RPM)" r="5" fill="#fff" stroke="#ff7f0e" stroke-width="2"/>
-        <circle :cx="xs[hoverIndex]" :cy="getY(cpuTemp[hoverIndex], MAX_TEMP_C)" r="5" fill="#fff" stroke="#2ca02c" stroke-width="2"/>
+      <g >
+        <circle :cx="xs[hoverIndex!]" :cy="getY(cpuFan[hoverIndex!]!, MAX_FAN_RPM)" r="5" fill="#fff" stroke="#1f77b4" stroke-width="2"/>
+        <circle :cx="xs[hoverIndex!]" :cy="getY(gpuFan[hoverIndex!]!, MAX_FAN_RPM)" r="5" fill="#fff" stroke="#ff7f0e" stroke-width="2"/>
+        <circle :cx="xs[hoverIndex!]" :cy="getY(cpuTemp[hoverIndex!]!, MAX_TEMP_C)" r="5" fill="#fff" stroke="#2ca02c" stroke-width="2"/>
       </g>
 
-      <g v-if="hoverIndex !== null" style="pointer-events: none">
+      <g  style="pointer-events: none">
         <g :transform="`translate(${
-            xs[hoverIndex] + (xs[hoverIndex] > width / 2 ? -210 : 20)
+            xs[hoverIndex!]! + (xs[hoverIndex!]! > width / 2 ? -210 : 20)
           }, ${ PADDING_Y + 10 })`">
 
           <rect
@@ -180,15 +170,15 @@ onUnmounted(() => {
 
           <g transform="translate(15, 45)">
             <circle r="4" fill="#1f77b4" cy="-4" />
-            <text x="15" font-size="12" fill="#333">CPU Fan: {{ cpuFan[hoverIndex] }} RPM</text>
+            <text x="15" font-size="12" fill="#333">CPU Fan: {{ cpuFan[hoverIndex!] }} RPM</text>
           </g>
           <g transform="translate(15, 65)">
             <circle r="4" fill="#ff7f0e" cy="-4" />
-            <text x="15" font-size="12" fill="#333">GPU Fan: {{ gpuFan[hoverIndex] }} RPM</text>
+            <text x="15" font-size="12" fill="#333">GPU Fan: {{ gpuFan[hoverIndex!] }} RPM</text>
           </g>
           <g transform="translate(15, 85)">
             <circle r="4" fill="#2ca02c" cy="-4" />
-            <text x="15" font-size="12" fill="#333">CPU Temp: {{ cpuTemp[hoverIndex] }} °C</text>
+            <text x="15" font-size="12" fill="#333">CPU Temp: {{ cpuTemp[hoverIndex!] }} °C</text>
           </g>
         </g>
       </g>

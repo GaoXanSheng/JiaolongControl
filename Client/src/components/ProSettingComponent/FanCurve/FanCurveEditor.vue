@@ -3,11 +3,9 @@
     <div class="header-info">
       <!-- 左侧：基础统计信息 -->
       <div class="info-section">
-        <span>
-          SVG Mode |
-          Size: {{ Math.round(width) }}x{{ Math.round(height) }} |
-          Points: {{ points.length }}
-        </span>
+        <a-col :span="16">
+          <a-button type="primary" long @click="handleRemoveFanClick">移除转速设置</a-button>
+        </a-col>
       </div>
 
       <!-- 中间：服务控制开关 -->
@@ -55,9 +53,9 @@
           <line
               v-for="i in 11"
               :key="'v-'+i"
-              :x1="safeMapX(tempRange[0] + (i - 1) * (tempRange[1] - tempRange[0]) / 10)"
+              :x1="safeMapX(tempRange[0]! + (i - 1) * (tempRange[1]! - tempRange[0]!) / 10)"
               :y1="padding.top"
-              :x2="safeMapX(tempRange[0] + (i - 1) * (tempRange[1] - tempRange[0]) / 10)"
+              :x2="safeMapX(tempRange[0]! + (i - 1) * (tempRange[1]! - tempRange[0]!) / 10)"
               :y2="height - padding.bottom"
               stroke="#eee"
               stroke-dasharray="4"
@@ -66,9 +64,9 @@
               v-for="i in 11"
               :key="'h-'+i"
               :x1="padding.left"
-              :y1="safeMapY(speedRange[0] + (i - 1) * (speedRange[1] - speedRange[0]) / 10)"
+              :y1="safeMapY(speedRange[0]! + (i - 1) * (speedRange[1]! - speedRange[0]!) / 10)"
               :x2="width - padding.right"
-              :y2="safeMapY(speedRange[0] + (i - 1) * (speedRange[1] - speedRange[0]) / 10)"
+              :y2="safeMapY(speedRange[0]! + (i - 1) * (speedRange[1]! - speedRange[0]!) / 10)"
               stroke="#eee"
               stroke-dasharray="4"
           />
@@ -78,24 +76,24 @@
           <text
               v-for="i in 6"
               :key="'xl-'+i"
-              :x="safeMapX(tempRange[0] + (i - 1) * (tempRange[1] - tempRange[0]) / 5)"
+              :x="safeMapX(tempRange[0]! + (i - 1) * (tempRange[1]! - tempRange[0]!) / 5)"
               :y="height - 10"
               text-anchor="middle"
               fill="#999"
               font-size="10"
           >
-            {{ Math.round(tempRange[0] + (i - 1) * (tempRange[1] - tempRange[0]) / 5) }}°C
+            {{ Math.round(tempRange[0]! + (i - 1) * (tempRange[1]! - tempRange[0]!) / 5) }}°C
           </text>
           <text
               v-for="i in 6"
               :key="'yl-'+i"
               :x="padding.left - 10"
-              :y="safeMapY(speedRange[0] + (i - 1) * (speedRange[1] - speedRange[0]) / 5) + 4"
+              :y="safeMapY(speedRange[0]! + (i - 1) * (speedRange[1]! - speedRange[0]!) / 5) + 4"
               text-anchor="end"
               fill="#999"
               font-size="10"
           >
-            {{ Math.round(speedRange[0] + (i - 1) * (speedRange[1] - speedRange[0]) / 5) }}
+            {{ Math.round(speedRange[0]! + (i - 1) * (speedRange[1]! - speedRange[0]!) / 5) }}
           </text>
         </g>
 
@@ -173,9 +171,9 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue'
-import { Message } from '@arco-design/web-vue'
-import { Config, AutoFanControl } from '@/utils/bridge.ts'
+import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
+import {Message} from '@arco-design/web-vue'
+import {AutoFanControl, Config, Fan} from '@/utils/bridge.ts'
 
 interface Point {
   temp: number
@@ -235,15 +233,13 @@ const handleServiceToggle = async (newValue: any): Promise<boolean> => {
       Message.info('自动风扇控制已停止')
     }
     // 二次确认状态
-    const status = await AutoFanControl.IsRunning()
-    isServiceRunning.value = status
+    isServiceRunning.value = await AutoFanControl.IsRunning()
     return true
   } catch (e) {
     console.error('Toggle failed:', e)
     Message.error('操作失败，请检查日志')
     // 发生错误时，回滚状态
-    const status = await AutoFanControl.IsRunning()
-    isServiceRunning.value = status
+    isServiceRunning.value = await AutoFanControl.IsRunning()
     return false
   } finally {
     serviceLoading.value = false
@@ -280,26 +276,26 @@ function safeMapY(val: number): number {
 
 function mapX(temp: number) {
   const innerWidth = width.value - padding.left - padding.right
-  const ratio = (temp - tempRange[0]) / (tempRange[1] - tempRange[0])
+  const ratio = (temp - tempRange[0]!) / (tempRange[1]! - tempRange[0]!)
   return padding.left + ratio * innerWidth
 }
 
 function mapY(speed: number) {
   const innerHeight = height.value - padding.top - padding.bottom
-  const ratio = (speed - speedRange[0]) / (speedRange[1] - speedRange[0])
+  const ratio = (speed - speedRange[0]!) / (speedRange[1]! - speedRange[0]!)
   return padding.top + (1 - ratio) * innerHeight
 }
 
 function unmapX(x: number) {
   const innerWidth = width.value - padding.left - padding.right
   const ratio = (x - padding.left) / innerWidth
-  return tempRange[0] + ratio * (tempRange[1] - tempRange[0])
+  return tempRange[0]! + ratio * (tempRange[1]! - tempRange[0]!)
 }
 
 function unmapY(y: number) {
   const innerHeight = height.value - padding.top - padding.bottom
   const ratio = (y - padding.top) / innerHeight
-  return speedRange[0] + (1 - ratio) * (speedRange[1] - speedRange[0])
+  return speedRange[0]! + (1 - ratio) * (speedRange[1]! - speedRange[0]!)
 }
 
 const polylinePoints = computed(() => {
@@ -312,9 +308,9 @@ onMounted(async () => {
   if (containerRef.value) {
     resizeObserver = new ResizeObserver((entries) => {
       const entry = entries[0]
-      if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
-        width.value = entry.contentRect.width
-        height.value = entry.contentRect.height
+      if (entry!.contentRect.width > 0 && entry!.contentRect.height > 0) {
+        width.value = entry!.contentRect.width
+        height.value = entry!.contentRect.height
       }
     })
     resizeObserver.observe(containerRef.value)
@@ -367,15 +363,15 @@ function onSvgMouseMove(e: MouseEvent) {
   let newTemp = Math.round(unmapX(mouseX))
   let newSpeed = Math.round(unmapY(mouseY))
 
-  newSpeed = Math.max(speedRange[0], Math.min(newSpeed, speedRange[1]))
+  newSpeed = Math.max(speedRange[0]!, Math.min(newSpeed, speedRange[1]!))
 
   const idx = draggingIndex.value
-  const minT = idx === 0 ? tempRange[0] : points.value[idx - 1].temp + 1
-  const maxT = idx === points.value.length - 1 ? tempRange[1] : points.value[idx + 1].temp - 1
-  newTemp = Math.max(minT, Math.min(newTemp, maxT))
+  const minT = idx === 0 ? tempRange[0] : points.value[idx - 1]!.temp + 1
+  const maxT = idx === points.value.length - 1 ? tempRange[1] : points.value[idx + 1]!.temp - 1
+  newTemp = Math.max(minT!, Math.min(newTemp, maxT!))
 
-  points.value[idx].temp = newTemp
-  points.value[idx].speed = newSpeed
+  points.value[idx]!.temp = newTemp
+  points.value[idx]!.speed = newSpeed
 }
 
 function onDragEnd() {
@@ -402,12 +398,12 @@ function closeMenu() {
 
 function getMinTemp(index: number) {
   if (index === 0) return tempRange[0]
-  return points.value[index - 1].temp + 1
+  return points.value[index - 1]!.temp + 1
 }
 
 function getMaxTemp(index: number) {
   if (index === points.value.length - 1) return tempRange[1]
-  return points.value[index + 1].temp - 1
+  return points.value[index + 1]!.temp - 1
 }
 
 function onAddNode() {
@@ -434,17 +430,25 @@ function onRemoveNode() {
 function openEditModal() {
   if (selectedIndex.value === null) return
   const p = points.value[selectedIndex.value]
-  editForm.temp = p.temp
-  editForm.speed = p.speed
+  editForm.temp = p!.temp
+  editForm.speed = p!.speed
   showEdit.value = true
   closeMenu()
 }
 
 function onEditConfirm() {
   if (selectedIndex.value === null) return
-  points.value[selectedIndex.value].temp = editForm.temp
-  points.value[selectedIndex.value].speed = editForm.speed
+  points.value[selectedIndex.value]!.temp = editForm.temp
+  points.value[selectedIndex.value]!.speed = editForm.speed
   showEdit.value = false
+}
+async function handleRemoveFanClick() {
+  await handleServiceToggle(!isServiceRunning.value)
+  if (await Fan.RemoveFanSpeed()) {
+    Message.success('设置成功')
+  } else {
+    Message.error('设置失败')
+  }
 }
 </script>
 

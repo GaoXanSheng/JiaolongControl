@@ -1,16 +1,14 @@
-﻿using System.Text.Json.Nodes;
-using JiaoLongControl.Server.Core.Utils;
-
+﻿using JiaoLongControl.Server.Core.Utils;
 namespace JiaoLongControl.Server.Core.Controllers
 {
     [System.Runtime.InteropServices.ComVisible(true)]
     public class AutoFanControl : IDisposable
     {
-        private volatile bool _isRunning = false;
+        private volatile bool _isRunning;
 
         private CancellationTokenSource? _cts;
         private Task? _controlTask;
-
+        private readonly CpuController _cpuController = new();
         private const int IntervalMs = 5000;
 
         private const int RPM_UNIT_DIVISOR = 100;
@@ -86,7 +84,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                 {
                     try
                     {
-                        float rawTemp = GetCurrentCpuTemp();
+                        float rawTemp = _cpuController.GetCPUThermometer();
 
                         tempQueue.Enqueue(rawTemp);
                         if (tempQueue.Count > smoothSampleCount)
@@ -117,39 +115,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                 Logger.Info("Auto Fan Control stopped.");
             }
         }
-
-        private float GetCurrentCpuTemp()
-        {
-            try
-            {
-                string json = HardwareController.ComputerInfo.GetHardwareMonitorInfo();
-
-                var root = JsonNode.Parse(json);
-                var cpu = root?["Cpu"];
-                var temps = cpu?["Temperature"]?.AsArray();
-
-                if (temps == null)
-                    return -1f;
-                foreach (var t in temps)
-                {
-                    if (t?["Name"]?.ToString() == "Core (Tctl/Tdie)")
-                        return t["Value"]!.GetValue<float>();
-                }
-
-                // 兜底：CCDs Average
-                foreach (var t in temps)
-                {
-                    if (t?["Name"]?.ToString() == "CCDs Average (Tdie)")
-                        return t["Value"]!.GetValue<float>();
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex.Message);
-            }
-
-            return 60.0f;
-        }
+        
 
         private int CalculateFanSpeed(float currentTemp)
         {

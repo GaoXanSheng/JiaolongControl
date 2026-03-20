@@ -65,12 +65,12 @@ async function handleRemoveFanClick() {
             size="large"
             class="full-width"
         >
-          <template #prepend>RPM Target</template>
+          <template #prepend>目标转速</template>
           <template #suffix>RPM</template>
         </a-input-number>
       </a-col>
       <a-col :span="16">
-        <a-button type="primary" long :loading="loading" @click="handleClick">Apply Speed</a-button>
+        <a-button type="primary" long :loading="loading" @click="handleClick">设定转速</a-button>
         <a-modal v-model:visible="visible" @ok="handleOk" @cancel="handleCancel">
           <template #title>
             警告
@@ -79,7 +79,7 @@ async function handleRemoveFanClick() {
         </a-modal>
       </a-col>
       <a-col :span="16">
-        <a-button type="primary" long @click="handleRemoveFanClick">Remove Speed</a-button>
+        <a-button type="primary" long @click="handleRemoveFanClick">移除转速设置</a-button>
       </a-col>
     </a-row>
   </div>

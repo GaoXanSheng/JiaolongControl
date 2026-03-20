@@ -42,6 +42,11 @@ namespace JiaoLongControl.Server.Core.Controllers
             return res == CPUPower.OpenState;
         }
 
+        public byte GetCPUThermometer()
+        {
+            return MethodServices.GetValue<byte>(MethodName.CPUThermometer);
+        }
+
         public bool SetCPUTempWall(byte tw)
         {
             return MethodServices.SetValue(MethodName.CPUPower, new byte[2]

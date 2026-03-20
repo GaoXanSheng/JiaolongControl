@@ -1,29 +1,5 @@
 <script setup lang="ts">
-import useStore from '@/stores'
-import { ref, watchEffect } from 'vue'
 import BackgroundVideo from '@/assets/BackgroundVideo.mp4'
-
-const store = useStore()
-const videoSrc = ref<string>(store.$state.customVideo)
-
-function checkVideo(url: string) {
-	return new Promise<boolean>((resolve) => {
-		const video = document.createElement('video')
-		video.src = url
-		video.onloadeddata = () => resolve(true) // 视频可以加载
-		video.onerror = () => resolve(false) // 视频加载失败
-	})
-}
-
-watchEffect(async () => {
-	const customPath = store.$state.customVideo
-	if (customPath) {
-		const valid = await checkVideo(customPath)
-		videoSrc.value = valid ? customPath : BackgroundVideo
-	} else {
-		videoSrc.value = BackgroundVideo
-	}
-})
 </script>
 
 <template>
@@ -31,7 +7,7 @@ watchEffect(async () => {
 		<a-row justify="center">
 			<a-col :span="16" style="margin-top: 30px">
 				<div class="title">
-					<video :src="videoSrc" muted loop autoplay></video>
+					<video :src="BackgroundVideo" muted loop autoplay></video>
 				</div>
 			</a-col>
 			<a-col :span="16">

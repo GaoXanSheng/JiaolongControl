@@ -15,7 +15,6 @@ namespace JiaoLongControl.Server.Interop
         public LogoLightController LogoLight { get; } = new();
         public KeyboardController Keyboard { get; } = new();
         public PerformanceModeController PerformanceMode { get; } = new();
-        public HardwareController Hardware { get; } = new();
         public ConfigController Config { get; } = new();
         public AutoStartController AutoStart { get; } = new();
         public AutoFanControl AutoFan { get; } = new();

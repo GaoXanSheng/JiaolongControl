@@ -1,5 +1,3 @@
-import type {HardwareMonitorInfo} from "@/stores/interfaces.ts";
-
 export enum GPUMode {
     HybridMode = 0,
     DiscreteMode = 1,
@@ -45,6 +43,7 @@ interface HostObjects {
         SetCpuLongPower(lp: number): Promise<boolean>;
         SetCustomMode(open: boolean): Promise<boolean>;
         GetCustomMode(): Promise<boolean>;
+        GetCPUThermometer(): Promise<number>;
         SetCPUTempWall(tw: number): Promise<boolean>;
     };
     Fan: {
@@ -78,9 +77,6 @@ interface HostObjects {
         Get(): Promise<SystemPerMode>;
         Set(mode: SystemPerMode): Promise<boolean>;
     };
-    Hardware: {
-        GetHardwareMonitorInfo(): Promise<string>;
-    };
     Config: {
         GetConfig(): Promise<string>;
         SetConfig(config: string): Promise<void>;
@@ -91,9 +87,9 @@ interface HostObjects {
         IsEnabled(): Promise<boolean>;
     };
     AutoFan: {
-        Start: Promise<void>;
-        Stop: Promise<void>;
-        IsRunning: Promise<boolean>;
+        Start:()=> Promise<void>;
+        Stop: ()=> Promise<void>;
+        IsRunning:()=> Promise<boolean>;
     }
 }
 
@@ -154,6 +150,8 @@ export const CPU = {
     SetCPUTempWall: async (tw: number) => {
         return bridge.CPU.SetCPUTempWall(toByte(tw))
     },
+    GetCPUThermometer: bridge.CPU.GetCPUThermometer
+
 };
 export const Fan = {
     GetFanSpeed: async () => {
@@ -164,7 +162,7 @@ export const Fan = {
     },
     SetMaxFanSpeedSwitch: bridge.Fan.SetMaxFanSpeedSwitch,
     GetMaxFanSpeedSwitch: bridge.Fan.GetMaxFanSpeedSwitch,
-    RemoveFanSpeed:bridge.Fan.RemoveFanSpeed
+    RemoveFanSpeed: bridge.Fan.RemoveFanSpeed
 };
 export const GPU = bridge.GPU;
 export const LogoLight = bridge.LogoLight;
@@ -181,11 +179,6 @@ export const Keyboard = {
     SetLightBrightness: bridge.Keyboard.SetLightBrightness,
 };
 export const PerformanceMode = bridge.PerformanceMode;
-export const Hardware = {
-    GetHardwareMonitorInfo: async () => {
-        return JSON.parse(await bridge.Hardware.GetHardwareMonitorInfo()) as HardwareMonitorInfo
-    },
-};
 
 function toByte(value: number): number {
     if (!Number.isInteger(value)) {

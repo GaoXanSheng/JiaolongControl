@@ -9,6 +9,7 @@ function loadConfig() {
     const value = localStorage.getItem(key)
     if (value) {
       try {
+        // @ts-ignore
         store.$state[key] = JSON.parse(value)
       } catch (e) { console.error('Config load error', e) }
     }
