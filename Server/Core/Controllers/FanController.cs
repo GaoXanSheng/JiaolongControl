@@ -20,6 +20,11 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         public bool SetFanSpeed(byte fanSpeed)
         {
+            // ACPI表的风扇调速比EC的风扇调速优先级更高，所以如果开启了ACPI表的风扇调速，就无法通过EC来设置风扇速度，因此需要先关闭ACPI表的风扇调速开关
+            if (GetMaxFanSpeedSwitch())
+            {
+                SetMaxFanSpeedSwitch(false);
+            }
             using (ECController ec = new ECController())
             {
                 if (ec.State)
@@ -32,6 +37,7 @@ namespace JiaoLongControl.Server.Core.Controllers
 
             return false;
         }
+
         public bool RemoveFanSpeed()
         {
             using (ECController ec = new ECController())
@@ -42,8 +48,10 @@ namespace JiaoLongControl.Server.Core.Controllers
                     return true;
                 }
             }
+
             return false;
         }
+
         public bool SetMaxFanSpeedSwitch(bool maxFanSpeedSwitch)
         {
             return MethodServices.SetValue(MethodName.MaxFanSpeedSwitch, (byte)(maxFanSpeedSwitch ? 1 : 0));

@@ -23,5 +23,11 @@ namespace JiaoLongControl.Server
 
             base.OnStartup(e);
         }
+
+        protected override void OnExit(ExitEventArgs e)
+        {
+            base.OnExit(e);
+            new FanController().RemoveFanSpeed();
+        }
     }
 }

@@ -23,7 +23,6 @@ const handleOk = async () => {
   if (await AutoFanControl.IsRunning()) {
     await AutoFanControl.Stop()
   }
-  await Fan.SetMaxFanSpeedSwitch(true)
   const res = await Fan.SetFanSpeed(store.FanSpeed)
   if (res) {
     Message.success('设置成功')
