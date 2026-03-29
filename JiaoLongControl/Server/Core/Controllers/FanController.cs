@@ -25,7 +25,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             {
                 SetMaxFanSpeedSwitch(false);
             }
-            using (ECController ec = new ECController())
+            using (ECManager ec = new ECManager())
             {
                 if (ec.State)
                 {
@@ -40,7 +40,7 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         public bool RemoveFanSpeed()
         {
-            using (ECController ec = new ECController())
+            using (ECManager ec = new ECManager())
             {
                 if (ec.State)
                 {
@@ -48,10 +48,9 @@ namespace JiaoLongControl.Server.Core.Controllers
                     return true;
                 }
             }
-
             return false;
         }
-
+        [Obsolete("不推荐使用maxFanSpeedSwitch")]
         public bool SetMaxFanSpeedSwitch(bool maxFanSpeedSwitch)
         {
             return MethodServices.SetValue(MethodName.MaxFanSpeedSwitch, (byte)(maxFanSpeedSwitch ? 1 : 0));

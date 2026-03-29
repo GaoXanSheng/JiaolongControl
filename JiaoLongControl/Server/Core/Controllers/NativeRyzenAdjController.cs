@@ -3,6 +3,7 @@ using JiaoLongControl.Server.Core.Utils;
 
 namespace JiaoLongControl.Server.Core.Controllers;
 
+[Obsolete("测试")]
 public class NativeRyzenAdjController
 {
     public enum RyzenAdjError : int

@@ -48,9 +48,7 @@ public class AutoStartController
         return ts.GetTask(AppName) != null;
     }
 
-    /// <summary>
-    /// 清理旧版本 Run 注册表启动
-    /// </summary>
+    [Obsolete]
     private void RemoveLegacyRegistry()
     {
         using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, true);

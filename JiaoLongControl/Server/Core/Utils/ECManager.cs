@@ -3,9 +3,9 @@ using JiaoLongControl.Server.Core.Drivers;
 
 namespace JiaoLongControl.Server.Core.Controllers
 {
-    public class ECController : BDLDriver
+    public class ECManager : BDLDriver
     {
-        public ECController() : base()
+        public ECManager() : base()
         {
             if (State)
             {
