@@ -9,7 +9,6 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         public GpuMode Get()
         {
-
             return MethodServices.GetValue<GpuMode>(MethodName.GpuMode);
         }
 

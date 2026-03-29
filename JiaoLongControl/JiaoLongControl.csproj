@@ -42,6 +42,8 @@
         <EmbeddedResource Include="Server\Resources\Icons\app.ico"/>
         <EmbeddedResource Include="Server\Resources\Drivers\JiaoLongDriver64.sys" />
         <EmbeddedResource Include="Server\Resources\Drivers\JiaoLongDriver64.dll" />
+        <None Remove="Server\Resources\Drivers\libryzenadj.dll" />
+        <EmbeddedResource Include="Server\Resources\Drivers\libryzenadj.dll" />
     </ItemGroup>
     <ItemGroup>
         <ApplicationDefinition Include="Server\App.xaml">

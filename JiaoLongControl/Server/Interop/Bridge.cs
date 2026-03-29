@@ -18,5 +18,7 @@ namespace JiaoLongControl.Server.Interop
         public ConfigController Config { get; } = new();
         public AutoStartController AutoStart { get; } = new();
         public AutoFanControl AutoFan { get; } = new();
+        public NvidiaGpuController NvidiaGpu { get; } = new();
+        public PowerController Power { get; } = new();
     }
 }
