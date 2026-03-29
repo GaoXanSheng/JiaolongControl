@@ -6,6 +6,7 @@ import ArcoVue from '@arco-design/web-vue'
 import ArcoVueIcon from '@arco-design/web-vue/es/icon'
 import { createPinia } from 'pinia'
 import router from '@/router/routes.ts'
+import './assets/Global.scss'
 createApp(App)
     .use(createPinia())
     .use(router)

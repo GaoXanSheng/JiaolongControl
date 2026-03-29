@@ -216,7 +216,7 @@ const isValidRender = computed(() => {
 
 const checkServiceStatus = async () => {
   try {
-    isServiceRunning.value = await AutoFanControl.IsRunning()
+    isServiceRunning.value = (await AutoFanControl.IsRunning()).Success
   } catch (e) {
     console.error('Failed to check fan control status:', e)
   }
@@ -233,13 +233,12 @@ const handleServiceToggle = async (newValue: any): Promise<boolean> => {
       Message.info('自动风扇控制已停止')
     }
     // 二次确认状态
-    isServiceRunning.value = await AutoFanControl.IsRunning()
+    isServiceRunning.value = (await AutoFanControl.IsRunning()).Success
     return true
   } catch (e) {
-    console.error('Toggle failed:', e)
     Message.error('操作失败，请检查日志')
     // 发生错误时，回滚状态
-    isServiceRunning.value = await AutoFanControl.IsRunning()
+    isServiceRunning.value = (await AutoFanControl.IsRunning()).Success
     return false
   } finally {
     serviceLoading.value = false
@@ -247,7 +246,7 @@ const handleServiceToggle = async (newValue: any): Promise<boolean> => {
 }
 
 const autoSave = async () => {
-  const config = await Config.GetConfig()
+  const config = (await Config.GetConfig()).Data
   config.AdvancedFanControlSystemConfig = points.value
   await Config.SetConfig(config)
 }
@@ -321,7 +320,7 @@ onMounted(async () => {
 
   // 加载配置
   try {
-    const config = await Config.GetConfig()
+    const config = (await Config.GetConfig()).Data
     if (config?.AdvancedFanControlSystemConfig && Array.isArray(config.AdvancedFanControlSystemConfig)) {
       const rawData = config.AdvancedFanControlSystemConfig
       const cleanData = rawData.map((item: any) => {
@@ -444,11 +443,7 @@ function onEditConfirm() {
 }
 async function handleRemoveFanClick() {
   await handleServiceToggle(!isServiceRunning.value)
-  if (await Fan.RemoveFanSpeed()) {
-    Message.success('设置成功')
-  } else {
-    Message.error('设置失败')
-  }
+  Message.success((await Fan.RemoveFanSpeed()).Message)
 }
 </script>
 

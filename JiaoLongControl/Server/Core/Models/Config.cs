@@ -1,5 +1,6 @@
 ﻿namespace JiaoLongControl.Server.Core.Models;
 
+[System.Runtime.InteropServices.ComVisible(true)]
 public class Config
 {
     // 最小化启动
@@ -13,8 +14,10 @@ public class Config
 
     // 自动启动CPU配置
     public bool BootAdvancedCPUSystem { get; set; } = false;
-
+    public bool BootAdvancedGPUSystem { get; set; } = false;
     public CpuConfg AdvancedCPUSystemConfig { get; set; } = new();
+
+    public NvidiaGpuConfig NvidiaGpuConfig { get; set; } = new();
 
     // 风扇控制配置
     public List<FanPoint> AdvancedFanControlSystemConfig { get; set; } = new()
@@ -32,13 +35,25 @@ public class Config
     };
 }
 
+public class NvidiaGpuConfig
+{
+    public int GpuClock { get; set; } = 0;
+    public int MemoryClock { get; set; } = 100;
+    public int PowerLimit { get; set; } = 140;
+}
+
+[System.Runtime.InteropServices.ComVisible(true)]
 public class CpuConfg
 {
     public byte CpuShortPower { get; set; } = 65;
     public byte CpuLongPower { get; set; } = 70;
     public byte CpuTempWall { get; set; } = 90;
+    public uint CPUMaxFrequency { get; set; } = 0;
+    public uint CPUMaxState { get; set; } = 100;
+    public bool CPUTurbo { get; set; } = true;
 }
 
+[System.Runtime.InteropServices.ComVisible(true)]
 public class FanPoint
 {
     public int temp { get; set; }

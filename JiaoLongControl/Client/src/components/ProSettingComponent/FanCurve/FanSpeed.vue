@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Fan,CPU } from '@/utils/bridge.ts'
-import {Message} from "@arco-design/web-vue";
-
 const MAX_POINTS = 10
 const INTERVAL = 2000
 const PADDING_X = 40
@@ -79,9 +77,9 @@ async function poll() {
   try {
     const fan = await Fan.GetFanSpeed()
     const hw = await CPU.GetCPUThermometer()
-    push(cpuFan.value, fan.CPUFanSpeed)
-    push(gpuFan.value, fan.GPUFanSpeed)
-    push(cpuTemp.value, hw)
+    push(cpuFan.value, fan.Data.CPUFanSpeed)
+    push(gpuFan.value, fan.Data.GPUFanSpeed)
+    push(cpuTemp.value, hw.Data)
   } catch (e) {
     console.error(e)
   }
@@ -116,7 +114,8 @@ onUnmounted(() => {
       @mousemove="onMouseMove"
       @mouseleave="hoverIndex = null"
   >
-    <svg :width="width" :height="height">
+    <svg :width="width" :height="height" v-if="width > 0">
+      <!-- 背景网格线 -->
       <g stroke="#f2f3f5" stroke-width="1" stroke-dasharray="4 2">
         <line
             v-for="i in 5"
@@ -128,60 +127,64 @@ onUnmounted(() => {
         />
       </g>
 
+      <!-- 折线图 -->
       <polyline :points="cpuFanPath" fill="none" stroke="#1f77b4" stroke-width="2" />
       <polyline :points="gpuFanPath" fill="none" stroke="#ff7f0e" stroke-width="2" />
       <polyline :points="cpuTempPath" fill="none" stroke="#2ca02c" stroke-width="2" />
+
+      <!-- 常驻数据点 -->
       <g v-for="(x, i) in xs" :key="'nodes-'+i">
         <circle :cx="x" :cy="getY(cpuFan[i]!, MAX_FAN_RPM)" r="3" fill="#1f77b4"/>
         <circle :cx="x" :cy="getY(gpuFan[i]!, MAX_FAN_RPM)" r="3" fill="#ff7f0e"/>
         <circle :cx="x" :cy="getY(cpuTemp[i]!, MAX_TEMP_C)" r="3" fill="#2ca02c"/>
       </g>
 
-      <line
-          :x1="xs[hoverIndex!]"
-          :x2="xs[hoverIndex!]"
-          :y1="PADDING_Y"
-          :y2="height - PADDING_Y"
-          stroke="#999"
-          stroke-width="1"
-          stroke-dasharray="4"
-      />
+      <!-- 悬停指示器 (仅在 hoverIndex 不为 null 时渲染) -->
+      <template v-if="hoverIndex !== null && xs[hoverIndex] !== undefined">
+        <!-- 垂直指示线 -->
+        <line
+            :x1="xs[hoverIndex]"
+            :x2="xs[hoverIndex]"
+            :y1="PADDING_Y"
+            :y2="height - PADDING_Y"
+            stroke="#999"
+            stroke-width="1"
+            stroke-dasharray="4"
+        />
 
-      <g >
-        <circle :cx="xs[hoverIndex!]" :cy="getY(cpuFan[hoverIndex!]!, MAX_FAN_RPM)" r="5" fill="#fff" stroke="#1f77b4" stroke-width="2"/>
-        <circle :cx="xs[hoverIndex!]" :cy="getY(gpuFan[hoverIndex!]!, MAX_FAN_RPM)" r="5" fill="#fff" stroke="#ff7f0e" stroke-width="2"/>
-        <circle :cx="xs[hoverIndex!]" :cy="getY(cpuTemp[hoverIndex!]!, MAX_TEMP_C)" r="5" fill="#fff" stroke="#2ca02c" stroke-width="2"/>
-      </g>
+        <!-- 悬停高亮大圆点 -->
+        <g>
+          <circle :cx="xs[hoverIndex]" :cy="getY(cpuFan[hoverIndex]!, MAX_FAN_RPM)" r="5" fill="#fff" stroke="#1f77b4" stroke-width="2"/>
+          <circle :cx="xs[hoverIndex]" :cy="getY(gpuFan[hoverIndex]!, MAX_FAN_RPM)" r="5" fill="#fff" stroke="#ff7f0e" stroke-width="2"/>
+          <circle :cx="xs[hoverIndex]" :cy="getY(cpuTemp[hoverIndex]!, MAX_TEMP_C)" r="5" fill="#fff" stroke="#2ca02c" stroke-width="2"/>
+        </g>
 
-      <g  style="pointer-events: none">
+        <!-- Tooltip 浮窗 -->
         <g :transform="`translate(${
-            xs[hoverIndex!]! + (xs[hoverIndex!]! > width / 2 ? -210 : 20)
-          }, ${ PADDING_Y + 10 })`">
-
+            xs[hoverIndex]! + (xs[hoverIndex]! > width / 2 ? -200 : 20)
+          }, ${ PADDING_Y + 10 })`" style="pointer-events: none">
           <rect
               width="180"
               height="100"
               rx="6"
               fill="rgba(255, 255, 255, 0.95)"
               stroke="#ccc"
-              filter="drop-shadow(0 4px 6px rgba(0,0,0,0.15))"
           />
-          <text x="15" y="25" font-size="12" font-weight="bold" fill="#333">Point Index: {{ hoverIndex }}</text>
-
+          <text x="15" y="25" font-size="12" font-weight="bold" fill="#333">Index: {{ hoverIndex }}</text>
           <g transform="translate(15, 45)">
             <circle r="4" fill="#1f77b4" cy="-4" />
-            <text x="15" font-size="12" fill="#333">CPU Fan: {{ cpuFan[hoverIndex!] }} RPM</text>
+            <text x="15" font-size="12" fill="#333">CPU Fan: {{ cpuFan[hoverIndex] }} RPM</text>
           </g>
           <g transform="translate(15, 65)">
             <circle r="4" fill="#ff7f0e" cy="-4" />
-            <text x="15" font-size="12" fill="#333">GPU Fan: {{ gpuFan[hoverIndex!] }} RPM</text>
+            <text x="15" font-size="12" fill="#333">GPU Fan: {{ gpuFan[hoverIndex] }} RPM</text>
           </g>
           <g transform="translate(15, 85)">
             <circle r="4" fill="#2ca02c" cy="-4" />
-            <text x="15" font-size="12" fill="#333">CPU Temp: {{ cpuTemp[hoverIndex!] }} °C</text>
+            <text x="15" font-size="12" fill="#333">CPU Temp: {{ cpuTemp[hoverIndex] }} °C</text>
           </g>
         </g>
-      </g>
+      </template>
     </svg>
   </div>
 </template>
@@ -192,7 +195,6 @@ onUnmounted(() => {
   height: 250px;
   position: relative;
   overflow: hidden;
-  cursor: crosshair;
 }
 
 svg {

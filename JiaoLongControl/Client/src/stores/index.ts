@@ -5,7 +5,8 @@ import CPU from '@/assets/CPU.png'
 import Fan from '@/assets/Fan.png'
 import Keyboard from '@/assets/Keyboard.png'
 import Settings from '@/assets/Settings.png'
-
+import GPU from '@/assets/GPU.png'
+import Power from '@/assets/Power.png'
 const useStore = defineStore('store', {
 	state: () => {
 		return {
@@ -31,6 +32,11 @@ export const HomeCardType = [
 		title: '中央处理器',
 		icon: CPU,
 		eum: HomeTab.CPU
+	},
+	{
+		title: '图形处理器',
+		icon: GPU,
+		eum: HomeTab.GPU
 	},
 	{
 		title: '风扇',

@@ -1,10 +1,13 @@
 ﻿using System.IO;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using JiaoLongControl.Server.Core.Models;
+using JiaoLongControl.Server.Core.Utils;
 
 namespace JiaoLongControl.Server.Core.Controllers;
 
-[System.Runtime.InteropServices.ComVisible(true)]
+[ComVisible(true)]
+[ClassInterface(ClassInterfaceType.AutoDual)]
 public class ConfigController
 {
     public static Config Config { get; private set; } = new();
@@ -15,16 +18,18 @@ public class ConfigController
     private static readonly string ConfigPath =
         Path.Combine(ConfigDir, "config.json");
 
-    public string GetConfig()
+    public CommandResult GetConfig()
     {
-        return JsonSerializer.Serialize(Config);
+        return new CommandResult(true, "成功", Config);
     }
 
-    public void SetConfig(string json)
+    public CommandResult SetConfig(string json)
     {
         Config = JsonSerializer.Deserialize<Config>(json) ?? new Config();
         Save();
+        return new CommandResult(true, "配置已成功更新.");
     }
+
     public static void Reload()
     {
         Load();

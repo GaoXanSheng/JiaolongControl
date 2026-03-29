@@ -1,19 +1,24 @@
-﻿using JiaoLongControl.Server.Core.Models;
+﻿using System.Runtime.InteropServices;
+using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Services;
+using JiaoLongControl.Server.Core.Utils;
 
 namespace JiaoLongControl.Server.Core.Controllers
 {
-    [System.Runtime.InteropServices.ComVisible(true)]
+    [ComVisible(true)]
+    [ClassInterface(ClassInterfaceType.AutoDual)]
     public class PerformanceModeController
     {
-        public SystemPerMode Get()
+        public CommandResult Get()
         {
-            return MethodServices.GetValue<SystemPerMode>(MethodName.SystemPerMode);
+            return new CommandResult(true, "获取成功",
+                MethodServices.GetValue<SystemPerMode>(MethodName.SystemPerMode));
         }
 
-        public bool Set(SystemPerMode mode)
+        public CommandResult Set(SystemPerMode mode)
         {
-            return MethodServices.SetValue(MethodName.SystemPerMode, mode);
+            var res = MethodServices.SetValue(MethodName.SystemPerMode, mode);
+            return new CommandResult(res, res ? "设置成功" : "设置失败");
         }
     }
 }

@@ -7,11 +7,7 @@ const loading = ref(false)
 async function PowerMode_handleClick(PowerMode: SystemPerMode) {
 	loading.value = true
 	const result = await PerformanceMode.Set(PowerMode)
-	if (result) {
-    Message.success('应用成功')
-	} else {
-    Message.error('应用失败')
-	}
+  Message.success(result.Message)
 	loading.value = false
 }
 </script>

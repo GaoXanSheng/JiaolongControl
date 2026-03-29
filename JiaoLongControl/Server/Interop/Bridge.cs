@@ -1,14 +1,19 @@
 ﻿using System;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using JiaoLongControl.Server.Core.Controllers;
-using JiaoLongControl.Server.Core.Services;
+using JiaoLongControl.Server.Core.Utils;
 
 namespace JiaoLongControl.Server.Interop
 {
-    [System.Runtime.InteropServices.ComVisible(true)]
+    [ComVisible(true)]
+    [ClassInterface(ClassInterfaceType.AutoDual)]
     public class Bridge
     {
+        public static Bridge Instance { get; } = new();
+
+        // 保留属性供 C# 内部使用
         public CpuController CPU { get; } = new();
         public FanController Fan { get; } = new();
         public GpuController GPU { get; } = new();

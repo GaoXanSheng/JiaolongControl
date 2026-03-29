@@ -1,0 +1,65 @@
+.layout-Content {
+  width: 100%;
+  height: 100%;
+
+  .title {
+    font-size: 32px;
+    text-align: left;
+    margin: 10px;
+  }
+
+  .arco-layout-header {
+    height: 64px;
+    line-height: 64px;
+    background: var(--color-bg-3);
+  }
+  .item {
+    margin-top: 15px;
+
+    .slider-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 20px; // 标签和滑块之间的间距
+
+      .slider-label {
+        flex-basis: 100px;
+        flex-shrink: 0;
+        font-size: 12px;
+        font-weight: bold;
+        letter-spacing: 0.5px;
+        text-align: right;
+
+        &.red {
+          color: #f53f3f;
+          border-right: 2px solid #f53f3f;
+          padding-right: 8px;
+        }
+
+        &.green {
+          color: #00b42a;
+          border-right: 2px solid #00b42a;
+          padding-right: 8px;
+        }
+
+        &.blue {
+          color: #165dff;
+          border-right: 2px solid #165dff;
+          padding-right: 8px;
+        }
+
+        &.brightness {
+          color: #ff7d00;
+          border-right: 2px solid #ff7d00;
+          padding-right: 8px;
+        }
+      }
+
+      .custom-slider {
+        flex: 1;
+      }
+      button {
+        flex-shrink: 0;
+      }
+    }
+  }
+}

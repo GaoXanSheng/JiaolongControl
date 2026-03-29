@@ -1,8 +1,9 @@
 export enum HomeTab {
-	HOME = 1,
-	CPU,
-	Fan,
-	Keyboard,
-	Settings,
-	Debug = 255
+    HOME = 1,
+    CPU,
+    GPU,
+    Fan,
+    Keyboard,
+    Settings,
+    Debug = 255
 }

@@ -15,10 +15,11 @@
 
     <ItemGroup>
         <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1"/>
-        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3800.47" />
-        <PackageReference Include="System.Management" Version="10.0.3" />
-        <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.3" />
-        <PackageReference Include="TaskScheduler" Version="2.12.2" />
+        <PackageReference Include="log4net" Version="3.3.0"/>
+        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3800.47"/>
+        <PackageReference Include="System.Management" Version="10.0.3"/>
+        <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.3"/>
+        <PackageReference Include="TaskScheduler" Version="2.12.2"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -40,10 +41,10 @@
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Include="Server\Resources\Icons\app.ico"/>
-        <EmbeddedResource Include="Server\Resources\Drivers\JiaoLongDriver64.sys" />
-        <EmbeddedResource Include="Server\Resources\Drivers\JiaoLongDriver64.dll" />
-        <None Remove="Server\Resources\Drivers\libryzenadj.dll" />
-        <EmbeddedResource Include="Server\Resources\Drivers\libryzenadj.dll" />
+        <EmbeddedResource Include="Server\Resources\Drivers\JiaoLongDriver64.sys"/>
+        <EmbeddedResource Include="Server\Resources\Drivers\JiaoLongDriver64.dll"/>
+        <None Remove="Server\Resources\Drivers\libryzenadj.dll"/>
+        <EmbeddedResource Include="Server\Resources\Drivers\libryzenadj.dll"/>
     </ItemGroup>
     <ItemGroup>
         <ApplicationDefinition Include="Server\App.xaml">
@@ -51,6 +52,9 @@
             <XamlRuntime>Wpf</XamlRuntime>
             <SubType>Designer</SubType>
         </ApplicationDefinition>
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="App.config"/>
     </ItemGroup>
     <ItemGroup>
         <Content Include="Server/Resources/WebRoot/**">

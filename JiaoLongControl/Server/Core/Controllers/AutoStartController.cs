@@ -1,15 +1,18 @@
-﻿using Microsoft.Win32;
+﻿using System.Runtime.InteropServices;
+using JiaoLongControl.Server.Core.Utils;
+using Microsoft.Win32;
 using Microsoft.Win32.TaskScheduler;
 namespace JiaoLongControl.Server.Core.Controllers;
 
-[System.Runtime.InteropServices.ComVisible(true)]
+[ComVisible(true)]
+[ClassInterface(ClassInterfaceType.AutoDual)]
 public class AutoStartController
 {
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
 
     private const string AppName = "JiaoLongControl";
 
-    public void Enable()
+    public CommandResult Enable()
     {
         RemoveLegacyRegistry();
         using var ts = new TaskService();
@@ -33,25 +36,28 @@ public class AutoStartController
             null,
             TaskLogonType.InteractiveToken
         );
+        return new CommandResult(true, "已启用开机自启");
     }
 
-    public void Disable()
+    public CommandResult Disable()
     {
         using var ts = new TaskService();
         ts.RootFolder.DeleteTask(AppName, false);
         RemoveLegacyRegistry();
+        return new CommandResult(true, "已禁用开机自启");
     }
 
-    public bool IsEnabled()
+    public CommandResult IsEnabled()
     {
         using var ts = new TaskService();
-        return ts.GetTask(AppName) != null;
+        return new CommandResult(ts.GetTask(AppName) != null, ts.GetTask(AppName) != null ? "开机自启已启用" : "开机自启未启用");
     }
 
     [Obsolete]
-    private void RemoveLegacyRegistry()
+    private CommandResult RemoveLegacyRegistry()
     {
         using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, true);
         key?.DeleteValue(AppName, false);
+        return new CommandResult(true, "已清理旧版开机自启注册表项");
     }
 }

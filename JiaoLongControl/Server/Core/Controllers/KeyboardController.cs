@@ -1,13 +1,15 @@
-﻿using JiaoLongControl.Server.Core.Models;
+﻿using System.Runtime.InteropServices;
+using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Services;
-using System.Text.Json;
+using JiaoLongControl.Server.Core.Utils;
 
 namespace JiaoLongControl.Server.Core.Controllers
 {
-    [System.Runtime.InteropServices.ComVisible(true)]
+    [ComVisible(true)]
+    [ClassInterface(ClassInterfaceType.AutoDual)]
     public class KeyboardController
     {
-        public string GetColor()
+        public CommandResult GetColor()
         {
             Tuple<int, int, int> tuple = MethodServices.GetValue<Tuple<int, int, int>>(MethodName.RGBKeyboardColor);
             var colorInfo = new ColorInfo
@@ -16,32 +18,35 @@ namespace JiaoLongControl.Server.Core.Controllers
                 green = tuple.Item2,
                 blue = tuple.Item3
             };
-            return JsonSerializer.Serialize(colorInfo);
+           return new CommandResult(true,"获取成功",colorInfo);
         }
 
-        public bool SetColor(byte r, byte g, byte b)
+        public CommandResult SetColor(byte r, byte g, byte b)
         {
-            return MethodServices.SetValue(MethodName.RGBKeyboardColor, new byte[3] { r, g, b });
+            var res =  MethodServices.SetValue(MethodName.RGBKeyboardColor, new byte[3] { r, g, b });
+            return new CommandResult(res, res ? "设置成功" : "设置失败");
         }
 
-        public RGBKeyboardMode GetMode()
+        public CommandResult GetMode()
         {
-            return MethodServices.GetValue<RGBKeyboardMode>(MethodName.RGBKeyboardMode);
+            return new CommandResult(true, "获取成功", MethodServices.GetValue<RGBKeyboardMode>(MethodName.RGBKeyboardMode));
         }
 
-        public bool SetMode(RGBKeyboardMode mode)
+        public CommandResult SetMode(RGBKeyboardMode mode)
         {
-            return MethodServices.SetValue(MethodName.RGBKeyboardMode, mode);
+            var res =  MethodServices.SetValue(MethodName.RGBKeyboardMode, mode);
+            return new CommandResult(res, res ? "设置成功" : "设置失败");
         }
 
-        public RGBKeyboardBrightnessLevel GetLightBrightness()
+        public CommandResult GetLightBrightness()
         {
-            return MethodServices.GetValue<RGBKeyboardBrightnessLevel>(MethodName.RGBKeyboardBrightness);
+            return new CommandResult(true, "获取成功", MethodServices.GetValue<RGBKeyboardBrightnessLevel>(MethodName.RGBKeyboardBrightness));
         }
 
-        public bool SetLightBrightness(RGBKeyboardBrightnessLevel br)
+        public CommandResult SetLightBrightness(RGBKeyboardBrightnessLevel br)
         {
-            return MethodServices.SetValue(MethodName.RGBKeyboardBrightness, (byte)br);
+            var res =  MethodServices.SetValue(MethodName.RGBKeyboardBrightness, (byte)br);
+            return new CommandResult(res, res ? "设置成功" : "设置失败");
         }
     }
 }

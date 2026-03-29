@@ -7,6 +7,8 @@ import Keyboard from '@/components/RightComponent/KeyBoard.vue'
 import Settings from '@/components/RightComponent/Settings.vue'
 import { HomeTab } from '@/stores/HomeTab.ts'
 import { computed } from 'vue'
+import GPU from "@/components/RightComponent/GPU.vue";
+import {Power} from "@/utils/bridge.ts";
 
 const store = useStore()
 const currentComponent = computed(() => {
@@ -15,6 +17,10 @@ const currentComponent = computed(() => {
 			return HOME
 		case HomeTab.CPU:
 			return CPU
+    case HomeTab.GPU:
+      return GPU
+    case HomeTab.Power:
+      return Power
 		case HomeTab.Fan:
 			return Fan
 		case HomeTab.Keyboard:

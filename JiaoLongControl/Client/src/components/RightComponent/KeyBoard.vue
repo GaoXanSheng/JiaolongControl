@@ -10,10 +10,8 @@ const LightBrightness = ref(0)
 const colorPicker = ref('#000000')
 
 async function loadInitialData() {
-  const [colorData, brightness] = await Promise.all([
-    Keyboard.GetColor(),
-    Keyboard.GetLightBrightness()
-  ])
+  const colorData = (await Keyboard.GetColor()).Data
+  const brightness = (await Keyboard.GetLightBrightness()).Data
   color.value = {...colorData}
   LightBrightness.value = brightness
   colorPicker.value = rgbToHex(color.value.red, color.value.green, color.value.blue)
@@ -136,10 +134,6 @@ async function handleClick() {
 .Keyboard {
   padding-top: 20px;
 
-  .title {
-    text-align: left;
-  }
-
   .keys-container {
     width: 100%;
     display: flex;
@@ -155,10 +149,11 @@ async function handleClick() {
       padding: 15px;
       border: 2px solid #333;
       overflow: hidden;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 20px var(--kb-glow); // 外部发光
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px var(--kb-glow); // 外部发光
       transition: all 0.3s ease;
 
       // 背景发光晕染
+
       .glow-layer {
         position: absolute;
         inset: 0;
@@ -167,10 +162,11 @@ async function handleClick() {
       }
 
       // 按键网格
+
       .key-grid {
         display: grid;
         grid-template-columns: repeat(13, 1fr); // 模拟13列按键
-        grid-template-rows: repeat(4, 1fr);    // 模拟4行
+        grid-template-rows: repeat(4, 1fr); // 模拟4行
         gap: 6px;
         height: 100%;
         opacity: 0.9;
@@ -182,6 +178,7 @@ async function handleClick() {
           position: relative;
 
           // 键帽底部的背光溢出效果
+
           &::after {
             content: '';
             position: absolute;
@@ -196,6 +193,7 @@ async function handleClick() {
       }
 
       // 交互层：中间的颜色选择器
+
       .Preview-overlay {
         position: absolute;
         top: 50%;
@@ -205,7 +203,7 @@ async function handleClick() {
 
         .picker-tag {
           backdrop-filter: blur(10px);
-          border: 1px solid rgba(255,255,255,0.2);
+          border: 1px solid rgba(255, 255, 255, 0.2);
           cursor: pointer;
           padding: 0 15px;
           height: 32px;
@@ -215,56 +213,11 @@ async function handleClick() {
       }
     }
   }
-  .item {
-    margin-top: 15px;
 
-    .slider-wrapper {
-      display: flex;
-      align-items: center;
-      gap: 20px; // 标签和滑块之间的间距
 
-      .slider-label {
-        flex-basis: 100px; // 固定标签宽度，确保滑块左对齐
-        flex-shrink: 0; // 防止标签被压缩
-        font-size: 12px;
-        font-weight: bold;
-        color: #86909c; // 次要文字颜色
-        letter-spacing: 0.5px;
-        text-align: right; // 文字右对齐，紧贴滑块
-
-        // 为不同通道增加点缀色（可选，增加高级感）
-        &.red {
-          color: #f53f3f;
-          border-right: 2px solid #f53f3f;
-          padding-right: 8px;
-        }
-
-        &.green {
-          color: #00b42a;
-          border-right: 2px solid #00b42a;
-          padding-right: 8px;
-        }
-
-        &.blue {
-          color: #165dff;
-          border-right: 2px solid #165dff;
-          padding-right: 8px;
-        }
-
-        &.brightness {
-          color: #ff7d00;
-          border-right: 2px solid #ff7d00;
-          padding-right: 8px;
-        }
-      }
-
-      .custom-slider {
-        flex: 1; // 占据剩余全部空间
-      }
-    }
-  }
 
   // 针对 Arco Slider 的内部输入框样式微调（可选）
+
   :deep(.arco-slider-input) {
     background-color: var(--color-fill-2);
     border-radius: 4px;

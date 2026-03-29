@@ -7,19 +7,15 @@ import SettingCardComponent from '@/components/RightComponent/setting/SettingCar
 const loading = ref(false)
 const GPUDirectConnection = ref(false)
 onMounted(async () => {
-  GPUDirectConnection.value = (await GPU.Get()) == GPUMode.DiscreteMode
+  GPUDirectConnection.value = (await GPU.Get()).Data == GPUMode.DiscreteMode
 })
 
 async function GPUDirectConnection_handleClick() {
   loading.value = true
   const result = await GPU.Set(GPUDirectConnection.value ? GPUMode.DiscreteMode : GPUMode.HybridMode)
-  if (result) {
-    Message.success('应用成功')
-    Message.info('独显直连应用后需重启')
-  } else {
-    Message.success('应用失败')
-  }
-  GPUDirectConnection.value = result
+  Message.success(result.Message)
+  Message.info('独显直连应用后需重启')
+  GPUDirectConnection.value = result.Success
   loading.value = false
 }
 </script>

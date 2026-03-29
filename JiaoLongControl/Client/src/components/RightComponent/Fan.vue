@@ -24,11 +24,7 @@ const handleOk = async () => {
     await AutoFanControl.Stop()
   }
   const res = await Fan.SetFanSpeed(store.FanSpeed)
-  if (res) {
-    Message.success('设置成功')
-  } else {
-    Message.error('设置失败')
-  }
+  res.Success ? Message.success(res.Message) : Message.error(res.Message)
   loading.value = false
 };
 const handleCancel = () => {
@@ -36,16 +32,13 @@ const handleCancel = () => {
 }
 const EnableAdvancedFanControlSystem = ref(false)
 onMounted(async () => {
-  const config = await Config.GetConfig()
+  const config = (await Config.GetConfig()).Data
   EnableAdvancedFanControlSystem.value = config.AdvancedFanControlSystem
 })
 
 async function handleRemoveFanClick() {
-  if (await Fan.RemoveFanSpeed()) {
-    Message.success('设置成功')
-  } else {
-    Message.error('设置失败')
-  }
+  const res = await Fan.RemoveFanSpeed()
+  res.Success ? Message.success(res.Message) : Message.error(res.Message)
 }
 </script>
 
@@ -89,11 +82,6 @@ async function handleRemoveFanClick() {
 <style lang="scss" scoped>
 .fan-settings {
   padding: 24px;
-
-  .title {
-    text-align: left;
-    color: var(--color-text-1);
-  }
 
   .full-width {
     width: 100%;

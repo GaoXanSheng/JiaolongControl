@@ -8,6 +8,11 @@ export enum ResultState {
     ON = 1,
 }
 
+export type CommandResult<T = void> = {
+    Success: boolean;
+    Message: string;
+} & (T extends void ? {} : { Data: T });
+
 export enum SystemPerMode {
     BalanceMode = 0,
     PerformanceMode = 1,
@@ -37,152 +42,197 @@ export interface ColorInfo {
     blue: number;
 }
 
-interface HostObjects {
-    CPU: {
-        SetCpuShortPower(sp: number): Promise<boolean>;
-        SetCpuLongPower(lp: number): Promise<boolean>;
-        SetCustomMode(open: boolean): Promise<boolean>;
-        GetCustomMode(): Promise<boolean>;
-        GetCPUThermometer(): Promise<number>;
-        SetCPUTempWall(tw: number): Promise<boolean>;
-    };
-    Fan: {
-        GetFanSpeed(): Promise<string>;
-        SetFanSpeed(fanSpeed: number): Promise<boolean>;
-        RemoveFanSpeed(): Promise<boolean>;
-        SetMaxFanSpeedSwitch(
-            maxFanSpeedSwitch: boolean
-        ): Promise<boolean>;
-        GetMaxFanSpeedSwitch(): Promise<boolean>;
-    };
-    GPU: {
-        Get(): Promise<GPUMode>;
-        Set(mode: GPUMode): Promise<boolean>;
-    };
-    LogoLight: {
-        Get(): Promise<boolean>;
-        Set(state: ResultState): Promise<boolean>;
-    };
-    Keyboard: {
-        GetColor(): Promise<string>;
-        SetColor(r: number, g: number, b: number): Promise<boolean>;
-        GetMode(): Promise<RGBKeyboardMode>;
-        SetMode(mode: RGBKeyboardMode): Promise<boolean>;
-        GetLightBrightness(): Promise<RGBKeyboardBrightnessLevel>;
-        SetLightBrightness(
-            br: RGBKeyboardBrightnessLevel
-        ): Promise<boolean>;
-    };
-    PerformanceMode: {
-        Get(): Promise<SystemPerMode>;
-        Set(mode: SystemPerMode): Promise<boolean>;
-    };
-    Config: {
-        GetConfig(): Promise<string>;
-        SetConfig(config: string): Promise<void>;
-    };
-    AutoStart: {
-        Enable(): Promise<void>;
-        Disable(): Promise<void>;
-        IsEnabled(): Promise<boolean>;
-    };
-    AutoFan: {
-        Start:()=> Promise<void>;
-        Stop: ()=> Promise<void>;
-        IsRunning:()=> Promise<boolean>;
-    }
-}
-
 declare global {
     interface Window {
         chrome?: {
             webview?: {
                 hostObjects: {
-                    bridge: HostObjects;
-                }
+                    bridge: {
+                        CPU: {
+                            SetCpuShortPower(sp: number): Promise<any>;
+                            SetCpuLongPower(lp: number): Promise<any>;
+                            SetCustomMode(open: boolean): Promise<any>;
+                            GetCustomMode(): Promise<any>;
+                            GetCPUThermometer(): Promise<any>;
+                            SetCPUTempWall(tw: number): Promise<any>;
+                        };
+                        Fan: {
+                            GetFanSpeed(): Promise<any>;
+                            SetFanSpeed(fanSpeed: number): Promise<any>;
+                            RemoveFanSpeed(): Promise<any>;
+                            GetMaxFanSpeedSwitch(): Promise<any>;
+                            SetMaxFanSpeedSwitch(maxFanSpeedSwitch: boolean): Promise<boolean>;
+                        };
+                        GPU: {
+                            Get(): Promise<any>;
+                            Set(mode: GPUMode): Promise<any>;
+                        };
+                        LogoLight: {
+                            Get(): Promise<any>;
+                            Set(state: ResultState): Promise<any>;
+                        };
+                        Keyboard: {
+                            GetColor(): Promise<any>;
+                            SetColor(r: number, g: number, b: number): Promise<any>;
+                            GetMode(): Promise<any>;
+                            SetMode(mode: RGBKeyboardMode): Promise<any>;
+                            GetLightBrightness(): Promise<any>;
+                            SetLightBrightness(br: RGBKeyboardBrightnessLevel): Promise<any>;
+                        };
+                        PerformanceMode: {
+                            Get(): Promise<any>;
+                            Set(mode: SystemPerMode): Promise<any>;
+                        };
+                        Config: {
+                            GetConfig(): Promise<any>;
+                            SetConfig(config: string): Promise<any>;
+                        };
+                        AutoStart: {
+                            Enable(): Promise<any>;
+                            Disable(): Promise<any>;
+                            IsEnabled(): Promise<any>;
+                        };
+                        AutoFan: {
+                            Start(): Promise<any>;
+                            Stop(): Promise<any>;
+                            IsRunning(): Promise<any>;
+                        };
+                        NvidiaGpu: {
+                            LockGpuClock(freq: number, gpuIndex?: number): Promise<any>;
+                            LockGpuClockRange(minFreq: number, maxFreq: number, gpuIndex?: number): Promise<any>;
+                            ResetGpuClock(gpuIndex?: number): Promise<any>;
+                            LockMemoryClock(freq: number, gpuIndex?: number): Promise<any>;
+                            ResetMemoryClock(gpuIndex?: number): Promise<any>;
+                            SetPowerLimit(watts: number, gpuIndex?: number): Promise<any>;
+                        };
+                        Power: {
+                            SetCPUMaxFrequency(mhz: number): Promise<any>;
+                            ResetCPUMaxFrequency(): Promise<any>;
+                            SetCPUMaxState(percent: number): Promise<any>;
+                            DisableTurbo(): Promise<any>;
+                            EnableTurbo(): Promise<any>;
+                            GetCPUMaxFrequency(): Promise<any>;
+                            GetCPUMaxState(): Promise<any>;
+                            GetTurboEnabled(): Promise<any>;
+                        };
+                    };
+                };
             };
         };
     }
 }
-const bridge = window.chrome!.webview!.hostObjects.bridge;
 
+const raw = window.chrome!.webview!.hostObjects.bridge;
 
-export interface ConfigInterface {
-    BootMinimized: boolean,
-    AdvancedFanControlSystem: boolean,
-    BootAdvancedFanControlSystem: boolean,
-    AdvancedFanControlSystemConfig: {
-        temp: number,
-        speed: number
-    }[],
-    BootAdvancedCPUSystem: boolean,
-    AdvancedCPUSystemConfig: {
-        CpuShortPower: number,
-        CpuLongPower: number,
-        CpuTempWall: number
-    }
+async function call<T>(promise: Promise<any>): Promise<CommandResult<T>> {
+    // @ts-ignore
+    return JSON.parse(await promise.toJson());
 }
-
-export const Config = {
-    GetConfig: async (): Promise<ConfigInterface> => {
-        return JSON.parse(await bridge.Config.GetConfig()) as ConfigInterface
-    },
-    SetConfig: async (config: ConfigInterface) => {
-        return await bridge.Config.SetConfig(JSON.stringify(config))
-    },
-    Boot: {
-        Enable: bridge.AutoStart.Enable,
-        Disable: bridge.AutoStart.Disable,
-        IsEnabled: bridge.AutoStart.IsEnabled,
-    }
-}
-export const AutoFanControl = bridge.AutoFan
-export const CPU = {
-    SetCpuShortPower: async (sp: number) => {
-        return await bridge.CPU.SetCpuShortPower(toByte(sp))
-    },
-
-    SetCpuLongPower: async (lp: number) => {
-        return await bridge.CPU.SetCpuLongPower(toByte(lp))
-    },
-    SetCustomMode: bridge.CPU.SetCustomMode,
-    GetCustomMode: bridge.CPU.GetCustomMode,
-    SetCPUTempWall: async (tw: number) => {
-        return bridge.CPU.SetCPUTempWall(toByte(tw))
-    },
-    GetCPUThermometer: bridge.CPU.GetCPUThermometer
-
-};
-export const Fan = {
-    GetFanSpeed: async () => {
-        return JSON.parse(await bridge.Fan.GetFanSpeed()) as FanSpeedInfo
-    },
-    SetFanSpeed: async (fanSpeed: number): Promise<boolean> => {
-        return await bridge.Fan.SetFanSpeed(toByte(fanSpeed / 100))
-    },
-    SetMaxFanSpeedSwitch: bridge.Fan.SetMaxFanSpeedSwitch,
-    GetMaxFanSpeedSwitch: bridge.Fan.GetMaxFanSpeedSwitch,
-    RemoveFanSpeed: bridge.Fan.RemoveFanSpeed
-};
-export const GPU = bridge.GPU;
-export const LogoLight = bridge.LogoLight;
-export const Keyboard = {
-    GetColor: async () => {
-        return JSON.parse(await bridge.Keyboard.GetColor()) as ColorInfo
-    },
-    SetColor: async (r: number, g: number, b: number) => {
-        return await bridge.Keyboard.SetColor(toByte(r), toByte(g), toByte(b))
-    },
-    GetMode: bridge.Keyboard.GetMode,
-    SetMode: bridge.Keyboard.SetMode,
-    GetLightBrightness: bridge.Keyboard.GetLightBrightness,
-    SetLightBrightness: bridge.Keyboard.SetLightBrightness,
-};
-export const PerformanceMode = bridge.PerformanceMode;
 
 function toByte(value: number): number {
     if (!Number.isInteger(value)) {
-        throw new Error('必须是整数')
+        throw new Error('必须是整数');
     }
-    return value
+    return value;
 }
+
+export interface ConfigInterface {
+    BootMinimized: boolean;
+    AdvancedFanControlSystem: boolean;
+    BootAdvancedFanControlSystem: boolean;
+    AdvancedFanControlSystemConfig: { temp: number; speed: number }[];
+    BootAdvancedCPUSystem: boolean;
+    BootAdvancedGPUSystem:boolean
+    AdvancedCPUSystemConfig: {
+        CPUTurbo:boolean
+        CPUMaxState:number
+        CPUMaxFrequency: number;
+        CpuShortPower: number;
+        CpuLongPower: number;
+        CpuTempWall: number;
+    };
+    NvidiaGpuConfig:{
+        GpuClock: number
+        GpuMemoryClock: number
+        PowerLimit: number
+    }
+}
+
+export const CPU = {
+    SetCpuShortPower: (sp: number) => call(raw.CPU.SetCpuShortPower(toByte(sp))),
+    SetCpuLongPower: (lp: number) => call(raw.CPU.SetCpuLongPower(toByte(lp))),
+    SetCustomMode: (open: boolean) => call(raw.CPU.SetCustomMode(open)),
+    GetCustomMode: () => call(raw.CPU.GetCustomMode()),
+    SetCPUTempWall: (tw: number) => call(raw.CPU.SetCPUTempWall(toByte(tw))),
+    GetCPUThermometer: () => call<number>(raw.CPU.GetCPUThermometer()),
+};
+
+export const Fan = {
+    GetFanSpeed: () => call<FanSpeedInfo>(raw.Fan.GetFanSpeed()),
+    SetFanSpeed: (fanSpeed: number) => call(raw.Fan.SetFanSpeed(toByte(fanSpeed / 100))),
+    GetMaxFanSpeedSwitch: () => call(raw.Fan.GetMaxFanSpeedSwitch()),
+    RemoveFanSpeed: () => call(raw.Fan.RemoveFanSpeed()),
+};
+
+export const GPU = {
+    Get: () => call<GPUMode>(raw.GPU.Get()),
+    Set: (mode: GPUMode) => call(raw.GPU.Set(mode)),
+};
+
+export const LogoLight = {
+    Get: () => call<ResultState>(raw.LogoLight.Get()),
+    Set: (state: ResultState) => call(raw.LogoLight.Set(state)),
+};
+
+export const Keyboard = {
+    GetColor: () => call<ColorInfo>(raw.Keyboard.GetColor()),
+    SetColor: (r: number, g: number, b: number) => call(raw.Keyboard.SetColor(toByte(r), toByte(g), toByte(b))),
+    GetMode: () => call<RGBKeyboardMode>(raw.Keyboard.GetMode()),
+    SetMode: (mode: RGBKeyboardMode) => call(raw.Keyboard.SetMode(mode)),
+    GetLightBrightness: () => call<RGBKeyboardBrightnessLevel>(raw.Keyboard.GetLightBrightness()),
+    SetLightBrightness: (br: RGBKeyboardBrightnessLevel) => call(raw.Keyboard.SetLightBrightness(br)),
+};
+
+export const PerformanceMode = {
+    Get: () => call<SystemPerMode>(raw.PerformanceMode.Get()),
+    Set: (mode: SystemPerMode) => call(raw.PerformanceMode.Set(mode)),
+};
+
+export const Config = {
+    GetConfig: async () => {
+        return await call<ConfigInterface>(raw.Config.GetConfig());
+    },
+    SetConfig: (config: ConfigInterface) => call(raw.Config.SetConfig(JSON.stringify(config))),
+    Boot: {
+        Enable: () => call(raw.AutoStart.Enable()),
+        Disable: () => call(raw.AutoStart.Disable()),
+        IsEnabled: () => call(raw.AutoStart.IsEnabled()),
+    },
+};
+
+export const AutoFanControl = {
+    Start: () => call(raw.AutoFan.Start()),
+    Stop: () => call(raw.AutoFan.Stop()),
+    IsRunning: () => call(raw.AutoFan.IsRunning()),
+};
+
+export const NvidiaGpu = {
+    LockGpuClock: (freq: number, gpuIndex?: number) => call(raw.NvidiaGpu.LockGpuClock(freq, gpuIndex)),
+    LockGpuClockRange: (minFreq: number, maxFreq: number, gpuIndex?: number) =>
+        call(raw.NvidiaGpu.LockGpuClockRange(minFreq, maxFreq, gpuIndex)),
+    ResetGpuClock: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetGpuClock(gpuIndex)),
+    LockMemoryClock: (freq: number, gpuIndex?: number) => call(raw.NvidiaGpu.LockMemoryClock(freq, gpuIndex)),
+    ResetMemoryClock: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetMemoryClock(gpuIndex)),
+    SetPowerLimit: (watts: number, gpuIndex?: number) => call(raw.NvidiaGpu.SetPowerLimit(watts, gpuIndex)),
+};
+
+export const Power = {
+    SetCPUMaxFrequency: (mhz: number) => call(raw.Power.SetCPUMaxFrequency(mhz)),
+    ResetCPUMaxFrequency: () => call(raw.Power.ResetCPUMaxFrequency()),
+    SetCPUMaxState: (percent: number) => call(raw.Power.SetCPUMaxState(percent)),
+    DisableTurbo: () => call(raw.Power.DisableTurbo()),
+    EnableTurbo: () => call(raw.Power.EnableTurbo()),
+    GetCPUMaxFrequency: () => call<{ ac: number; dc: number }>(raw.Power.GetCPUMaxFrequency()),
+    GetCPUMaxState: () => call<{ ac: number; dc: number }>(raw.Power.GetCPUMaxState()),
+    GetTurboEnabled: () => call<{ ac: boolean; dc: boolean }>(raw.Power.GetTurboEnabled()),
+};

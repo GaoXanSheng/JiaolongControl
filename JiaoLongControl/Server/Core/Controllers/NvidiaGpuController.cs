@@ -1,9 +1,11 @@
 ﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Utils;
 
 namespace JiaoLongControl.Server.Core.Controllers;
 
-[System.Runtime.InteropServices.ComVisible(true)]
+[ComVisible(true)]
+[ClassInterface(ClassInterfaceType.AutoDual)]
 public class NvidiaGpuController
 {
     private readonly string _smiPath = "nvidia-smi";

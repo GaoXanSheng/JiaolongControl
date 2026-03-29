@@ -1,5 +1,6 @@
 ﻿namespace JiaoLongControl.Server.Core.Models
 {
+    [System.Runtime.InteropServices.ComVisible(true)]
     public class ColorInfo
     {
         public int red { get; set; }

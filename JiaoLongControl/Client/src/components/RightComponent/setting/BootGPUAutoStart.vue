@@ -4,30 +4,30 @@ import {onMounted, ref} from "vue";
 import {Config} from "@/utils/bridge.ts";
 
 const loading = ref(false)
-const BootStartAdvancedCPUSystem = ref(false)
+const BootStartAdvancedGPUSystem = ref(false)
 onMounted(async () => {
   const config = (await Config.GetConfig()).Data
-  BootStartAdvancedCPUSystem.value = config.BootAdvancedCPUSystem
+  BootStartAdvancedGPUSystem.value = config.BootAdvancedGPUSystem
 })
 
-async function SetBootStartAdvancedCPUSystem(value: string | number | boolean) {
+async function SetBootStartAdvancedGPUSystem(value: string | number | boolean) {
   if (typeof value !== 'boolean') return
   loading.value = true
   const config = (await Config.GetConfig()).Data
-  config.BootAdvancedCPUSystem = value;
+  config.BootAdvancedGPUSystem = value;
   await Config.SetConfig(config)
-  BootStartAdvancedCPUSystem.value = value
+  BootStartAdvancedGPUSystem.value = value
   loading.value = false
 }
 </script>
 
 <template>
-  <setting-card-component title="启用CPU参数自动应用">
+  <setting-card-component title="启用GPU参数自动应用">
     <template #extra>
       <a-switch
-          :model-value="BootStartAdvancedCPUSystem"
+          :model-value="BootStartAdvancedGPUSystem"
           :loading="loading"
-          @change="SetBootStartAdvancedCPUSystem($event)"
+          @change="SetBootStartAdvancedGPUSystem($event)"
       >
         <template #checked-icon>
           <icon-check/>

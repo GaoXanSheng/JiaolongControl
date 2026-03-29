@@ -7,7 +7,7 @@ import SettingCardComponent from '@/components/RightComponent/setting/SettingCar
 const loading = ref(false)
 const logolight = ref(false)
 onMounted(async () => {
-  logolight.value = await LogoLight.Get();
+  logolight.value = (await LogoLight.Get()).Success;
 });
 
 async function LogoLight_handleClick() {

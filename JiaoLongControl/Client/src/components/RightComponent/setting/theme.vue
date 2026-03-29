@@ -2,8 +2,6 @@
 import useStore from '@/stores'
 import { ref } from 'vue'
 import SettingCardComponent from '@/components/RightComponent/setting/SettingCardComponent.vue'
-import { Message } from '@arco-design/web-vue'
-
 const store = useStore()
 const theme = ref(store.$state.theme != 'light')
 const loading = ref(false)

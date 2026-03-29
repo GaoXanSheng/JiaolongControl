@@ -12,10 +12,7 @@ namespace JiaoLongControl.Server
     public partial class MainWindow : Window
     {
         private Hardcodet.Wpf.TaskbarNotification.TaskbarIcon _taskbarIcon;
-
-        private readonly Bridge _bridge = new();
         private string _webRoot = string.Empty;
-
         private WebView2? _webView;
         private bool _webViewDestroyed = true;
 
@@ -26,6 +23,7 @@ namespace JiaoLongControl.Server
         private readonly bool _startInTray;
         private readonly bool _startInFan;
         private readonly bool _startInCPU;
+        private readonly bool _startInGPU;
 
         public MainWindow()
         {
@@ -40,6 +38,7 @@ namespace JiaoLongControl.Server
                 ConfigController.Config.AdvancedFanControlSystem &&
                 ConfigController.Config.BootAdvancedFanControlSystem;
             _startInCPU = ConfigController.Config.BootAdvancedCPUSystem;
+            _startInGPU = ConfigController.Config.BootAdvancedGPUSystem;
             InitializePaths();
             InitializeTray();
 
@@ -53,14 +52,31 @@ namespace JiaoLongControl.Server
 
             if (_startInFan)
             {
-                _bridge.AutoFan.Start();
+                Bridge.Instance.AutoFan.Start();
             }
 
             if (_startInCPU)
             {
-                _bridge.CPU.SetCpuLongPower(ConfigController.Config.AdvancedCPUSystemConfig.CpuLongPower);
-                _bridge.CPU.SetCpuShortPower(ConfigController.Config.AdvancedCPUSystemConfig.CpuShortPower);
-                _bridge.CPU.SetCPUTempWall(ConfigController.Config.AdvancedCPUSystemConfig.CpuTempWall);
+                Bridge.Instance.CPU.SetCpuLongPower(ConfigController.Config.AdvancedCPUSystemConfig.CpuLongPower);
+                Bridge.Instance.CPU.SetCpuShortPower(ConfigController.Config.AdvancedCPUSystemConfig.CpuShortPower);
+                Bridge.Instance.CPU.SetCPUTempWall(ConfigController.Config.AdvancedCPUSystemConfig.CpuTempWall);
+                Bridge.Instance.Power.SetCPUMaxFrequency(
+                    ConfigController.Config.AdvancedCPUSystemConfig.CPUMaxFrequency);
+                if (ConfigController.Config.AdvancedCPUSystemConfig.CPUTurbo)
+                {
+                    Bridge.Instance.Power.EnableTurbo();
+                }
+                else
+                {
+                    Bridge.Instance.Power.DisableTurbo();
+                }
+            }
+
+            if (_startInGPU)
+            {
+                Bridge.Instance.NvidiaGpu.LockGpuClock(ConfigController.Config.NvidiaGpuConfig.GpuClock);
+                Bridge.Instance.NvidiaGpu.LockMemoryClock(ConfigController.Config.NvidiaGpuConfig.MemoryClock);
+                Bridge.Instance.NvidiaGpu.SetPowerLimit(ConfigController.Config.NvidiaGpuConfig.PowerLimit);
             }
 
             Closing += OnClosing;
@@ -108,7 +124,7 @@ namespace JiaoLongControl.Server
 
             await view.EnsureCoreWebView2Async(env);
 
-            ConfigureWebView(view, _bridge);
+            ConfigureWebView(view);
 
             view.Source = Directory.Exists(_webRoot)
                 ? new Uri("https://app.local/index.html")
@@ -170,9 +186,9 @@ namespace JiaoLongControl.Server
             _webViewDestroyed = true;
         }
 
-        private void ConfigureWebView(WebView2 view, Bridge bridge)
+        private void ConfigureWebView(WebView2 view)
         {
-            view.CoreWebView2.AddHostObjectToScript("bridge", bridge);
+            view.CoreWebView2.AddHostObjectToScript("bridge", Bridge.Instance);
 
             if (Directory.Exists(_webRoot))
             {

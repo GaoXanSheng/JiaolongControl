@@ -16,6 +16,6 @@ export default defineConfig({
         },
     },
     build: {
-        outDir: '../bin/publish/WebRoot',
+        outDir: '../../bin/publish/WebRoot',
     }
 })

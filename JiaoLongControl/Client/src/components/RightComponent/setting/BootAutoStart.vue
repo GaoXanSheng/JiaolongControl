@@ -8,8 +8,8 @@ const BootAutoStart = ref(false)
 const MinimizedAfterBooting = ref(false)
 
 onMounted(async () => {
-  BootAutoStart.value = await Config.Boot.IsEnabled()
-  MinimizedAfterBooting.value = (await Config.GetConfig()).BootMinimized
+  BootAutoStart.value = (await Config.Boot.IsEnabled()).Success
+  MinimizedAfterBooting.value = (await Config.GetConfig()).Data.BootMinimized
 })
 
 async function BootAutoStartHandleChange<T>(value: T) {
@@ -22,7 +22,7 @@ async function BootAutoStartHandleChange<T>(value: T) {
     } else {
       await Config.Boot.Disable()
     }
-    BootAutoStart.value = await Config.Boot.IsEnabled()
+    BootAutoStart.value = (await Config.Boot.IsEnabled()).Success
   } finally {
     loading.value = false
   }
@@ -31,7 +31,7 @@ async function BootAutoStartHandleChange<T>(value: T) {
 async function MinimizedAfterBootingChange<T>(value: T) {
   if (typeof value != "boolean") return
   loading.value = true
-  const config = await Config.GetConfig()
+  const config = (await Config.GetConfig()).Data
   config.BootMinimized = value
   await Config.SetConfig(config)
   MinimizedAfterBooting.value = value

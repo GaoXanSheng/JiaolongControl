@@ -1,59 +1,68 @@
-﻿using JiaoLongControl.Server.Core.Models;
+﻿using System.Runtime.InteropServices;
+using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Services;
+using JiaoLongControl.Server.Core.Utils;
 
 namespace JiaoLongControl.Server.Core.Controllers
 {
-    [System.Runtime.InteropServices.ComVisible(true)]
+    [ComVisible(true)]
+    [ClassInterface(ClassInterfaceType.AutoDual)]
     public class CpuController
     {
-        public bool SetCpuShortPower(byte sp)
+        public CommandResult SetCpuShortPower(byte sp)
         {
-            return MethodServices.SetValue(MethodName.CPUPower, new byte[2]
+            var res =  MethodServices.SetValue(MethodName.CPUPower, new byte[2]
             {
                 (byte)CPUPower.SPLState,
                 sp
             });
+            return new CommandResult(res, res ? "设置成功" : "设置失败");
         }
 
-        public bool SetCpuLongPower(byte lp)
+        public CommandResult SetCpuLongPower(byte lp)
         {
-            return MethodServices.SetValue(MethodName.CPUPower, new byte[2]
+            var res = MethodServices.SetValue(MethodName.CPUPower, new byte[2]
             {
                 (byte)CPUPower.SPPTState,
                 lp
             });
+            return new CommandResult(res, res ? "设置成功" : "设置失败");
         }
 
-        public bool SetCustomMode(bool open)
+        public CommandResult SetCustomMode(bool open)
         {
+            var res = false;
             if (open)
             {
-                return MethodServices.SetValue(MethodName.CPUPower, CPUPower.OpenState);
+                res =  MethodServices.SetValue(MethodName.CPUPower, CPUPower.OpenState);
             }
             else
             {
-                return MethodServices.SetValue(MethodName.CPUPower, CPUPower.CloseState);
+                res =  MethodServices.SetValue(MethodName.CPUPower, CPUPower.CloseState);
             }
+            return new CommandResult(res, res ? "设置成功" : "设置失败");
         }
 
-        public bool GetCustomMode()
+        public CommandResult GetCustomMode()
         {
             var res = MethodServices.GetValue<CPUPower>(MethodName.CPUPower);
-            return res == CPUPower.OpenState;
+            return new CommandResult(res == CPUPower.OpenState, res == CPUPower.OpenState ? "已开启" : "已关闭");
         }
 
-        public byte GetCPUThermometer()
+        public CommandResult GetCPUThermometer()
         {
-            return MethodServices.GetValue<byte>(MethodName.CPUThermometer);
+            var res =  MethodServices.GetValue<byte>(MethodName.CPUThermometer);
+            return new CommandResult(true, $"读取成功", res);
         }
 
-        public bool SetCPUTempWall(byte tw)
+        public CommandResult SetCPUTempWall(byte tw)
         {
-            return MethodServices.SetValue(MethodName.CPUPower, new byte[2]
+            var res=  MethodServices.SetValue(MethodName.CPUPower, new byte[2]
             {
                 (byte)CPUPower.CpuTempWallState,
                 tw
             });
+            return new CommandResult(res, res ? "设置成功" : "设置失败");
         }
     }
 }

@@ -7,7 +7,7 @@ const loading = ref(false)
 const EnableAdvancedFanControlSystem = ref(false)
 const BootStartAdvancedFanControlSystem = ref(false)
 onMounted(async () => {
-  const config = await Config.GetConfig()
+  const config = (await Config.GetConfig()).Data
   EnableAdvancedFanControlSystem.value = config.AdvancedFanControlSystem
   BootStartAdvancedFanControlSystem.value = config.BootAdvancedFanControlSystem
 })
@@ -15,7 +15,7 @@ onMounted(async () => {
 async function SetEnableAdvancedFanControlSystem(value: string | number | boolean) {
   if (typeof value !== 'boolean') return
   loading.value = true
-  const config = await Config.GetConfig()
+  const config = (await Config.GetConfig()).Data
   config.AdvancedFanControlSystem = value;
   await Config.SetConfig(config)
   EnableAdvancedFanControlSystem.value = value
@@ -25,7 +25,7 @@ async function SetEnableAdvancedFanControlSystem(value: string | number | boolea
 async function SetBootStartAdvancedFanControlSystem(value: string | number | boolean) {
   if (typeof value !== 'boolean') return
   loading.value = true
-  const config = await Config.GetConfig()
+  const config = (await Config.GetConfig()).Data
   config.BootAdvancedFanControlSystem = value;
   await Config.SetConfig(config)
   BootStartAdvancedFanControlSystem.value = value

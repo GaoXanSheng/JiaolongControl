@@ -1,17 +1,20 @@
 ﻿using System.Text;
 using System.Windows;
 using JiaoLongControl.Server.Core.Controllers;
+using JiaoLongControl.Server.Interop;
+using log4net;
+using log4net.Config;
 
 namespace JiaoLongControl.Server
 {
+    
     public partial class App : Application
     {
         private static Mutex? _mutex;
-
+        public static readonly ILog Logger= LogManager.GetLogger(typeof(App));
         protected override void OnStartup(StartupEventArgs e)
         {
-            Console.OutputEncoding = Encoding.UTF8;
-            Console.InputEncoding = Encoding.UTF8;
+            XmlConfigurator.Configure();
             const string appName = "JiaoLongControl_Main_Instance";
             bool createdNew;
             _mutex = new Mutex(true, appName, out createdNew);
@@ -23,11 +26,10 @@ namespace JiaoLongControl.Server
             }
             base.OnStartup(e);
         }
-
         protected override void OnExit(ExitEventArgs e)
         {
             base.OnExit(e);
-            new FanController().RemoveFanSpeed();
+            Bridge.Instance.Fan.RemoveFanSpeed();
         }
     }
 }

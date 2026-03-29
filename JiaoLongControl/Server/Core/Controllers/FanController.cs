@@ -1,13 +1,15 @@
-﻿using JiaoLongControl.Server.Core.Models;
+﻿using System.Runtime.InteropServices;
+using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Services;
-using System.Text.Json;
+using JiaoLongControl.Server.Core.Utils;
 
 namespace JiaoLongControl.Server.Core.Controllers
 {
-    [System.Runtime.InteropServices.ComVisible(true)]
+    [ComVisible(true)]
+    [ClassInterface(ClassInterfaceType.AutoDual)]
     public class FanController
     {
-        public string GetFanSpeed()
+        public CommandResult GetFanSpeed()
         {
             Tuple<int, int> CPUGPUFanSpeed = MethodServices.GetValue<Tuple<int, int>>(MethodName.CPUGPUFanSpeed);
             var fanSpeedInfo = new FanSpeedInfo
@@ -15,50 +17,53 @@ namespace JiaoLongControl.Server.Core.Controllers
                 CPUFanSpeed = CPUGPUFanSpeed.Item1,
                 GPUFanSpeed = CPUGPUFanSpeed.Item2
             };
-            return JsonSerializer.Serialize(fanSpeedInfo);
+            return new CommandResult(true, "获取成功", fanSpeedInfo);
         }
 
-        public bool SetFanSpeed(byte fanSpeed)
+        public CommandResult SetFanSpeed(byte fanSpeed)
         {
             // ACPI表的风扇调速比EC的风扇调速优先级更高，所以如果开启了ACPI表的风扇调速，就无法通过EC来设置风扇速度，因此需要先关闭ACPI表的风扇调速开关
-            if (GetMaxFanSpeedSwitch())
+            if (GetMaxFanSpeedSwitch().Success)
             {
                 SetMaxFanSpeedSwitch(false);
             }
+
             using (ECManager ec = new ECManager())
             {
                 if (ec.State)
                 {
                     ec.Fan1SetSpeed(fanSpeed);
                     ec.Fan2SetSpeed(fanSpeed);
-                    return true;
+                    return new CommandResult(true, "设置成功");
                 }
             }
 
-            return false;
+            return new CommandResult(false, "设置失败");
         }
 
-        public bool RemoveFanSpeed()
+        public CommandResult RemoveFanSpeed()
         {
             using (ECManager ec = new ECManager())
             {
                 if (ec.State)
                 {
                     ec.RemoveFanSpeed();
-                    return true;
+                    return new CommandResult(true, "设置成功");
                 }
             }
-            return false;
+
+            return new CommandResult(false, "设置失败");
         }
+
         [Obsolete("不推荐使用maxFanSpeedSwitch")]
         public bool SetMaxFanSpeedSwitch(bool maxFanSpeedSwitch)
         {
             return MethodServices.SetValue(MethodName.MaxFanSpeedSwitch, (byte)(maxFanSpeedSwitch ? 1 : 0));
         }
-
-        public bool GetMaxFanSpeedSwitch()
+        public CommandResult GetMaxFanSpeedSwitch()
         {
-            return MethodServices.GetValue<byte>(MethodName.MaxFanSpeedSwitch) == 1;
+            var res= MethodServices.GetValue<byte>(MethodName.MaxFanSpeedSwitch) == 1;
+            return new CommandResult(res, "获取成功");
         }
     }
 }
