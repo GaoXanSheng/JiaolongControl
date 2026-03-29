@@ -17,7 +17,6 @@
                     :min="0"
                     :max="3000"
                     step="1"
-                    show-ticks
                     show-input
                     v-model="GPUData.GpuClock"
                     class="custom-slider"
@@ -33,7 +32,6 @@
                     :min="0"
                     :max="10000"
                     step="1"
-                    show-ticks
                     show-input
                     v-model="GPUData.GpuMemoryClock"
                     class="custom-slider"
@@ -49,7 +47,6 @@
                     :min="0"
                     :max="140"
                     step="1"
-                    show-ticks
                     show-input
                     v-model="GPUData.PowerLimit"
                     class="custom-slider"

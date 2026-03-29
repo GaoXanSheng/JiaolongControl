@@ -87,7 +87,6 @@ async function SetCPUTurbo() {
                     :min="30"
                     :max="255"
                     step="1"
-                    show-ticks
                     show-input
                     v-model="CPUData.CpuShortPower"
                     class="custom-slider"
@@ -102,7 +101,6 @@ async function SetCPUTurbo() {
                     :min="30"
                     :max="255"
                     step="1"
-                    show-ticks
                     show-input
                     v-model="CPUData.CpuLongPower"
                     class="custom-slider"
@@ -117,7 +115,6 @@ async function SetCPUTurbo() {
                     :min="1"
                     :max="100"
                     step="1"
-                    show-ticks
                     show-input
                     v-model="CPUData.CpuTempWall"
                     class="custom-slider"
@@ -132,7 +129,6 @@ async function SetCPUTurbo() {
                     :min="0"
                     :max="5400"
                     step="100"
-                    show-ticks
                     show-input
                     class="custom-slider"
                     v-model="CPUData.CPUMaxFrequency"
@@ -147,7 +143,6 @@ async function SetCPUTurbo() {
 <!--                    :min="0"-->
 <!--                    :max="100"-->
 <!--                    step="1"-->
-<!--                    show-ticks-->
 <!--                    show-input-->
 <!--                    class="custom-slider"-->
 <!--                    v-model="CPUData.CPUMaxState"-->
