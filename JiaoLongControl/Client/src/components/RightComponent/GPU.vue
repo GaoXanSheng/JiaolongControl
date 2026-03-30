@@ -33,7 +33,7 @@
                     :max="10000"
                     step="1"
                     show-input
-                    v-model="GPUData.GpuMemoryClock"
+                    v-model="GPUData.MemoryClock"
                     class="custom-slider"
                 />
                 <a-button type="primary" :loading="loading" @click="RemoveGPUMemoryClock">清除</a-button>
@@ -94,7 +94,7 @@ async function RemoveGPUClock() {
 
 async function SetGPUMemoryClock() {
   loading.value = true
-  const res = await NvidiaGpu.LockMemoryClock(GPUData.value.GpuMemoryClock)
+  const res = await NvidiaGpu.LockMemoryClock(GPUData.value.MemoryClock)
   res.Success ? Message.success(res.Message) : Message.error(res.Message)
   await saveConfig()
   loading.value = false

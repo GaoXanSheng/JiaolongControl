@@ -45,15 +45,6 @@ async function SetCPUMaxFrequency() {
   await saveConfig()
   loading.value = false
 }
-
-// async function SetCPUMaxState() {
-//   loading.value = true
-//   const res = await Power.SetCPUMaxState(CPUData.value.CPUMaxState)
-//   res.Success ? Message.success(res.Message) : Message.error(res.Message)
-//   await saveConfig()
-//   loading.value = false
-// }
-
 async function SetCPUTurbo() {
   loading.value = true
   if (!CPUData.value.CpuTurbo) {

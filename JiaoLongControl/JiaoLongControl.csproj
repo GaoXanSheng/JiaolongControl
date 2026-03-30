@@ -50,6 +50,7 @@
         <EmbeddedResource Include="Server\Resources\Drivers\PawnIOLib.dll" />
         <None Remove="Server\Resources\Drivers\RyzenSMU.bin" />
         <EmbeddedResource Include="Server\Resources\Drivers\RyzenSMU.bin" />
+        <None Remove="Client\src\assets\GPU.png" />
     </ItemGroup>
     <ItemGroup>
         <ApplicationDefinition Include="Server\App.xaml">

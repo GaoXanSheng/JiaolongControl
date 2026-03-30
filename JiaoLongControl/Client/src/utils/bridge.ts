@@ -166,7 +166,10 @@ export interface ConfigInterface {
     BootAdvancedFanControlSystem: boolean;
     AdvancedFanControlSystemConfig: { temp: number; speed: number }[];
     BootAdvancedCPUSystem: boolean;
-    BootAdvancedGPUSystem: boolean
+    BootAdvancedGPUSystem: boolean;
+    FanPageStore: {
+        FanSpeed: number;
+    }
     AdvancedCPUSystemConfig: {
         CpuTurbo: boolean
         CpuMaxFrequency: number;
@@ -176,7 +179,7 @@ export interface ConfigInterface {
     };
     NvidiaGpuConfig: {
         GpuClock: number
-        GpuMemoryClock: number
+        MemoryClock: number
         PowerLimit: number
     }
 }
@@ -249,6 +252,30 @@ export const NvidiaGpu = {
     SetPowerLimit: (watts: number, gpuIndex?: number) => call(raw.NvidiaGpu.SetPowerLimit(watts, gpuIndex)),
 };
 
+export const RyzenSmu = {
+    SetStapmLimit: (watts: number) => call(raw.RyzenSmu.SetStapmLimit(watts)),
+    SetStapmTime: (seconds: number) => call(raw.RyzenSmu.SetStapmTime(seconds)),
+    SetFastLimit: (watts: number) => call(raw.RyzenSmu.SetFastLimit(watts)),
+    SetSlowLimit: (watts: number) => call(raw.RyzenSmu.SetSlowLimit(watts)),
+    SetSlowTime: (seconds: number) => call(raw.RyzenSmu.SetSlowTime(seconds)),
+    SetPptLimitRsmu: (watts: number) => call(raw.RyzenSmu.SetPptLimitRsmu(watts)),
+    SetVrmCurrentMp1: (milliamps: number) => call(raw.RyzenSmu.SetVrmCurrentMp1(milliamps)),
+    SetVrmCurrentRsmu: (milliamps: number) => call(raw.RyzenSmu.SetVrmCurrentRsmu(milliamps)),
+    SetTdcLimitMp1: (milliamps: number) => call(raw.RyzenSmu.SetTdcLimitMp1(milliamps)),
+    SetTdcLimitRsmu: (milliamps: number) => call(raw.RyzenSmu.SetTdcLimitRsmu(milliamps)),
+    SetEdcLimitMp1: (milliamps: number) => call(raw.RyzenSmu.SetEdcLimitMp1(milliamps)),
+    SetEdcLimitRsmu: (milliamps: number) => call(raw.RyzenSmu.SetEdcLimitRsmu(milliamps)),
+    SetTempLimitMp1: (celsius: number) => call(raw.RyzenSmu.SetTempLimitMp1(celsius)),
+    SetTempLimitRsmu: (celsius: number) => call(raw.RyzenSmu.SetTempLimitRsmu(celsius)),
+    SetPboScalar: (value: number) => call(raw.RyzenSmu.SetPboScalar(value)),
+    SetOcClk: (mhz: number) => call(raw.RyzenSmu.SetOcClk(mhz)),
+    SetPerCoreOcClk: (coreIdx: number, mhz: number) => call(raw.RyzenSmu.SetPerCoreOcClk(coreIdx, mhz)),
+    SetOcVolt: (millivolts: number) => call(raw.RyzenSmu.SetOcVolt(millivolts)),
+    EnableOc: () => call(raw.RyzenSmu.EnableOc()),
+    DisableOc: () => call(raw.RyzenSmu.DisableOc()),
+    SetCurveOptimizerAll: (value: number) => call(raw.RyzenSmu.SetCurveOptimizerAll(value)),
+    SetCurveOptimizerPerCore: (coreIdx: number, value: number) => call(raw.RyzenSmu.SetCurveOptimizerPerCore(coreIdx, value)),
+};
 export const Power = {
     SetCPUMaxFrequency: (mhz: number) => call(raw.Power.SetCPUMaxFrequency(mhz)),
     ResetCPUMaxFrequency: () => call(raw.Power.ResetCPUMaxFrequency()),

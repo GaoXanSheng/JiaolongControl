@@ -1,17 +1,17 @@
-<script setup lang="ts">
+<script async setup lang="ts">
 import {onMounted, ref} from 'vue'
 import {Message} from '@arco-design/web-vue'
-import useStore from '@/stores'
 import {AutoFanControl, Config, Fan} from '@/utils/bridge'
 import FanCurveEditor from "@/components/ProSettingComponent/FanCurve/FanCurveEditor.vue";
 import FanSpeed from "@/components/ProSettingComponent/FanCurve/FanSpeed.vue";
 
-const store = useStore()
 const loading = ref(false)
 const visible = ref(false);
+const config = await Config.GetConfig()
+const FanPageStore = ref(config.Data.FanPageStore)
 
 const handleClick = () => {
-  if (store.FanSpeed > 5800 || store.FanSpeed < 1500) {
+  if (FanPageStore.value.FanSpeed > 5800 || FanPageStore.value.FanSpeed < 1500) {
     visible.value = true;
   } else {
     handleOk()
@@ -23,8 +23,10 @@ const handleOk = async () => {
   if (await AutoFanControl.IsRunning()) {
     await AutoFanControl.Stop()
   }
-  const res = await Fan.SetFanSpeed(store.FanSpeed)
+  const res = await Fan.SetFanSpeed(FanPageStore.value.FanSpeed)
   res.Success ? Message.success(res.Message) : Message.error(res.Message)
+  config.Data.FanPageStore = FanPageStore.value;
+  await Config.SetConfig(config.Data)
   loading.value = false
 };
 const handleCancel = () => {
@@ -50,7 +52,7 @@ async function handleRemoveFanClick() {
       </a-col>
       <a-col :span="16">
         <a-input-number
-            v-model="store.FanSpeed"
+            v-model="FanPageStore.FanSpeed"
             :min="0"
             :max="8000"
             :step="100"

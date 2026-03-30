@@ -1,31 +1,4 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import useStore from '@/stores'
-
-const store = useStore()
-
-function loadConfig() {
-  Object.keys(store.$state).forEach((key) => {
-    const value = localStorage.getItem(key)
-    if (value) {
-      try {
-        // @ts-ignore
-        store.$state[key] = JSON.parse(value)
-      } catch (e) { console.error('Config load error', e) }
-    }
-  })
-
-  store.$subscribe(() => {
-    Object.keys(store.$state).forEach((key) => {
-      // @ts-ignore
-      localStorage.setItem(key, JSON.stringify(store.$state[key]))
-    })
-  })
-}
-
-onMounted(() => {
-  loadConfig()
-})
 </script>
 
 <template>
