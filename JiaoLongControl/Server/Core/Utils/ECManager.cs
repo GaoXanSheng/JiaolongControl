@@ -1,7 +1,7 @@
 ﻿using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Drivers;
 
-namespace JiaoLongControl.Server.Core.Controllers
+namespace JiaoLongControl.Server.Core.Utils
 {
     public class ECManager : BDLDriver
     {

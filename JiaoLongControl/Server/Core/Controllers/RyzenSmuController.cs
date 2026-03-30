@@ -15,12 +15,6 @@ public class RyzenSmuController : IDisposable
         _pawn = new PawnIODriver();
     }
 
-    public int GetCpuCodeName()
-    {
-        var res = _pawn.Execute("ioctl_get_code_name", Array.Empty<ulong>(), 1);
-        return (int)res[0];
-    }
-
     private CommandResult Send(uint cmd, uint arg, string name)
     {
         ulong[] inputs = new ulong[7];
