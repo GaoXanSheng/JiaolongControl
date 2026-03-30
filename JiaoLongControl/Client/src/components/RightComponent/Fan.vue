@@ -2,7 +2,7 @@
 import {onMounted, ref} from 'vue'
 import {Message} from '@arco-design/web-vue'
 import {AutoFanControl, Config, Fan} from '@/utils/bridge'
-import FanCurveEditor from "@/components/ProSettingComponent/FanCurve/FanCurveEditor.vue";
+
 import FanSpeed from "@/components/ProSettingComponent/FanCurve/FanSpeed.vue";
 
 const loading = ref(false)
@@ -32,11 +32,6 @@ const handleOk = async () => {
 const handleCancel = () => {
   visible.value = false;
 }
-const EnableAdvancedFanControlSystem = ref(false)
-onMounted(async () => {
-  const config = (await Config.GetConfig()).Data
-  EnableAdvancedFanControlSystem.value = config.AdvancedFanControlSystem
-})
 
 async function handleRemoveFanClick() {
   const res = await Fan.RemoveFanSpeed()
@@ -45,7 +40,7 @@ async function handleRemoveFanClick() {
 </script>
 
 <template>
-  <div class="fan-settings" v-if="!EnableAdvancedFanControlSystem">
+  <div class="fan-settings">
     <a-row justify="center" :gutter="[0, 20]">
       <a-col :span="16">
         <a-typography-title class="title">风扇设置</a-typography-title>
