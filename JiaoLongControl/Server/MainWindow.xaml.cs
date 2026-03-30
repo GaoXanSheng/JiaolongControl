@@ -61,8 +61,8 @@ namespace JiaoLongControl.Server
                 Bridge.Instance.CPU.SetCpuShortPower(ConfigController.Config.AdvancedCPUSystemConfig.CpuShortPower);
                 Bridge.Instance.CPU.SetCPUTempWall(ConfigController.Config.AdvancedCPUSystemConfig.CpuTempWall);
                 Bridge.Instance.Power.SetCPUMaxFrequency(
-                    ConfigController.Config.AdvancedCPUSystemConfig.CPUMaxFrequency);
-                if (ConfigController.Config.AdvancedCPUSystemConfig.CPUTurbo)
+                    ConfigController.Config.AdvancedCPUSystemConfig.CpuMaxFrequency);
+                if (ConfigController.Config.AdvancedCPUSystemConfig.CpuTurbo)
                 {
                     Bridge.Instance.Power.EnableTurbo();
                 }

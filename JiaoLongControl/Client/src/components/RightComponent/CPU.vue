@@ -2,6 +2,7 @@
 import {ref} from 'vue'
 import {Message} from '@arco-design/web-vue'
 import {Config, CPU, Power} from '@/utils/bridge.ts'
+import SettingCardComponent from "@/components/RightComponent/setting/SettingCardComponent.vue";
 
 const loading = ref(false)
 const config = await Config.GetConfig()
@@ -39,7 +40,7 @@ async function SetCpuShortPower() {
 
 async function SetCPUMaxFrequency() {
   loading.value = true
-  const res = await Power.SetCPUMaxFrequency(CPUData.value.CPUMaxFrequency)
+  const res = await Power.SetCPUMaxFrequency(CPUData.value.CpuMaxFrequency)
   res.Success ? Message.success(res.Message) : Message.error(res.Message)
   await saveConfig()
   loading.value = false
@@ -55,13 +56,13 @@ async function SetCPUMaxFrequency() {
 
 async function SetCPUTurbo() {
   loading.value = true
-  if (!CPUData.value.CPUTurbo) {
+  if (!CPUData.value.CpuTurbo) {
     const res = await Power.DisableTurbo()
-    CPUData.value.CPUTurbo = false
+    CPUData.value.CpuTurbo = false
     res.Success ? Message.success(res.Message) : Message.error(res.Message)
   }else {
     const res = await Power.EnableTurbo()
-    CPUData.value.CPUTurbo = true
+    CPUData.value.CpuTurbo = true
     res.Success ? Message.success(res.Message) : Message.error(res.Message)
   }
   await saveConfig()
@@ -80,6 +81,22 @@ async function SetCPUTurbo() {
       <a-layout style="padding: 0 30px;">
         <a-layout-content>
           <a-row justify="center" :gutter="[0, 20]">
+            <setting-card-component title="CPU 睿频">
+              <template #extra>
+                <a-switch
+                    v-model="CPUData.CpuTurbo"
+                    :loading="loading"
+                    @click="SetCPUTurbo"
+                >
+                  <template #checked-icon>
+                    <icon-check/>
+                  </template>
+                  <template #unchecked-icon>
+                    <icon-close/>
+                  </template>
+                </a-switch>
+              </template>
+            </setting-card-component>
             <a-col :span="16" class="item">
               <div class="slider-wrapper">
                 <span class="slider-label">短时CPU功耗</span>
@@ -131,38 +148,12 @@ async function SetCPUTurbo() {
                     step="100"
                     show-input
                     class="custom-slider"
-                    v-model="CPUData.CPUMaxFrequency"
+                    v-model="CPUData.CpuMaxFrequency"
                 />
                 <a-button type="primary" :loading="loading" @click="SetCPUMaxFrequency">应用</a-button>
               </div>
             </a-col>
-<!--            <a-col :span="16" class="item">-->
-<!--              <div class="slider-wrapper">-->
-<!--                <span class="slider-label">最大CPU状态</span>-->
-<!--                <a-slider-->
-<!--                    :min="0"-->
-<!--                    :max="100"-->
-<!--                    step="1"-->
-<!--                    show-input-->
-<!--                    class="custom-slider"-->
-<!--                    v-model="CPUData.CPUMaxState"-->
-<!--                />-->
-<!--                <a-button type="primary" :loading="loading" @click="SetCPUMaxState">应用</a-button>-->
-<!--              </div>-->
-<!--            </a-col>-->
-            <a-col :span="16" class="item">
-              <div class="slider-wrapper">
-                <span class="slider-label">CPU 睿频</span>
-                <a-switch v-model="CPUData.CPUTurbo" :loading="loading" @click="SetCPUTurbo">
-                  <template #checked-icon>
-                    <icon-check/>
-                  </template>
-                  <template #unchecked-icon>
-                    <icon-close/>
-                  </template>
-                </a-switch>
-              </div>
-            </a-col>
+
           </a-row>
         </a-layout-content>
       </a-layout>

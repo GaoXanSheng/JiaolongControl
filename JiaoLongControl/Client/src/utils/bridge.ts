@@ -115,6 +115,30 @@ declare global {
                             GetCPUMaxState(): Promise<any>;
                             GetTurboEnabled(): Promise<any>;
                         };
+                        RyzenSmu: {
+                            SetStapmLimit(watts: number): Promise<any>;
+                            SetStapmTime(seconds: number): Promise<any>;
+                            SetFastLimit(watts: number): Promise<any>;
+                            SetSlowLimit(watts: number): Promise<any>;
+                            SetSlowTime(seconds: number): Promise<any>;
+                            SetPptLimitRsmu(watts: number): Promise<any>;
+                            SetVrmCurrentMp1(milliamps: number): Promise<any>;
+                            SetVrmCurrentRsmu(milliamps: number): Promise<any>;
+                            SetTdcLimitMp1(milliamps: number): Promise<any>;
+                            SetTdcLimitRsmu(milliamps: number): Promise<any>;
+                            SetEdcLimitMp1(milliamps: number): Promise<any>;
+                            SetEdcLimitRsmu(milliamps: number): Promise<any>;
+                            SetTempLimitMp1(celsius: number): Promise<any>;
+                            SetTempLimitRsmu(celsius: number): Promise<any>;
+                            SetPboScalar(value: number): Promise<any>;
+                            SetOcClk(mhz: number): Promise<any>;
+                            SetPerCoreOcClk(coreIdx: number, mhz: number): Promise<any>;
+                            SetOcVolt(millivolts: number): Promise<any>;
+                            EnableOc(): Promise<any>;
+                            DisableOc(): Promise<any>;
+                            SetCurveOptimizerAll(value: number): Promise<any>;
+                            SetCurveOptimizerPerCore(coreIdx: number, value: number): Promise<any>;
+                        }
                     };
                 };
             };
@@ -142,16 +166,15 @@ export interface ConfigInterface {
     BootAdvancedFanControlSystem: boolean;
     AdvancedFanControlSystemConfig: { temp: number; speed: number }[];
     BootAdvancedCPUSystem: boolean;
-    BootAdvancedGPUSystem:boolean
+    BootAdvancedGPUSystem: boolean
     AdvancedCPUSystemConfig: {
-        CPUTurbo:boolean
-        CPUMaxState:number
-        CPUMaxFrequency: number;
+        CpuTurbo: boolean
+        CpuMaxFrequency: number;
         CpuShortPower: number;
         CpuLongPower: number;
         CpuTempWall: number;
     };
-    NvidiaGpuConfig:{
+    NvidiaGpuConfig: {
         GpuClock: number
         GpuMemoryClock: number
         PowerLimit: number
@@ -229,10 +252,8 @@ export const NvidiaGpu = {
 export const Power = {
     SetCPUMaxFrequency: (mhz: number) => call(raw.Power.SetCPUMaxFrequency(mhz)),
     ResetCPUMaxFrequency: () => call(raw.Power.ResetCPUMaxFrequency()),
-    SetCPUMaxState: (percent: number) => call(raw.Power.SetCPUMaxState(percent)),
     DisableTurbo: () => call(raw.Power.DisableTurbo()),
     EnableTurbo: () => call(raw.Power.EnableTurbo()),
     GetCPUMaxFrequency: () => call<{ ac: number; dc: number }>(raw.Power.GetCPUMaxFrequency()),
-    GetCPUMaxState: () => call<{ ac: number; dc: number }>(raw.Power.GetCPUMaxState()),
     GetTurboEnabled: () => call<{ ac: boolean; dc: boolean }>(raw.Power.GetTurboEnabled()),
 };

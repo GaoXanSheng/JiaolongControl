@@ -48,9 +48,8 @@ public class CpuConfg
     public byte CpuShortPower { get; set; } = 65;
     public byte CpuLongPower { get; set; } = 70;
     public byte CpuTempWall { get; set; } = 90;
-    public uint CPUMaxFrequency { get; set; } = 0;
-    public uint CPUMaxState { get; set; } = 100;
-    public bool CPUTurbo { get; set; } = true;
+    public uint CpuMaxFrequency { get; set; } = 0;
+    public bool CpuTurbo { get; set; } = true;
 }
 
 [System.Runtime.InteropServices.ComVisible(true)]

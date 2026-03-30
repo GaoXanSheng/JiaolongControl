@@ -25,5 +25,6 @@ namespace JiaoLongControl.Server.Interop
         public AutoFanControl AutoFan { get; } = new();
         public NvidiaGpuController NvidiaGpu { get; } = new();
         public PowerController Power { get; } = new();
+        public RyzenSmuController RyzenSmu { get; } = new();
     }
 }

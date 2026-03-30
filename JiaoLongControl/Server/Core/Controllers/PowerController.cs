@@ -24,12 +24,12 @@ public class PowerController
             var result = RunPowerCfg(cmd);
             if (!result.Success)
             {
-                return  result;
+                return result;
             }
         }
-        App.Logger.Info($"[PowerController] CPU 最大频率已限制为 {mhz} MHz");
         return new CommandResult(true, $"CPU 最大频率已限制为 {mhz} MHz");
     }
+
     public CommandResult ResetCPUMaxFrequency()
     {
         var commands = new[]
@@ -46,29 +46,9 @@ public class PowerController
                 return result;
             }
         }
-        App.Logger.Info("[PowerController] CPU 频率限制已取消");
         return new CommandResult(true, "CPU 频率限制已取消");
     }
-    public CommandResult SetCPUMaxState(uint percent)
-    {
-        if (percent > 100) percent = 100;
-        var commands = new[]
-        {
-            $"/setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCTHROTTLEMAX {percent}",
-            $"/setdcvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCTHROTTLEMAX {percent}",
-            "/setactive SCHEME_CURRENT"
-        };
-        foreach (var cmd in commands)
-        {
-            var result = RunPowerCfg(cmd);
-            if (!result.Success)
-            {
-                return result;
-            }
-        }
-        App.Logger.Info($"[PowerController] CPU 最大状态限制为 {percent}%");
-        return new CommandResult(true, $"CPU 最大状态限制为 {percent}%");
-    }
+
     public CommandResult DisableTurbo()
     {
         var commands = new[]
@@ -86,9 +66,9 @@ public class PowerController
                 return result;
             }
         }
-        App.Logger.Info("[PowerController] 睿频已禁用");
         return new CommandResult(true, "睿频已禁用");
     }
+
     public CommandResult EnableTurbo()
     {
         var commands = new[]
@@ -105,7 +85,6 @@ public class PowerController
                 return result;
             }
         }
-        App.Logger.Info("[PowerController] 睿频已开启");
         return new CommandResult(true, "睿频已开启");
     }
 
@@ -116,22 +95,13 @@ public class PowerController
         {
             return new CommandResult(false, result.Message);
         }
+
         if (!TryParseLastTwoHex((string)result.Data!, out var ac, out var dc))
             return new CommandResult(false, "解析失败");
 
         return new CommandResult(true, "ok", (ac, dc));
     }
-    public CommandResult GetCPUMaxState()
-    {
-        var result = RunPowerCfgWithOutput("/query SCHEME_CURRENT SUB_PROCESSOR PROCTHROTTLEMAX");
-        if (!result.Success)
-            return new CommandResult(false, result.Message);
 
-        if (!TryParseLastTwoHex((string)result.Data, out var ac, out var dc))
-            return new CommandResult(false, "解析失败");
-
-        return new CommandResult(true, "ok", (ac, dc));
-    }
     public CommandResult GetTurboEnabled()
     {
         var result = RunPowerCfgWithOutput("/query SCHEME_CURRENT SUB_PROCESSOR PERFBOOSTMODE");
@@ -147,6 +117,7 @@ public class PowerController
             (acVal != 0, dcVal != 0)
         );
     }
+
     private CommandResult RunPowerCfg(string arguments)
     {
         try
@@ -167,17 +138,17 @@ public class PowerController
 
             if (process.ExitCode != 0)
             {
-                App.Logger.Error($"[PowerController] powercfg {arguments} 失败: {error}");
-                return new CommandResult(false, "执行 powercfg 失败 ");
+                return new CommandResult(false, $"[PowerController] powercfg {arguments} 失败: {error}");
             }
         }
         catch (Exception ex)
         {
-            App.Logger.Error($"[PowerController] 执行 powercfg 异常: {ex.Message}");
-            return new CommandResult(false,"执行 powercfg 异常");
+            return new CommandResult(false, $"[PowerController] 执行 powercfg 异常: {ex.Message}");
         }
+
         return new CommandResult(true, "执行成功");
     }
+
     private CommandResult RunPowerCfgWithOutput(string arguments)
     {
         try
@@ -199,18 +170,17 @@ public class PowerController
 
             if (process.ExitCode != 0)
             {
-                App.Logger.Error($"powercfg {arguments} 失败: {error}");
-                return new CommandResult(false, error);
+                return new CommandResult(false, $"powercfg {arguments} 失败: {error}");
             }
 
             return new CommandResult(true, "ok", output);
         }
         catch (Exception ex)
         {
-            App.Logger.Error($"执行 powercfg 异常: {ex.Message}");
-            return new CommandResult(false, ex.Message);
+            return new CommandResult(false, $"执行 powercfg 异常: {ex.Message}");
         }
     }
+
     private bool TryParseLastTwoHex(string output, out uint ac, out uint dc)
     {
         ac = 0;

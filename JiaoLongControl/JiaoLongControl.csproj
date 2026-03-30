@@ -44,7 +44,12 @@
         <EmbeddedResource Include="Server\Resources\Drivers\JiaoLongDriver64.sys"/>
         <EmbeddedResource Include="Server\Resources\Drivers\JiaoLongDriver64.dll"/>
         <None Remove="Server\Resources\Drivers\libryzenadj.dll"/>
-        <EmbeddedResource Include="Server\Resources\Drivers\libryzenadj.dll"/>
+        <None Remove="Server\Resources\Drivers\PawnIO.sys" />
+        <EmbeddedResource Include="Server\Resources\Drivers\PawnIO.sys" />
+        <None Remove="Server\Resources\Drivers\PawnIOLib.dll" />
+        <EmbeddedResource Include="Server\Resources\Drivers\PawnIOLib.dll" />
+        <None Remove="Server\Resources\Drivers\RyzenSMU.bin" />
+        <EmbeddedResource Include="Server\Resources\Drivers\RyzenSMU.bin" />
     </ItemGroup>
     <ItemGroup>
         <ApplicationDefinition Include="Server\App.xaml">
