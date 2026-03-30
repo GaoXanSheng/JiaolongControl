@@ -11,7 +11,7 @@ namespace JiaoLongControl.Server
     public partial class App : Application
     {
         private static Mutex? _mutex;
-        public static readonly ILog Logger= LogManager.GetLogger(typeof(App));
+        private readonly ILog Logger= LogManager.GetLogger(typeof(App));
         protected override void OnStartup(StartupEventArgs e)
         {
             XmlConfigurator.Configure();

@@ -2,6 +2,7 @@
 using System.Windows;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
+using log4net;
 
 namespace JiaoLongControl.Server.Core.Controllers
 {
@@ -10,7 +11,7 @@ namespace JiaoLongControl.Server.Core.Controllers
     public class AutoFanControl : IDisposable
     {
         private volatile bool _isRunning;
-
+        private readonly ILog Logger= LogManager.GetLogger(typeof(AutoFanControl));
         private CancellationTokenSource? _cts;
         private Task? _controlTask;
         private const int IntervalMs = 5000;
@@ -28,13 +29,6 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             if (_isRunning)
                 return new CommandResult(_isRunning, "自动风扇控制已经运行中");
-
-            if (!ConfigController.Config.AdvancedFanControlSystem)
-            {
-                App.Logger.Info("Auto Fan Control is disabled by config.");
-                return new CommandResult(false, "配置中禁用了自动风扇控制");
-            }
-
             _cts = new CancellationTokenSource();
             var token = _cts.Token;
 
@@ -52,7 +46,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             if (!_isRunning)
                 return new CommandResult(!_isRunning, "自动风扇控制没有在运行中");
 
-            App.Logger.Info("Auto Fan Control stopping...");
+            Logger.Info("Auto Fan Control stopping...");
 
             _cts?.Cancel();
 
@@ -65,7 +59,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             }
             catch (Exception ex)
             {
-                App.Logger.Error(ex.Message);
+                Logger.Error(ex.Message);
             }
             finally
             {
@@ -78,7 +72,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         private void ControlLoop(CancellationToken token)
         {
             _isRunning = true;
-            App.Logger.Info("Auto Fan Control started.");
+            Logger.Info("Auto Fan Control started.");
 
             Queue<float> tempQueue = new();
             const int smoothSampleCount = 3;
@@ -109,7 +103,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                     }
                     catch (Exception ex)
                     {
-                        App.Logger.Error(ex.Message);
+                        Logger.Error(ex.Message);
                         Thread.Sleep(2000);
                     }
                 }
@@ -117,7 +111,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             finally
             {
                 _isRunning = false;
-                App.Logger.Info("Auto Fan Control stopped.");
+                Logger.Info("Auto Fan Control stopped.");
             }
         }
 
@@ -178,8 +172,8 @@ namespace JiaoLongControl.Server.Core.Controllers
 
             if (Bridge.Instance.Fan.SetFanSpeed((byte)speedByte).Success)
             {
-                App.Logger.Info($"CPU Temp: {temp}");
-                App.Logger.Info(
+                Logger.Info($"CPU Temp: {temp}");
+                Logger.Info(
                     $"Fan Speed Applied: {rpm} RPM"
                 );
 
@@ -187,7 +181,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             }
             else
             {
-                App.Logger.Error($"Fan Speed Apply Failed: EC={speedByte}");
+                Logger.Error($"Fan Speed Apply Failed: EC={speedByte}");
             }
         }
 

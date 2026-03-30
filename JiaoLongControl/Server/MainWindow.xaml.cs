@@ -34,9 +34,7 @@ namespace JiaoLongControl.Server
                 IsBootStart &&
                 ConfigController.Config.BootMinimized;
 
-            _startInFan =
-                ConfigController.Config.AdvancedFanControlSystem &&
-                ConfigController.Config.BootAdvancedFanControlSystem;
+            _startInFan = ConfigController.Config.BootAdvancedFanControlSystem;
             _startInCPU = ConfigController.Config.BootAdvancedCPUSystem;
             _startInGPU = ConfigController.Config.BootAdvancedGPUSystem;
             InitializePaths();

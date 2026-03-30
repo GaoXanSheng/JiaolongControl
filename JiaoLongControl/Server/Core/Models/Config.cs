@@ -5,9 +5,6 @@ public class Config
     // 最小化启动
     public bool BootMinimized { get; set; } = false;
 
-    // 是否启动
-    public bool AdvancedFanControlSystem { get; set; } = false;
-
     // 自动启动风扇控制
     public bool BootAdvancedFanControlSystem { get; set; } = false;
 

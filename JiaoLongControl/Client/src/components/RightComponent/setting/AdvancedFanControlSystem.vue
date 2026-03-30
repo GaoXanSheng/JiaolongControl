@@ -4,23 +4,11 @@ import {onMounted, ref} from "vue";
 import {Config} from "@/utils/bridge.ts";
 
 const loading = ref(false)
-const EnableAdvancedFanControlSystem = ref(false)
 const BootStartAdvancedFanControlSystem = ref(false)
 onMounted(async () => {
   const config = (await Config.GetConfig()).Data
-  EnableAdvancedFanControlSystem.value = config.AdvancedFanControlSystem
   BootStartAdvancedFanControlSystem.value = config.BootAdvancedFanControlSystem
 })
-
-async function SetEnableAdvancedFanControlSystem(value: string | number | boolean) {
-  if (typeof value !== 'boolean') return
-  loading.value = true
-  const config = (await Config.GetConfig()).Data
-  config.AdvancedFanControlSystem = value;
-  await Config.SetConfig(config)
-  EnableAdvancedFanControlSystem.value = value
-  loading.value = false
-}
 
 async function SetBootStartAdvancedFanControlSystem(value: string | number | boolean) {
   if (typeof value !== 'boolean') return
@@ -34,23 +22,7 @@ async function SetBootStartAdvancedFanControlSystem(value: string | number | boo
 </script>
 
 <template>
-  <setting-card-component title="启用高级风扇控制系统">
-    <template #extra>
-      <a-switch
-          :model-value="EnableAdvancedFanControlSystem"
-          :loading="loading"
-          @change="SetEnableAdvancedFanControlSystem($event)"
-      >
-        <template #checked-icon>
-          <icon-check/>
-        </template>
-        <template #unchecked-icon>
-          <icon-close/>
-        </template>
-      </a-switch>
-    </template>
-  </setting-card-component>
-  <setting-card-component v-if="EnableAdvancedFanControlSystem" title="自启动高级风扇控制系统">
+  <setting-card-component title="自启动高级风扇控制系统">
     <template #extra>
       <a-switch
           :model-value="BootStartAdvancedFanControlSystem"

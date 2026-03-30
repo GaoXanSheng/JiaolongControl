@@ -162,7 +162,6 @@ function toByte(value: number): number {
 
 export interface ConfigInterface {
     BootMinimized: boolean;
-    AdvancedFanControlSystem: boolean;
     BootAdvancedFanControlSystem: boolean;
     AdvancedFanControlSystemConfig: { temp: number; speed: number }[];
     BootAdvancedCPUSystem: boolean;
@@ -196,7 +195,6 @@ export const CPU = {
 export const Fan = {
     GetFanSpeed: () => call<FanSpeedInfo>(raw.Fan.GetFanSpeed()),
     SetFanSpeed: (fanSpeed: number) => call(raw.Fan.SetFanSpeed(toByte(fanSpeed / 100))),
-    GetMaxFanSpeedSwitch: () => call(raw.Fan.GetMaxFanSpeedSwitch()),
     RemoveFanSpeed: () => call(raw.Fan.RemoveFanSpeed()),
 };
 

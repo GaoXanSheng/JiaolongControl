@@ -27,7 +27,7 @@
             </a-col>
             <a-col :span="16" class="item">
               <div class="slider-wrapper">
-                <span class="slider-label">锁定GPU频率</span>
+                <span class="slider-label">锁定GPU内存</span>
                 <a-slider
                     :min="0"
                     :max="10000"

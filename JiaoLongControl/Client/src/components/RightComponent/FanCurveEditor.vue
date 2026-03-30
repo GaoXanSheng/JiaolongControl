@@ -168,12 +168,14 @@
       </a-space>
     </a-modal>
   </a-card>
+  <FanSpeed></FanSpeed>
 </template>
 
 <script lang="ts" setup>
 import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {Message} from '@arco-design/web-vue'
 import {AutoFanControl, Config, Fan} from '@/utils/bridge.ts'
+import FanSpeed from "@/components/ProSettingComponent/FanCurve/FanSpeed.vue";
 
 interface Point {
   temp: number
@@ -181,7 +183,7 @@ interface Point {
 }
 
 const tempRange = [60, 100]
-const speedRange = [1500, 5800]
+const speedRange = [1500, 6800]
 const padding = { top: 40, right: 60, bottom: 40, left: 60 }
 
 const containerRef = ref<HTMLDivElement | null>(null)
@@ -442,7 +444,6 @@ function onEditConfirm() {
   showEdit.value = false
 }
 async function handleRemoveFanClick() {
-  await handleServiceToggle(!isServiceRunning.value)
   Message.success((await Fan.RemoveFanSpeed()).Message)
 }
 </script>
@@ -525,7 +526,6 @@ async function handleRemoveFanClick() {
   width: 100%;
   position: relative;
   overflow: hidden;
-  cursor: crosshair;
   background: #fff;
 
   .loading-state {

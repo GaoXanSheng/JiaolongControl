@@ -77,7 +77,6 @@ async function handleRemoveFanClick() {
       </a-col>
     </a-row>
   </div>
-  <fan-curve-editor v-else></fan-curve-editor>
   <FanSpeed></FanSpeed>
 </template>
 
