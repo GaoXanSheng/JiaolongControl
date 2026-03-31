@@ -17,7 +17,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         private const int IntervalMs = 5000;
 
         private const int RPM_UNIT_DIVISOR = 100;
-        private const int MAX_FAN_BYTE = 58;
+        private const int MAX_FAN_BYTE = 68;
         private const int MIN_FAN_BYTE = 0;
 
         public CommandResult IsRunning()

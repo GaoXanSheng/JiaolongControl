@@ -1,5 +1,5 @@
 <script async setup lang="ts">
-import {onMounted, ref} from 'vue'
+import {ref} from 'vue'
 import {Message} from '@arco-design/web-vue'
 import {AutoFanControl, Config, Fan} from '@/utils/bridge'
 
@@ -34,8 +34,12 @@ const handleCancel = () => {
 }
 
 async function handleRemoveFanClick() {
+  if (await AutoFanControl.IsRunning()) {
+    await AutoFanControl.Stop()
+  }
   const res = await Fan.RemoveFanSpeed()
   res.Success ? Message.success(res.Message) : Message.error(res.Message)
+
 }
 </script>
 
@@ -76,11 +80,4 @@ async function handleRemoveFanClick() {
 </template>
 
 <style lang="scss" scoped>
-.fan-settings {
-  padding: 24px;
-
-  .full-width {
-    width: 100%;
-  }
-}
 </style>
