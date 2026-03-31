@@ -20,8 +20,6 @@ const CONFIG_GROUPS = [
     items:[
       { label: 'VRM Current (MP1)', key: 'SetVrmCurrentMp1', min: 0, max: 300000, step: 1000, unit: 'mA' },
       { label: 'VRM Current (RSMU)', key: 'SetVrmCurrentRsmu', min: 0, max: 300000, step: 1000, unit: 'mA' },
-      { label: 'TDC Limit (MP1)', key: 'SetTdcLimitMp1', min: 0, max: 300000, step: 1000, unit: 'mA' },
-      { label: 'TDC Limit (RSMU)', key: 'SetTdcLimitRsmu', min: 0, max: 300000, step: 1000, unit: 'mA' },
       { label: 'EDC Limit (MP1)', key: 'SetEdcLimitMp1', min: 0, max: 300000, step: 1000, unit: 'mA' },
       { label: 'EDC Limit (RSMU)', key: 'SetEdcLimitRsmu', min: 0, max: 300000, step: 1000, unit: 'mA' },
     ]
@@ -115,9 +113,12 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
 <template>
   <a-layout class="smu-container">
     <a-layout-content class="content-body">
-      <a-row :gutter="[24, 24]">
 
-        <a-col :span="12" v-for="group in CONFIG_GROUPS" :key="group.title">
+      <!-- 瀑布流容器 -->
+      <div class="masonry-layout">
+
+        <!-- 动态生成的基础配置卡片 -->
+        <div class="masonry-item" v-for="group in CONFIG_GROUPS" :key="group.title">
           <a-card :title="group.title" size="small" class="group-card">
             <div v-for="item in group.items" :key="item.key" class="control-row">
               <div class="info">
@@ -169,9 +170,10 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
               </a-button>
             </div>
           </a-card>
-        </a-col>
+        </div>
 
-        <a-col :span="12">
+        <!-- Curve Optimizer 卡片 -->
+        <div class="masonry-item">
           <a-card title="Curve Optimizer" size="small" class="group-card">
             <template #extra>
               <div style="display: flex; align-items: center; gap: 8px;">
@@ -198,7 +200,7 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
                 </a-button>
               </div>
             </div>
-            <a-divider style="margin: 12px 0"/>
+            <a-divider style="margin: 12px 0;" />
             <div class="per-core-grid">
               <div v-for="(_, index) in perCoreCurve" :key="index" class="core-item">
                 <span class="core-label">Core {{ index }}</span>
@@ -221,9 +223,10 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
               </div>
             </div>
           </a-card>
-        </a-col>
+        </div>
 
-        <a-col :span="12">
+        <!-- Per Core OC Clocks 卡片 -->
+        <div class="masonry-item">
           <a-card title="Per Core OC Clocks" size="small" class="group-card">
             <template #extra>
               <div style="display: flex; align-items: center; gap: 8px;">
@@ -253,17 +256,35 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
               </div>
             </div>
           </a-card>
-        </a-col>
+        </div>
 
-      </a-row>
+      </div>
     </a-layout-content>
   </a-layout>
 </template>
 
 <style scoped lang="scss">
 .smu-container {
+  .content-body {
+    padding: 16px; 
+  }
+
+  /* 瀑布流核心布局 */
+  .masonry-layout {
+    column-count: 2;
+    column-gap: 24px; 
+    width: 100%;
+  }
+
+  /* 瀑布流子项 */
+  .masonry-item {
+    break-inside: avoid;
+    margin-bottom: 24px;
+    transform: translateZ(0); 
+  }
+
   .group-card {
-    height: 100%;
+    width: 100%;
   }
 
   .control-row {

@@ -444,7 +444,11 @@ function onEditConfirm() {
   showEdit.value = false
 }
 async function handleRemoveFanClick() {
+  if (await AutoFanControl.IsRunning()) {
+    await AutoFanControl.Stop()
+  }
   Message.success((await Fan.RemoveFanSpeed()).Message)
+  isServiceRunning.value = false
 }
 </script>
 
@@ -470,7 +474,7 @@ async function handleRemoveFanClick() {
   align-items: center;
   font-size: 12px;
   color: #333;
-  height: 50px; // 固定高度，保证美观
+  height: 50px;
 
   .info-section {
     flex: 1;

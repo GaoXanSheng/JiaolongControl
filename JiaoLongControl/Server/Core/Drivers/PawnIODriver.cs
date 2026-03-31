@@ -60,7 +60,17 @@ public class PawnIODriver : IDisposable
         if (pawnio_load(_executorHandle, blobData, (UIntPtr)blobData.Length) != 0)
             throw new Exception("PawnIO 脚本加载失败。");
     }
-
+    public uint ReadSmuRegister(uint address)
+    {
+        ulong[] inputs = new ulong[] { address };
+        ulong[] outputs = Execute("ioctl_read_smu_register", inputs, 1); 
+        return (uint)outputs[0];
+    }
+    public void WriteSmuRegister(uint address, uint data)
+    {
+        ulong[] inputs = new ulong[] { address, data };
+        Execute("ioctl_write_smu_register", inputs, 0);
+    }
     public ulong[] Execute(string functionName, ulong[] inputs, int expectedOutputCount)
     {
         ulong[] outputs = new ulong[expectedOutputCount];
