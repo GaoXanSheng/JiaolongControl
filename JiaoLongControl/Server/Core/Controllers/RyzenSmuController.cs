@@ -84,7 +84,7 @@ public class RyzenSmuController : IDisposable
     public CommandResult DisableOc() => Send(0x5E, 0, false, "Disable OC Mode");
 
     #endregion
-    #region (Curve Optimizer) - 也是 RSMU (false)
+    #region (Curve Optimizer)
     public CommandResult SetCurveOptimizerAll(int value) 
         => Send(0x07, (uint)(value & 0xFFFFFFFF), false, "Curve Optimizer All");
     public CommandResult SetCurveOptimizerPerCore(uint coreIdx, int value)
