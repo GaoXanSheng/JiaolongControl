@@ -1,41 +1,35 @@
 ﻿using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Drivers;
+using JiaoLongControl.Server.Core.Native;
 using JiaoLongControl.Server.Core.Utils;
 
 namespace JiaoLongControl.Server.Core.Controllers;
 
 [ComVisible(true)]
 [ClassInterface(ClassInterfaceType.AutoDual)]
-public class RyzenSmuController : IDisposable
+public class RyzenSmuController : PawnIO 
 {
-    private readonly PawnIODriver _pawn;
-
-    public RyzenSmuController()
-    {
-        _pawn = new PawnIODriver();
-    }
-
     private CommandResult Send(uint cmd, uint arg, bool isMp1, string name)
     {
-        uint addrMsg = isMp1 ? 0x3B10530u : 0x03B10524u; 
-        uint addrRsp = isMp1 ? 0x3B1057Cu : 0x03B10570u; 
+        uint addrMsg = isMp1 ? 0x3B10530u : 0x03B10524u;
+        uint addrRsp = isMp1 ? 0x3B1057Cu : 0x03B10570u;
         uint addrArg = isMp1 ? 0x3B109C4u : 0x03B10A40u;
         try
         {
             uint rsp = 0;
             for (int i = 0; i < 8096; ++i)
             {
-                rsp = _pawn.ReadSmuRegister(addrRsp);
+                rsp = (uint)Execute("ioctl_read_smu_register", new ulong[] { addrRsp }, 1)[0];
                 if (rsp != 0) break;
             }
             if (rsp == 0) return new CommandResult(false, $"{name} 设置失败: SMU 忙碌超时");
-            _pawn.WriteSmuRegister(addrRsp, 0);
-            _pawn.WriteSmuRegister(addrArg, arg);
-            _pawn.WriteSmuRegister(addrMsg, cmd);
+            Execute("ioctl_write_smu_register", new ulong[] { addrRsp, 0 }, 0);
+            Execute("ioctl_write_smu_register", new ulong[] { addrArg, arg }, 0);
+            Execute("ioctl_write_smu_register", new ulong[] { addrMsg, cmd }, 0);
             rsp = 0;
             for (int i = 0; i < 8096; ++i)
             {
-                rsp = _pawn.ReadSmuRegister(addrRsp);
+                rsp = (uint)Execute("ioctl_read_smu_register", new ulong[] { addrRsp }, 1)[0];
                 if (rsp != 0) break;
             }
             if (rsp == 0) return new CommandResult(false, $"{name} 设置失败: SMU 响应超时");
@@ -65,30 +59,29 @@ public class RyzenSmuController : IDisposable
 
     public CommandResult SetVrmCurrentMp1(uint milliamps) => Send(0x3C, milliamps, true, "VRM Current (MP1)");
     public CommandResult SetVrmCurrentRsmu(uint milliamps) => Send(0x57, milliamps, false, "VRM Current (RSMU)");
-    
+
     public CommandResult SetEdcLimitMp1(uint milliamps) => Send(0x3D, milliamps, true, "EDC Limit (MP1)");
     public CommandResult SetEdcLimitRsmu(uint milliamps) => Send(0x58, milliamps, false, "EDC Limit (RSMU)");
 
     public CommandResult SetTempLimitMp1(uint celsius) => Send(0x3F, celsius, true, "Temp Limit (MP1)");
     public CommandResult SetTempLimitRsmu(uint celsius) => Send(0x59, celsius, false, "Temp Limit (RSMU)");
-    
+
     #endregion
     #region (PBO & Overclocking)
     public CommandResult SetPboScalar(uint value) => Send(0x5B, value, false, "PBO Scalar");
     public CommandResult SetOcClk(int mhz) => Send(0x5F, (uint)mhz, false, "OC Clock");
     public CommandResult SetPerCoreOcClk(uint coreIdx, uint mhz) => Send(0x60, (coreIdx << 8) | (mhz & 0xFF), false, "Per Core OC Clock");
-    
+
     public CommandResult SetOcVolt(uint millivolts) => Send(0x61, millivolts, false, "OC Voltage");
-    
+
     public CommandResult EnableOc() => Send(0x5D, 0, false, "Enable OC Mode");
     public CommandResult DisableOc() => Send(0x5E, 0, false, "Disable OC Mode");
 
     #endregion
     #region (Curve Optimizer)
-    public CommandResult SetCurveOptimizerAll(int value) 
+    public CommandResult SetCurveOptimizerAll(int value)
         => Send(0x07, (uint)(value & 0xFFFFFFFF), false, "Curve Optimizer All");
     public CommandResult SetCurveOptimizerPerCore(uint coreIdx, int value)
         => Send(0x06, (coreIdx << 8) | (uint)(value & 0xFF), false, $"Curve Optimizer Core {coreIdx}");
     #endregion
-    public void Dispose() => _pawn.Dispose();
 }

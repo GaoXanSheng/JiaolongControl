@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace JiaoLongControl.Server.Core.Utils;
+namespace JiaoLongControl.Server.Core.Native;
 
 public static class Kernel32
 {

@@ -30,6 +30,7 @@ namespace JiaoLongControl.Server
         {
             base.OnExit(e);
             Bridge.Instance.Fan.RemoveFanSpeed();
+            Bridge.Instance.Dispose();
         }
     }
 }

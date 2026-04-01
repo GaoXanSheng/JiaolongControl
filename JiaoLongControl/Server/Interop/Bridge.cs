@@ -4,11 +4,9 @@ namespace JiaoLongControl.Server.Interop
 {
     [ComVisible(true)]
     [ClassInterface(ClassInterfaceType.AutoDual)]
-    public class Bridge 
+    public class Bridge  : IDisposable
     {
         public static Bridge Instance { get; } = new();
-
-        // 保留属性供 C# 内部使用
         public CpuController CPU { get; } = new();
         public FanController Fan { get; } = new();
         public GpuController GPU { get; } = new();
@@ -21,5 +19,12 @@ namespace JiaoLongControl.Server.Interop
         public PowerController Power { get; } = new();
         public NvidiaGpuController NvidiaGpu { get; } = new();
         public RyzenSmuController RyzenSmu { get; } = new();
+
+        public void Dispose()
+        {
+            Fan.Dispose();
+            AutoFan.Dispose();
+            RyzenSmu.Dispose();
+        }
     }
 }
