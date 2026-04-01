@@ -31,6 +31,7 @@ public class Config
         new FanPoint { temp = 97, speed = 5415 },
         new FanPoint { temp = 100, speed = 5800 }
     };
+    public RyzenSumConfig RyzenSumConfig { get; set; } = new();
 }
 
 public class FanPageStore
@@ -44,6 +45,27 @@ public class NvidiaGpuConfig
     public int PowerLimit { get; set; } = 140;
 }
 
+public class RyzenSumConfig
+{
+    public int SetStapmLimit { get; set; } = 0;
+    public int SetStapmTime { get; set; } = 0;
+    public int SetFastLimit { get; set; } = 0;
+    public int SetSlowLimit { get; set; } = 0;
+    public int SetSlowTime { get; set; } = 0;
+    public int SetPptLimitRsmu { get; set; } = 0;
+    public int SetVrmCurrentMp1 { get; set; } = 0;
+    public int SetVrmCurrentRsmu { get; set; } = 0;
+    public int SetTdcLimitMp1 { get; set; } = 0;
+    public int SetTdcLimitRsmu { get; set; } = 0;
+    public int SetEdcLimitMp1 { get; set; } = 0;
+    public int SetEdcLimitRsmu { get; set; } = 0;
+    public int SetTempLimitMp1 { get; set; } = 0;
+    public int SetTempLimitRsmu { get; set; } = 0;
+    public int SetPboScalar { get; set; } = 0;
+    public int SetOcClk { get; set; } = 0;
+    public int SetOcVolt { get; set; } = 0;
+    public int SetCurveOptimizerAll { get; set; } = 0;
+}
 public class CpuConfg
 {
     public byte CpuShortPower { get; set; } = 65;
