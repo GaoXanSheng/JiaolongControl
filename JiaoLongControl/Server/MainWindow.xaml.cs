@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using JiaoLongControl.Server.Core.Controllers;
+using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
@@ -21,25 +22,17 @@ namespace JiaoLongControl.Server
                 .Any(arg => arg.Equals("--boot", StringComparison.OrdinalIgnoreCase));
 
         private readonly bool _startInTray;
-        private readonly bool _startInFan;
-        private readonly bool _startInCPU;
-        private readonly bool _startInGPU;
+
 
         public MainWindow()
         {
             ConfigController.Load();
             InitializeComponent();
-
             _startInTray =
                 IsBootStart &&
                 ConfigController.Config.BootMinimized;
-
-            _startInFan = ConfigController.Config.BootAdvancedFanControlSystem;
-            _startInCPU = ConfigController.Config.BootAdvancedCPUSystem;
-            _startInGPU = ConfigController.Config.BootAdvancedGPUSystem;
             InitializePaths();
             InitializeTray();
-
             CreateWebView();
 
             if (_startInTray)
@@ -48,36 +41,8 @@ namespace JiaoLongControl.Server
                 Loaded += (_, _) => Hide();
             }
 
-            if (_startInFan)
-            {
-                Bridge.Instance.AutoFan.Start();
-            }
-
-            if (_startInCPU)
-            {
-                Bridge.Instance.CPU.SetCpuLongPower(ConfigController.Config.AdvancedCPUSystemConfig.CpuLongPower);
-                Bridge.Instance.CPU.SetCpuShortPower(ConfigController.Config.AdvancedCPUSystemConfig.CpuShortPower);
-                Bridge.Instance.CPU.SetCPUTempWall(ConfigController.Config.AdvancedCPUSystemConfig.CpuTempWall);
-                Bridge.Instance.Power.SetCPUMaxFrequency(
-                    ConfigController.Config.AdvancedCPUSystemConfig.CpuMaxFrequency);
-                if (ConfigController.Config.AdvancedCPUSystemConfig.CpuTurbo)
-                {
-                    Bridge.Instance.Power.EnableTurbo();
-                }
-                else
-                {
-                    Bridge.Instance.Power.DisableTurbo();
-                }
-            }
-
-            if (_startInGPU)
-            {
-                Bridge.Instance.NvidiaGpu.LockGpuClock(ConfigController.Config.NvidiaGpuConfig.GpuClock);
-                Bridge.Instance.NvidiaGpu.LockMemoryClock(ConfigController.Config.NvidiaGpuConfig.MemoryClock);
-                Bridge.Instance.NvidiaGpu.SetPowerLimit(ConfigController.Config.NvidiaGpuConfig.PowerLimit);
-            }
-
             Closing += OnClosing;
+            new SelfStart();
         }
 
         #region 初始化
