@@ -57,11 +57,11 @@ public class Blding64 : IDisposable
                 int err = Marshal.GetLastWin32Error();
                 throw new Exception($"Failed to load DLL ({DllFileName}), ErrorCode: {err}");
             }
-
-            if (IsInitialized)
-            {
-                EC_init();
-            }
+            DriverLoader.LoadDriver(ServiceName, fullSysPath);
+            IsInitialized = InitializeBldring();
+            if (!IsInitialized)
+                throw new Exception("DLL initialization failed");
+            EC_init();
         }
         catch
         {
