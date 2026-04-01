@@ -1,5 +1,4 @@
 ﻿using System.Runtime.InteropServices;
-using System.Windows;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
 using log4net;

@@ -90,5 +90,5 @@ public class RyzenSmuController : IDisposable
     public CommandResult SetCurveOptimizerPerCore(uint coreIdx, int value)
         => Send(0x06, (coreIdx << 8) | (uint)(value & 0xFF), false, $"Curve Optimizer Core {coreIdx}");
     #endregion
-    public void Dispose() => _pawn?.Dispose();
+    public void Dispose() => _pawn.Dispose();
 }

@@ -4,7 +4,7 @@ namespace JiaoLongControl.Server.Interop
 {
     [ComVisible(true)]
     [ClassInterface(ClassInterfaceType.AutoDual)]
-    public class Bridge
+    public class Bridge 
     {
         public static Bridge Instance { get; } = new();
 
@@ -18,8 +18,8 @@ namespace JiaoLongControl.Server.Interop
         public ConfigController Config { get; } = new();
         public AutoStartController AutoStart { get; } = new();
         public AutoFanControl AutoFan { get; } = new();
-        public NvidiaGpuController NvidiaGpu { get; } = new();
         public PowerController Power { get; } = new();
+        public NvidiaGpuController NvidiaGpu { get; } = new();
         public RyzenSmuController RyzenSmu { get; } = new();
     }
 }
