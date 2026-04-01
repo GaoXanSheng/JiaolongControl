@@ -39,8 +39,7 @@ public class PawnIODriver : IDisposable
         string resourceBase = "JiaoLongControl.Server.Resources.Drivers";
         string fullDllPath = EmbeddedResourceHelper.ExtractResourceToExeDir($"{resourceBase}.{DllName}", DllName);
         string fullSysPath = EmbeddedResourceHelper.ExtractResourceToExeDir($"{resourceBase}.{SysName}", SysName);
-        string scriptBlobPath =
-            EmbeddedResourceHelper.ExtractResourceToExeDir($"{resourceBase}.{ScriptBlobName}", ScriptBlobName);
+        string scriptBlobPath = EmbeddedResourceHelper.ExtractResourceToExeDir($"{resourceBase}.{ScriptBlobName}", ScriptBlobName);
         if ((File.Exists(fullSysPath) && File.Exists(fullDllPath) && File.Exists(scriptBlobPath)) == false)
         {
             throw new FileNotFoundException($"No Driver File Found: {fullSysPath}");
@@ -54,11 +53,11 @@ public class PawnIODriver : IDisposable
         }
 
         DriverLoader.LoadDriver(ServiceName, fullSysPath);
-        if (pawnio_open(out _executorHandle) != 0) throw new Exception("PawnIO 驱动打开失败，请检查驱动是否已安装及权限。");
+        if (pawnio_open(out _executorHandle) != 0) throw new Exception("PawnIO driver fails to open。");
 
         byte[] blobData = File.ReadAllBytes(scriptBlobPath);
         if (pawnio_load(_executorHandle, blobData, (UIntPtr)blobData.Length) != 0)
-            throw new Exception("PawnIO 脚本加载失败。");
+            throw new Exception("PawnIO Script Loading Failed。");
     }
     public uint ReadSmuRegister(uint address)
     {
@@ -84,7 +83,7 @@ public class PawnIODriver : IDisposable
             out _
         );
 
-        if (result != 0) throw new Exception($"执行 {functionName} 失败，错误码: {result:X}");
+        if (result != 0) throw new Exception($"execution {functionName} Failure ErrorCode: {result:X}");
         return outputs;
     }
 
