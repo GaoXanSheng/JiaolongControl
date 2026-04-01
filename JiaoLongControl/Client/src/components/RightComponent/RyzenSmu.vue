@@ -1,71 +1,49 @@
-<script setup lang="ts">
-import { reactive, ref, watch } from 'vue';
-import { Message } from "@arco-design/web-vue";
-import { RyzenSmu } from "@/utils/bridge";
+<script async setup lang="ts">
+import {reactive, ref, watch} from 'vue';
+import {Message} from "@arco-design/web-vue";
+import {Config, type ConfigInterface, RyzenSmu} from "@/utils/bridge";
 
 const CONFIG_GROUPS = [
   {
     title: 'Power Limits',
-    items:[
-      { label: 'STAPM Limit', key: 'SetStapmLimit', min: 0, max: 200, unit: 'W' },
-      { label: 'STAPM Time', key: 'SetStapmTime', min: 0, max: 3600, unit: 's' },
-      { label: 'Fast Limit', key: 'SetFastLimit', min: 0, max: 200, unit: 'W' },
-      { label: 'Slow Limit', key: 'SetSlowLimit', min: 0, max: 200, unit: 'W' },
-      { label: 'Slow Time', key: 'SetSlowTime', min: 0, max: 3600, unit: 's' },
-      { label: 'PPT Limit (RSMU)', key: 'SetPptLimitRsmu', min: 0, max: 200, unit: 'W' },
+    items: [
+      {label: 'STAPM Limit', key: 'SetStapmLimit', min: 0, max: 200, unit: 'W'},
+      {label: 'STAPM Time', key: 'SetStapmTime', min: 0, max: 3600, unit: 's'},
+      {label: 'Fast Limit', key: 'SetFastLimit', min: 0, max: 200, unit: 'W'},
+      {label: 'Slow Limit', key: 'SetSlowLimit', min: 0, max: 200, unit: 'W'},
+      {label: 'Slow Time', key: 'SetSlowTime', min: 0, max: 3600, unit: 's'},
+      {label: 'PPT Limit (RSMU)', key: 'SetPptLimitRsmu', min: 0, max: 200, unit: 'W'},
     ]
   },
   {
     title: 'Current Limits',
-    items:[
-      { label: 'VRM Current (MP1)', key: 'SetVrmCurrentMp1', min: 0, max: 300000, step: 1000, unit: 'mA' },
-      { label: 'VRM Current (RSMU)', key: 'SetVrmCurrentRsmu', min: 0, max: 300000, step: 1000, unit: 'mA' },
-      { label: 'EDC Limit (MP1)', key: 'SetEdcLimitMp1', min: 0, max: 300000, step: 1000, unit: 'mA' },
-      { label: 'EDC Limit (RSMU)', key: 'SetEdcLimitRsmu', min: 0, max: 300000, step: 1000, unit: 'mA' },
+    items: [
+      {label: 'VRM Current (MP1)', key: 'SetVrmCurrentMp1', min: 0, max: 300000, step: 1000, unit: 'mA'},
+      {label: 'VRM Current (RSMU)', key: 'SetVrmCurrentRsmu', min: 0, max: 300000, step: 1000, unit: 'mA'},
+      {label: 'EDC Limit (MP1)', key: 'SetEdcLimitMp1', min: 0, max: 300000, step: 1000, unit: 'mA'},
+      {label: 'EDC Limit (RSMU)', key: 'SetEdcLimitRsmu', min: 0, max: 300000, step: 1000, unit: 'mA'},
     ]
   },
   {
     title: 'Thermal Control',
-    items:[
-      { label: 'Temp Limit (MP1)', key: 'SetTempLimitMp1', min: 40, max: 115, unit: '℃' },
-      { label: 'Temp Limit (RSMU)', key: 'SetTempLimitRsmu', min: 40, max: 115, unit: '℃' },
+    items: [
+      {label: 'Temp Limit (MP1)', key: 'SetTempLimitMp1', min: 40, max: 115, unit: '℃'},
+      {label: 'Temp Limit (RSMU)', key: 'SetTempLimitRsmu', min: 40, max: 115, unit: '℃'},
     ]
   },
   {
     title: 'Clocks & OC',
-    items:[
-      { label: 'PBO Scalar', key: 'SetPboScalar', min: 1, max: 10, unit: 'x' },
-      { label: 'OC Clocks', key: 'SetOcClk', min: -500, max: 500, step: 25, unit: 'MHz' },
-      { label: 'OC Volt', key: 'SetOcVolt', min: 0, max: 1550, step: 5, unit: 'mV' },
+    items: [
+      {label: 'PBO Scalar', key: 'SetPboScalar', min: 1, max: 100, unit: 'x'},
+      {label: 'OC Clocks', key: 'SetOcClk', min: -500, max: 500, step: 25, unit: 'MHz'},
+      {label: 'OC Volt', key: 'SetOcVolt', min: 0, max: 1550, step: 5, unit: 'mV'},
     ]
   }
 ];
 
 const loadingMap = reactive<Record<string, boolean>>({});
-
-const smuData = reactive<Record<string, number>>({
-  SetStapmLimit: 35,
-  SetStapmTime: 60,
-  SetFastLimit: 54,
-  SetSlowLimit: 45,
-  SetSlowTime: 60,
-  SetPptLimitRsmu: 54,
-
-  SetVrmCurrentMp1: 120000,
-  SetVrmCurrentRsmu: 120000,
-  SetTdcLimitMp1: 90000,
-  SetTdcLimitRsmu: 90000,
-  SetEdcLimitMp1: 120000,
-  SetEdcLimitRsmu: 120000,
-
-  SetTempLimitMp1: 95,
-  SetTempLimitRsmu: 95,
-
-  SetPboScalar: 1,
-  SetOcClk: 0,
-  SetOcVolt: 1100,
-  SetCurveOptimizerAll: 0
-});
+const config = await Config.GetConfig();
+const smuData = ref<ConfigInterface['RyzenSumConfig'] & { [key: string]: number }>(config.Data.RyzenSumConfig);
 
 const coreCount = ref(8);
 const perCoreCurve = reactive<number[]>([]);
@@ -83,7 +61,7 @@ watch(coreCount, (newCount) => {
     perCoreCurve.splice(newCount);
     perCoreOcClk.splice(newCount);
   }
-}, { immediate: true });
+}, {immediate: true});
 
 const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) => {
   if (!(methodName in RyzenSmu)) {
@@ -105,6 +83,8 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
     Message.error('Execution failed');
     console.error(e);
   } finally {
+    config.Data.RyzenSumConfig = smuData.value;
+    await Config.SetConfig(config.Data);
     loadingMap[methodName] = false;
   }
 };
@@ -200,7 +180,7 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
                 </a-button>
               </div>
             </div>
-            <a-divider style="margin: 12px 0;" />
+            <a-divider style="margin: 12px 0;"/>
             <div class="per-core-grid">
               <div v-for="(_, index) in perCoreCurve" :key="index" class="core-item">
                 <span class="core-label">Core {{ index }}</span>
@@ -266,21 +246,23 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
 <style scoped lang="scss">
 .smu-container {
   .content-body {
-    padding: 16px; 
+    padding: 16px;
   }
 
   /* 瀑布流核心布局 */
+
   .masonry-layout {
     column-count: 2;
-    column-gap: 24px; 
+    column-gap: 24px;
     width: 100%;
   }
 
   /* 瀑布流子项 */
+
   .masonry-item {
     break-inside: avoid;
     margin-bottom: 24px;
-    transform: translateZ(0); 
+    transform: translateZ(0);
   }
 
   .group-card {
@@ -295,8 +277,15 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
       justify-content: space-between;
       margin-bottom: 5px;
       font-size: 13px;
-      .label { color: var(--color-text-2); }
-      .value { color: var(--color-primary-light-4); font-weight: bold; }
+
+      .label {
+        color: var(--color-text-2);
+      }
+
+      .value {
+        color: var(--color-primary-light-4);
+        font-weight: bold;
+      }
     }
 
     .actions {

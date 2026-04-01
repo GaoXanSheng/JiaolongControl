@@ -180,6 +180,29 @@ export interface ConfigInterface {
         GpuClock: number
         MemoryClock: number
         PowerLimit: number
+    };
+    RyzenSumConfig:{
+        SetStapmLimit: number,
+        SetStapmTime: number,
+        SetFastLimit: number,
+        SetSlowLimit: number,
+        SetSlowTime: number,
+        SetPptLimitRsmu: number,
+
+        SetVrmCurrentMp1: number,
+        SetVrmCurrentRsmu: number,
+        SetTdcLimitMp1: number,
+        SetTdcLimitRsmu: number,
+        SetEdcLimitMp1: number,
+        SetEdcLimitRsmu: number,
+
+        SetTempLimitMp1: number,
+        SetTempLimitRsmu: number,
+
+        SetPboScalar: number,
+        SetOcClk: number,
+        SetOcVolt: number,
+        SetCurveOptimizerAll: number
     }
 }
 

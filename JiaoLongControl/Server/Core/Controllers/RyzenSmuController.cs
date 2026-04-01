@@ -52,7 +52,7 @@ public class RyzenSmuController : IDisposable
         }
     }
 #region (Power Limits - PPT)
-    public CommandResult SetStapmLimit(double watts) => Send(0x4F, (uint)(watts * 1000), true, "STAPM Limit");
+    public CommandResult SetStapmLimit(double watts) => Send(0x4F, (uint)(watts * 1000), true, "SetStapmLimit");
     public CommandResult SetStapmTime(uint seconds) => Send(0x53, seconds, true, "STAPM Time");
     public CommandResult SetFastLimit(double watts) => Send(0x3E, (uint)(watts * 1000), true, "Fast Limit");
     public CommandResult SetSlowLimit(double watts) => Send(0x5F, (uint)(watts * 1000), true, "Slow Limit");
