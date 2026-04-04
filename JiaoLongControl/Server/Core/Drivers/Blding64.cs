@@ -80,13 +80,13 @@ public class Blding64 : IDisposable
             EC_RAM_WRITE(0x1060, val);
         }
     }
-    public void GpuFanSetSpeed(byte speed)
+    public void CpuFanSetSpeed(byte speed)
     {
         EC_RAM_WRITE(ECMemoryTable.Fan1_RPM_SET, speed);
         var mask = EC_RAM_READ(0xB20) | 0x02;
         EC_RAM_WRITE(0xB20, (byte)mask);
     }
-    public void CpuFanSetSpeed(byte speed)
+    public void GpuFanSetSpeed(byte speed)
     {
         EC_RAM_WRITE(ECMemoryTable.Fan2_RPM_SET, speed);
         var mask = EC_RAM_READ(0xB20) | 0x08;

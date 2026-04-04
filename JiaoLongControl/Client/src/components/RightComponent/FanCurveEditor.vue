@@ -1,11 +1,15 @@
 <template>
   <a-card class="fan-curve-card" :bordered="false" @click="closeMenu">
     <div class="header-info">
-      <!-- 左侧：基础统计信息 -->
+      <!-- 左侧：基础统计信息 & CPU/GPU切换 -->
       <div class="info-section">
-        <a-col :span="16">
-          <a-button type="primary" long @click="handleRemoveFanClick">移除转速设置</a-button>
-        </a-col>
+        <a-space>
+          <a-radio-group v-model="activeTab" type="button" @change="onTabChange">
+            <a-radio value="CPU">CPU曲线</a-radio>
+            <a-radio value="GPU">GPU曲线</a-radio>
+          </a-radio-group>
+          <a-button type="primary" @click="handleRemoveFanClick">移除转速设置</a-button>
+        </a-space>
       </div>
 
       <!-- 中间：服务控制开关 -->
@@ -45,7 +49,7 @@
       >
         <defs>
           <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.3" />
+            <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.3"/>
           </filter>
         </defs>
 
@@ -53,9 +57,9 @@
           <line
               v-for="i in 11"
               :key="'v-'+i"
-              :x1="safeMapX(tempRange[0]! + (i - 1) * (tempRange[1]! - tempRange[0]!) / 10)"
+              :x1="safeMapX(currentTempRange[0]! + (i - 1) * (currentTempRange[1]! - currentTempRange[0]!) / 10)"
               :y1="padding.top"
-              :x2="safeMapX(tempRange[0]! + (i - 1) * (tempRange[1]! - tempRange[0]!) / 10)"
+              :x2="safeMapX(currentTempRange[0]! + (i - 1) * (currentTempRange[1]! - currentTempRange[0]!) / 10)"
               :y2="height - padding.bottom"
               stroke="#eee"
               stroke-dasharray="4"
@@ -76,13 +80,13 @@
           <text
               v-for="i in 6"
               :key="'xl-'+i"
-              :x="safeMapX(tempRange[0]! + (i - 1) * (tempRange[1]! - tempRange[0]!) / 5)"
+              :x="safeMapX(currentTempRange[0]! + (i - 1) * (currentTempRange[1]! - currentTempRange[0]!) / 5)"
               :y="height - 10"
               text-anchor="middle"
               fill="#999"
               font-size="10"
           >
-            {{ Math.round(tempRange[0]! + (i - 1) * (tempRange[1]! - tempRange[0]!) / 5) }}°C
+            {{ Math.round(currentTempRange[0]! + (i - 1) * (currentTempRange[1]! - currentTempRange[0]!) / 5) }}°C
           </text>
           <text
               v-for="i in 6"
@@ -100,13 +104,13 @@
         <polyline
             :points="polylinePoints"
             fill="none"
-            stroke="#165DFF"
+            :stroke="activeTab === 'CPU' ? '#165DFF' : '#00B42A'"
             stroke-width="2"
             stroke-linejoin="round"
             stroke-linecap="round"
         />
 
-        <g v-for="(p, index) in points" :key="index">
+        <g v-for="(p, index) in currentPoints" :key="index">
           <circle
               :cx="safeMapX(p.temp)"
               :cy="safeMapY(p.speed)"
@@ -120,7 +124,7 @@
               :cx="safeMapX(p.temp)"
               :cy="safeMapY(p.speed)"
               r="6"
-              fill="#165DFF"
+              :fill="activeTab === 'CPU' ? '#165DFF' : '#00B42A'"
               stroke="#fff"
               stroke-width="2"
               style="filter: url(#shadow); pointer-events: none;"
@@ -159,7 +163,8 @@
 
     <a-modal v-model:visible="showEdit" title="编辑节点" :mask-closable="false" @ok="onEditConfirm">
       <a-space v-if="selectedIndex !== null" direction="vertical" size="large" style="width: 100%">
-        <a-input-number v-model="editForm.temp" :min="getMinTemp(selectedIndex)" :max="getMaxTemp(selectedIndex)" style="width: 100%">
+        <a-input-number v-model="editForm.temp" :min="getMinTemp(selectedIndex)" :max="getMaxTemp(selectedIndex)"
+                        style="width: 100%">
           <template #prepend>温度 (°C)</template>
         </a-input-number>
         <a-input-number v-model="editForm.speed" :min="speedRange[0]" :max="speedRange[1]" style="width: 100%">
@@ -182,39 +187,51 @@ interface Point {
   speed: number
 }
 
-const tempRange = [60, 100]
+const activeTab = ref<'CPU' | 'GPU'>('CPU')
+const cpuPoints = ref<Point[]>([
+  {temp: 60, speed: 1500},
+  {temp: 80, speed: 3000},
+  {temp: 100, speed: 5800}
+])
+
+const gpuPoints = ref<Point[]>([
+  {temp: 60, speed: 1500},
+  {temp: 75, speed: 3000},
+  {temp: 87, speed: 5800}
+])
+const currentPoints = computed(() => activeTab.value === 'CPU' ? cpuPoints.value : gpuPoints.value)
+const currentTempRange = computed(() => activeTab.value === 'CPU' ? [60, 100] : [60, 87])
+
 const speedRange = [1500, 6800]
-const padding = { top: 40, right: 60, bottom: 40, left: 60 }
+const padding = {top: 40, right: 60, bottom: 40, left: 60}
 
 const containerRef = ref<HTMLDivElement | null>(null)
 const width = ref(0)
 const height = ref(0)
 let resizeObserver: ResizeObserver | null = null
 
-const points = ref<Point[]>([
-  { temp: 60, speed: 1500 },
-  { temp: 80, speed: 3000 },
-  { temp: 100, speed: 5800 }
-])
-
 const draggingIndex = ref<number | null>(null)
 const menuVisible = ref(false)
-const menuPos = reactive({ x: 0, y: 0 })
+const menuPos = reactive({x: 0, y: 0})
 const selectedIndex = ref<number | null>(null)
 const showEdit = ref(false)
-const editForm = reactive({ temp: 0, speed: 0 })
-
-// --- 自动控制服务状态 ---
+const editForm = reactive({temp: 0, speed: 0})
 const isServiceRunning = ref(false)
 const serviceLoading = ref(false)
 
 let autoSaveTimer: number | null = null
 
-const canDelete = computed(() => selectedIndex.value !== null && points.value.length > 2)
+const canDelete = computed(() => selectedIndex.value !== null && currentPoints.value.length > 2)
 
 const isValidRender = computed(() => {
-  return width.value > 0 && height.value > 0 && points.value.every(p => !isNaN(p.temp) && !isNaN(p.speed))
+  return width.value > 0 && height.value > 0 && currentPoints.value.every(p => !isNaN(p.temp) && !isNaN(p.speed))
 })
+
+function onTabChange() {
+  closeMenu()
+  draggingIndex.value = null
+  selectedIndex.value = null
+}
 
 const checkServiceStatus = async () => {
   try {
@@ -234,35 +251,37 @@ const handleServiceToggle = async (newValue: any): Promise<boolean> => {
       await AutoFanControl.Stop()
       Message.info('自动风扇控制已停止')
     }
-    // 二次确认状态
     isServiceRunning.value = (await AutoFanControl.IsRunning()).Success
     return true
   } catch (e) {
     Message.error('操作失败，请检查日志')
-    // 发生错误时，回滚状态
     isServiceRunning.value = (await AutoFanControl.IsRunning()).Success
     return false
   } finally {
     serviceLoading.value = false
   }
 }
-
 const autoSave = async () => {
-  const config = (await Config.GetConfig()).Data
-  config.AdvancedFanControlSystemConfig = points.value
-  await Config.SetConfig(config)
+  try {
+    const config = (await Config.GetConfig()).Data
+    config.AdvancedFanControlSystemConfig = {
+      CpuFan: cpuPoints.value,
+      GpuFan: gpuPoints.value
+    }
+    await Config.SetConfig(config)
+  } catch (e) {
+    console.error('Save failed:', e)
+  }
 }
-
-watch(points, () => {
+watch([cpuPoints, gpuPoints], () => {
   if (autoSaveTimer) {
     clearTimeout(autoSaveTimer)
   }
-  autoSaveTimer = setTimeout(() => {
+  autoSaveTimer = window.setTimeout(() => {
     autoSave()
   }, 500)
-}, { deep: true })
+}, {deep: true})
 
-// 3. 坐标映射逻辑
 function safeMapX(val: number): number {
   if (isNaN(val) || width.value <= 0) return 0
   const result = mapX(val)
@@ -277,7 +296,8 @@ function safeMapY(val: number): number {
 
 function mapX(temp: number) {
   const innerWidth = width.value - padding.left - padding.right
-  const ratio = (temp - tempRange[0]!) / (tempRange[1]! - tempRange[0]!)
+  const range = currentTempRange.value
+  const ratio = (temp - range[0]!) / (range[1]! - range[0]!)
   return padding.left + ratio * innerWidth
 }
 
@@ -289,8 +309,9 @@ function mapY(speed: number) {
 
 function unmapX(x: number) {
   const innerWidth = width.value - padding.left - padding.right
+  const range = currentTempRange.value
   const ratio = (x - padding.left) / innerWidth
-  return tempRange[0]! + ratio * (tempRange[1]! - tempRange[0]!)
+  return range[0]! + ratio * (range[1]! - range[0]!)
 }
 
 function unmapY(y: number) {
@@ -300,12 +321,21 @@ function unmapY(y: number) {
 }
 
 const polylinePoints = computed(() => {
-  return points.value.map(p => `${safeMapX(p.temp)},${safeMapY(p.speed)}`).join(' ')
+  return currentPoints.value.map(p => `${safeMapX(p.temp)},${safeMapY(p.speed)}`).join(' ')
 })
 
-// 4. 生命周期
+function parseConfigPoints(rawData: any) {
+  if (!rawData || !Array.isArray(rawData)) return null
+  const cleanData = rawData.map((item: any) => {
+    const t = Number(item.temp ?? item.Temp ?? item.Temperature ?? item.temperature ?? 0)
+    const s = Number(item.speed ?? item.Speed ?? item.FanSpeed ?? item.rpm ?? 0)
+    return {temp: t, speed: s}
+  })
+  const validData = cleanData.filter((p: Point) => !isNaN(p.temp) && !isNaN(p.speed) && p.temp > 0)
+  return validData.length > 0 ? validData : null
+}
+
 onMounted(async () => {
-  // 监听容器大小
   if (containerRef.value) {
     resizeObserver = new ResizeObserver((entries) => {
       const entry = entries[0]
@@ -317,26 +347,15 @@ onMounted(async () => {
     resizeObserver.observe(containerRef.value)
   }
 
-  // 检查服务运行状态
   await checkServiceStatus()
-
-  // 加载配置
   try {
     const config = (await Config.GetConfig()).Data
-    if (config?.AdvancedFanControlSystemConfig && Array.isArray(config.AdvancedFanControlSystemConfig)) {
-      const rawData = config.AdvancedFanControlSystemConfig
-      const cleanData = rawData.map((item: any) => {
-        const t = Number(item.temp ?? item.Temp ?? item.Temperature ?? item.temperature ?? 0)
-        const s = Number(item.speed ?? item.Speed ?? item.FanSpeed ?? item.rpm ?? 0)
-        return { temp: t, speed: s }
-      })
-
-      const validData = cleanData.filter((p: Point) => !isNaN(p.temp) && !isNaN(p.speed) && p.temp > 0)
-
-      if (validData.length > 0) {
-        points.value = validData
-      }
-    }
+    const advancedConfig = config.AdvancedFanControlSystemConfig
+    console.log(config)
+    const parsedCpu = parseConfigPoints(advancedConfig.CpuFan)
+    if (parsedCpu) cpuPoints.value = parsedCpu
+    const parsedGpu = parseConfigPoints(advancedConfig.GpuFan)
+    if (parsedGpu) gpuPoints.value = parsedGpu
   } catch (e) {
     console.error(e)
   }
@@ -347,7 +366,6 @@ onUnmounted(() => {
   if (autoSaveTimer) clearTimeout(autoSaveTimer)
 })
 
-// 5. 交互事件
 function onDragStart(index: number, e: MouseEvent) {
   if (e.button !== 0) return
   draggingIndex.value = index
@@ -367,12 +385,15 @@ function onSvgMouseMove(e: MouseEvent) {
   newSpeed = Math.max(speedRange[0]!, Math.min(newSpeed, speedRange[1]!))
 
   const idx = draggingIndex.value
-  const minT = idx === 0 ? tempRange[0] : points.value[idx - 1]!.temp + 1
-  const maxT = idx === points.value.length - 1 ? tempRange[1] : points.value[idx + 1]!.temp - 1
+  const pointsRef = currentPoints.value
+  const range = currentTempRange.value
+
+  const minT = idx === 0 ? range[0] : pointsRef[idx - 1]!.temp + 1
+  const maxT = idx === pointsRef.length - 1 ? range[1] : pointsRef[idx + 1]!.temp - 1
   newTemp = Math.max(minT!, Math.min(newTemp, maxT!))
 
-  points.value[idx]!.temp = newTemp
-  points.value[idx]!.speed = newSpeed
+  pointsRef[idx]!.temp = newTemp
+  pointsRef[idx]!.speed = newSpeed
 }
 
 function onDragEnd() {
@@ -398,23 +419,25 @@ function closeMenu() {
 }
 
 function getMinTemp(index: number) {
-  if (index === 0) return tempRange[0]
-  return points.value[index - 1]!.temp + 1
+  if (index === 0) return currentTempRange.value[0]
+  return currentPoints.value[index - 1]!.temp + 1
 }
 
 function getMaxTemp(index: number) {
-  if (index === points.value.length - 1) return tempRange[1]
-  return points.value[index + 1]!.temp - 1
+  if (index === currentPoints.value.length - 1) return currentTempRange.value[1]
+  return currentPoints.value[index + 1]!.temp - 1
 }
 
 function onAddNode() {
   if (selectedIndex.value === null) return
-  const curr = points.value[selectedIndex.value]
-  const next = points.value[selectedIndex.value + 1]
+  const pointsRef = currentPoints.value
+  const curr = pointsRef[selectedIndex.value]
+  const next = pointsRef[selectedIndex.value + 1]
+
   if (curr == undefined) return;
   if (!next || next.temp <= curr.temp + 1) return
 
-  points.value.splice(selectedIndex.value + 1, 0, {
+  pointsRef.splice(selectedIndex.value + 1, 0, {
     temp: Math.floor((curr.temp + next.temp) / 2),
     speed: Math.floor((curr.speed + next.speed) / 2)
   })
@@ -423,14 +446,14 @@ function onAddNode() {
 
 function onRemoveNode() {
   if (!canDelete.value || selectedIndex.value === null) return
-  points.value.splice(selectedIndex.value, 1)
+  currentPoints.value.splice(selectedIndex.value, 1)
   closeMenu()
   selectedIndex.value = null
 }
 
 function openEditModal() {
   if (selectedIndex.value === null) return
-  const p = points.value[selectedIndex.value]
+  const p = currentPoints.value[selectedIndex.value]
   editForm.temp = p!.temp
   editForm.speed = p!.speed
   showEdit.value = true
@@ -439,10 +462,11 @@ function openEditModal() {
 
 function onEditConfirm() {
   if (selectedIndex.value === null) return
-  points.value[selectedIndex.value]!.temp = editForm.temp
-  points.value[selectedIndex.value]!.speed = editForm.speed
+  currentPoints.value[selectedIndex.value]!.temp = editForm.temp
+  currentPoints.value[selectedIndex.value]!.speed = editForm.speed
   showEdit.value = false
 }
+
 async function handleRemoveFanClick() {
   if (await AutoFanControl.IsRunning()) {
     await AutoFanControl.Stop()
@@ -477,7 +501,7 @@ async function handleRemoveFanClick() {
   height: 50px;
 
   .info-section {
-    flex: 1;
+    flex: 1.5;
     display: flex;
     align-items: center;
   }
@@ -497,12 +521,12 @@ async function handleRemoveFanClick() {
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background-color: #86909c; // gray-6
+      background-color: #86909c;
       margin-right: 6px;
       transition: all 0.3s;
 
       &.active {
-        background-color: #00b42a; // green-6
+        background-color: #00b42a;
         box-shadow: 0 0 4px #00b42a;
         animation: pulse 2s infinite;
       }
@@ -520,9 +544,15 @@ async function handleRemoveFanClick() {
 }
 
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(0, 180, 42, 0.4); }
-  70% { box-shadow: 0 0 0 4px rgba(0, 180, 42, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(0, 180, 42, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 180, 42, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 4px rgba(0, 180, 42, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 180, 42, 0);
+  }
 }
 
 .svg-container {

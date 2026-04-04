@@ -16,6 +16,9 @@
     <ItemGroup>
         <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1"/>
         <PackageReference Include="log4net" Version="3.3.0"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.5" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.5" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.5" />
         <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3800.47"/>
         <PackageReference Include="System.Management" Version="10.0.3"/>
         <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.3"/>

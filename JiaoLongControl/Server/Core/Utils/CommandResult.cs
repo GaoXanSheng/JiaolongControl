@@ -26,7 +26,7 @@ public class CommandResult
         Success = success;
         Message = message;
         Data = data;
-        Logger.Info($"{success} {message} {data}");
+        Logger.Debug($"{success} {message} {data}");
     }
 
     public string toJson() => JsonSerializer.Serialize(this, JsonOptions);
