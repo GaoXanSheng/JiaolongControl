@@ -25,10 +25,6 @@ public class AutoFanControl : IDisposable
     private const int RPM_UNIT_DIVISOR = 100;
     private const int MAX_FAN_BYTE = 68;
     private const int MIN_FAN_BYTE = 0;
-    
-    private const float CPU_TEMP_WALL = 100f;
-    private const float GPU_TEMP_WALL = 87f;
-
     public CommandResult IsRunning()
     {
         return new CommandResult(_isRunning, _isRunning ? "自动风扇控制正在运行" : "自动风扇控制没有在运行中");
@@ -98,14 +94,8 @@ public class AutoFanControl : IDisposable
                     if (gpuTempQueue.Count > smoothSampleCount) gpuTempQueue.Dequeue();
                     float smoothGpuTemp = gpuTempQueue.Average();
                     
-                    float cpuRatio = smoothCpuTemp / CPU_TEMP_WALL;
-                    float gpuRatio = smoothGpuTemp / GPU_TEMP_WALL;
-                    float maxRatio = Math.Max(cpuRatio, gpuRatio);
-                    
-                    float priorityTemp = maxRatio * 100f;
-                    
-                    int targetCpuByte = CalculateFanSpeed(priorityTemp, FanType.CPU);
-                    int targetGpuByte = CalculateFanSpeed(priorityTemp, FanType.GPU);
+                    int targetCpuByte = CalculateFanSpeed(smoothCpuTemp, FanType.CPU);
+                    int targetGpuByte = CalculateFanSpeed(smoothGpuTemp, FanType.GPU);
                     
                     ApplyFanSpeed(FanType.CPU, targetCpuByte, smoothCpuTemp);
                     ApplyFanSpeed(FanType.GPU, targetGpuByte, smoothGpuTemp);
@@ -134,9 +124,11 @@ public class AutoFanControl : IDisposable
     {
         var config = ConfigController.Config.AdvancedFanControlSystemConfig;
         if (config == null) return 25;
+        
         List<FanPoint> configPoints = type == FanType.CPU ? config.CpuFan : config.GpuFan;
         if (configPoints == null || configPoints.Count == 0)
             return 25;
+            
         var sortedPoints = configPoints.OrderBy(p => p.temp).ToList();
         double targetRpm;
         if (currentTemp <= sortedPoints.First().temp)
@@ -150,7 +142,6 @@ public class AutoFanControl : IDisposable
         else
         {
             targetRpm = sortedPoints.First().speed;
-
             for (int i = 0; i < sortedPoints.Count - 1; i++)
             {
                 var p1 = sortedPoints[i];
