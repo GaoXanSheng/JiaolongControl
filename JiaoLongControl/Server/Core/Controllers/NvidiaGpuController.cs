@@ -17,6 +17,8 @@ public class NvidiaGpuController
             _smiPath = customSmiPath;
         }
     }
+    public CommandResult GetGpuTemperature(int gpuIndex = -1)
+        => ExecuteCommand("--query-gpu=temperature.gpu --format=csv,noheader,nounits", gpuIndex);
 
     public CommandResult LockGpuClock(int freq, int gpuIndex = -1)
         => ExecuteCommand($"-lgc {freq}", gpuIndex);
