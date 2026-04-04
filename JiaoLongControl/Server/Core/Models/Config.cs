@@ -18,7 +18,13 @@ public class Config
     public FanPageStore FanPageStore { get; set; } = new();
 
     // 风扇控制配置
-    public List<FanPoint> AdvancedFanControlSystemConfig { get; set; } = new()
+    public AdvancedFanControlSystemConfig AdvancedFanControlSystemConfig { get; set; }  = new();
+    public RyzenSumConfig RyzenSumConfig { get; set; } = new();
+}
+
+public class AdvancedFanControlSystemConfig
+{
+    public List<FanPoint> CpuFan { get; set; }  = new List<FanPoint>()
     {
         new FanPoint { temp = 60, speed = 1500 },
         new FanPoint { temp = 65, speed = 2104 },
@@ -31,9 +37,16 @@ public class Config
         new FanPoint { temp = 97, speed = 5415 },
         new FanPoint { temp = 100, speed = 5800 }
     };
-    public RyzenSumConfig RyzenSumConfig { get; set; } = new();
+    public List<FanPoint> GpuFan { get; set; }  = new List<FanPoint>()
+    {
+        new FanPoint { temp = 60, speed = 3000 },
+        new FanPoint { temp = 65, speed = 4000 },
+        new FanPoint { temp = 70, speed = 4800 },
+        new FanPoint { temp = 75, speed = 5000 },
+        new FanPoint { temp = 80, speed = 5400 },
+        new FanPoint { temp = 87, speed = 5800 },
+    };
 }
-
 public class FanPageStore
 {
     public int FanSpeed { get; set; } = 1500;

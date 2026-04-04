@@ -15,8 +15,8 @@ public class FanController : Blding64
         Tuple<int, int> CPUGPUFanSpeed = MethodServices.GetValue<Tuple<int, int>>(MethodName.CPUGPUFanSpeed);
         var fanSpeedInfo = new FanSpeedInfo
         {
-            CPUFanSpeed = CPUGPUFanSpeed.Item1,
-            GPUFanSpeed = CPUGPUFanSpeed.Item2
+            CPUFanSpeed = CPUGPUFanSpeed.Item2,
+            GPUFanSpeed = CPUGPUFanSpeed.Item1
         };
         return new CommandResult(true, "获取成功", fanSpeedInfo);
     }

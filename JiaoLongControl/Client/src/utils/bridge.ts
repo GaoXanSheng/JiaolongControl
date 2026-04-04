@@ -164,7 +164,10 @@ function toByte(value: number): number {
 export interface ConfigInterface {
     BootMinimized: boolean;
     BootAdvancedFanControlSystem: boolean;
-    AdvancedFanControlSystemConfig: { temp: number; speed: number }[];
+    AdvancedFanControlSystemConfig:{
+        GpuFan:{ temp: number; speed: number }[],
+        CpuFan:{ temp: number; speed: number }[]
+    };
     BootAdvancedCPUSystem: boolean;
     BootAdvancedGPUSystem: boolean;
     FanPageStore: {
