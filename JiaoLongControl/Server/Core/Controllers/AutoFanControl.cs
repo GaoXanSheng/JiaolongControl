@@ -1,16 +1,28 @@
-﻿using System.Runtime.InteropServices;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
 using log4net;
 
 namespace JiaoLongControl.Server.Core.Controllers
 {
+    // 定义一个枚举用于区分风扇类型
+    public enum FanType
+    {
+        CPU,
+        GPU
+    }
+
     [ComVisible(true)]
     [ClassInterface(ClassInterfaceType.AutoDual)]
     public class AutoFanControl : IDisposable
     {
         private volatile bool _isRunning;
-        private readonly ILog Logger= LogManager.GetLogger(typeof(AutoFanControl));
+        private readonly ILog Logger = LogManager.GetLogger(typeof(AutoFanControl));
         private CancellationTokenSource? _cts;
         private Task? _controlTask;
         private const int IntervalMs = 5000;
@@ -30,7 +42,6 @@ namespace JiaoLongControl.Server.Core.Controllers
                 return new CommandResult(_isRunning, "自动风扇控制已经运行中");
             _cts = new CancellationTokenSource();
             var token = _cts.Token;
-
             _controlTask = Task.Factory.StartNew(
                 () => ControlLoop(token),
                 token,
@@ -44,11 +55,8 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             if (!_isRunning)
                 return new CommandResult(!_isRunning, "自动风扇控制没有在运行中");
-
             Logger.Info("Auto Fan Control stopping...");
-
             _cts?.Cancel();
-
             try
             {
                 _controlTask?.Wait(2000);
@@ -64,7 +72,6 @@ namespace JiaoLongControl.Server.Core.Controllers
             {
                 _isRunning = false;
             }
-
             return new CommandResult(_isRunning, "自动风扇控制已停止");
         }
 
@@ -72,8 +79,8 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             _isRunning = true;
             Logger.Info("Auto Fan Control started.");
-
-            Queue<float> tempQueue = new();
+            Queue<float> cpuTempQueue = new();
+            Queue<float> gpuTempQueue = new();
             const int smoothSampleCount = 3;
 
             try
@@ -82,17 +89,18 @@ namespace JiaoLongControl.Server.Core.Controllers
                 {
                     try
                     {
-                        float rawTemp = Convert.ToSingle(Bridge.Instance.CPU.GetCPUThermometer().Data);
-
-                        tempQueue.Enqueue(rawTemp);
-                        if (tempQueue.Count > smoothSampleCount)
-                            tempQueue.Dequeue();
-
-                        float smoothTemp = tempQueue.Average();
-
-                        int targetByte = CalculateFanSpeed(smoothTemp);
-
-                        ApplyFanSpeed(targetByte, smoothTemp);
+                        float rawCpuTemp = Convert.ToSingle(Bridge.Instance.CPU.GetCPUThermometer().Data);
+                        float rawGpuTemp = Convert.ToSingle(Bridge.Instance.NvidiaGpu.GetGpuTemperature().Message);
+                        cpuTempQueue.Enqueue(rawCpuTemp);
+                        if (cpuTempQueue.Count > smoothSampleCount) cpuTempQueue.Dequeue();
+                        float smoothCpuTemp = cpuTempQueue.Average();
+                        gpuTempQueue.Enqueue(rawGpuTemp);
+                        if (gpuTempQueue.Count > smoothSampleCount) gpuTempQueue.Dequeue();
+                        float smoothGpuTemp = gpuTempQueue.Average();
+                        int targetCpuByte = CalculateFanSpeed(smoothCpuTemp, FanType.CPU);
+                        int targetGpuByte = CalculateFanSpeed(smoothGpuTemp, FanType.GPU);
+                        ApplyFanSpeed(FanType.CPU, targetCpuByte, smoothCpuTemp);
+                        ApplyFanSpeed(FanType.GPU, targetGpuByte, smoothGpuTemp);
 
                         Task.Delay(IntervalMs, token).Wait(token);
                     }
@@ -102,7 +110,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                     }
                     catch (Exception ex)
                     {
-                        Logger.Error(ex.Message);
+                        Logger.Error($"ControlLoop Error: {ex.Message}");
                         Thread.Sleep(2000);
                     }
                 }
@@ -114,8 +122,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             }
         }
 
-
-        private int CalculateFanSpeed(float currentTemp)
+        private int CalculateFanSpeed(float currentTemp, FanType type)
         {
             var configPoints = ConfigController.Config.AdvancedFanControlSystemConfig;
 
@@ -144,13 +151,8 @@ namespace JiaoLongControl.Server.Core.Controllers
 
                     if (currentTemp >= p1.temp && currentTemp <= p2.temp)
                     {
-                        double ratio =
-                            (currentTemp - p1.temp) /
-                            (double)(p2.temp - p1.temp);
-
-                        targetRpm =
-                            p1.speed +
-                            (p2.speed - p1.speed) * ratio;
+                        double ratio = (currentTemp - p1.temp) / (double)(p2.temp - p1.temp);
+                        targetRpm = p1.speed + (p2.speed - p1.speed) * ratio;
                         break;
                     }
                 }
@@ -160,27 +162,18 @@ namespace JiaoLongControl.Server.Core.Controllers
             return Math.Clamp(targetByte, MIN_FAN_BYTE, MAX_FAN_BYTE);
         }
 
-        private int _lastAppliedByte = -1;
-
-        private void ApplyFanSpeed(int speedByte, float temp)
+        private void ApplyFanSpeed(FanType type, int speedByte, float temp)
         {
-            if (speedByte == _lastAppliedByte)
-                return;
-
             int rpm = speedByte * 100;
-
-            if (Bridge.Instance.Fan.SetFanSpeed((byte)speedByte).Success)
+            if (type == FanType.CPU)
             {
-                Logger.Info($"CPU Temp: {temp}");
-                Logger.Info(
-                    $"Fan Speed Applied: {rpm} RPM"
-                );
-
-                _lastAppliedByte = speedByte;
+                Bridge.Instance.Fan.CpuFanSetSpeed((byte)speedByte);
+                Logger.Info($"CPU Temp: {temp:F1}°C | CPU Fan Applied: {rpm} RPM");
             }
-            else
+            else if (type == FanType.GPU)
             {
-                Logger.Error($"Fan Speed Apply Failed: EC={speedByte}");
+                Bridge.Instance.Fan.GpuFanSetSpeed((byte)speedByte);
+                Logger.Info($"GPU Temp: {temp:F1}°C | GPU Fan Applied: {rpm} RPM");
             }
         }
 

@@ -31,8 +31,8 @@ public class FanController : Blding64
 
         if (IsInitialized)
         {
-            Fan1SetSpeed(fanSpeed);
-            Fan2SetSpeed(fanSpeed);
+            GpuFanSetSpeed(fanSpeed);
+            CpuFanSetSpeed(fanSpeed);
             return new CommandResult(true, "设置成功");
         }
 
