@@ -1,17 +1,15 @@
-﻿using System.Text;
-using System.Windows;
-using JiaoLongControl.Server.Core.Controllers;
+﻿using System.Windows;
 using JiaoLongControl.Server.Interop;
 using log4net;
 using log4net.Config;
 
 namespace JiaoLongControl.Server
 {
-    
     public partial class App : Application
     {
         private static Mutex? _mutex;
-        private readonly ILog Logger= LogManager.GetLogger(typeof(App));
+        private readonly ILog Logger = LogManager.GetLogger(typeof(App));
+
         protected override void OnStartup(StartupEventArgs e)
         {
             XmlConfigurator.Configure();
@@ -24,13 +22,29 @@ namespace JiaoLongControl.Server
                 Current.Shutdown();
                 return;
             }
+
+            AppDomain.CurrentDomain.ProcessExit += (_, __) => Cleanup();
+            AppDomain.CurrentDomain.UnhandledException += (_, __) => Cleanup();
+
             base.OnStartup(e);
         }
+
         protected override void OnExit(ExitEventArgs e)
         {
+            Cleanup();
             base.OnExit(e);
-            Bridge.Instance.Fan.RemoveFanSpeed();
-            Bridge.Instance.Dispose();
+        }
+
+        private void Cleanup()
+        {
+            try
+            {
+                Bridge.Instance?.Fan?.RemoveFanSpeed();
+                Bridge.Instance?.Dispose();
+            }
+            catch
+            {
+            }
         }
     }
 }

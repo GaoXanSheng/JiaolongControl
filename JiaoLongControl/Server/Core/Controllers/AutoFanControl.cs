@@ -20,7 +20,7 @@ public class AutoFanControl : IDisposable
     private readonly ILog Logger = LogManager.GetLogger(typeof(AutoFanControl));
     private CancellationTokenSource? _cts;
     private Task? _controlTask;
-    private const int IntervalMs = 5000;
+    private const int IntervalMs = 3000;
 
     private const int RPM_UNIT_DIVISOR = 100;
     private const int MAX_FAN_BYTE = 68;

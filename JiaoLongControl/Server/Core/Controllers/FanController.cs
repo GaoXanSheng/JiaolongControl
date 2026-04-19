@@ -43,7 +43,7 @@ public class FanController : Blding64
     {
         if (IsInitialized)
         {
-            RemoveFanSpeed();
+            base.RemoveFanSpeed();
             return new CommandResult(true, "设置成功");
         }
 
