@@ -75,7 +75,7 @@ public class NvidiaGpuController
         }
         catch (System.ComponentModel.Win32Exception)
         {
-            return new CommandResult(false, "找不到 nvidia-smi，请确保安装了 NVIDIA 显卡驱动，或尝试提供绝对路径。");
+            return new CommandResult(false, "找不到 nvidia-smi，请确保安装了 NVIDIA 显卡驱动。");
         }
         catch (Exception ex)
         {

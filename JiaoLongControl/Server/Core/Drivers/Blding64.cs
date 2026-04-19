@@ -57,6 +57,7 @@ public class Blding64 : IDisposable
                 int err = Marshal.GetLastWin32Error();
                 throw new Exception($"Failed to load DLL ({DllFileName}), ErrorCode: {err}");
             }
+
             DriverLoader.LoadDriver(ServiceName, fullSysPath);
             IsInitialized = InitializeBldring();
             if (!IsInitialized)
@@ -80,12 +81,14 @@ public class Blding64 : IDisposable
             EC_RAM_WRITE(0x1060, val);
         }
     }
+
     public void CpuFanSetSpeed(byte speed)
     {
         EC_RAM_WRITE(ECMemoryTable.Fan1_RPM_SET, speed);
         var mask = EC_RAM_READ(0xB20) | 0x02;
         EC_RAM_WRITE(0xB20, (byte)mask);
     }
+
     public void GpuFanSetSpeed(byte speed)
     {
         EC_RAM_WRITE(ECMemoryTable.Fan2_RPM_SET, speed);
