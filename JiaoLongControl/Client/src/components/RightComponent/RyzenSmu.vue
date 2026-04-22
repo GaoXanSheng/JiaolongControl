@@ -170,12 +170,12 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
             <div class="control-row global-opt">
               <span class="label">All Core Offset</span>
               <div class="actions">
-                <a-input-number v-model="smuData.SetCurveOptimizerAll" :min="-50" :max="50" size="small"/>
+                <a-input-number v-model="smuData.CurveOptimizerAll" :min="-100" :max="100" size="small"/>
                 <a-button
                     type="primary"
                     size="small"
                     :loading="loadingMap['SetCurveOptimizerAll']"
-                    @click="applySetting('SetCurveOptimizerAll', smuData.SetCurveOptimizerAll)"
+                    @click="applySetting('SetCurveOptimizerAll', smuData.CurveOptimizerAll)"
                 >Apply
                 </a-button>
               </div>
