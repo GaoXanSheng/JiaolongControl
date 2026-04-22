@@ -11,6 +11,7 @@ public class Config
     // 自动启动CPU配置
     public bool BootAdvancedCPUSystem { get; set; } = false;
     public bool BootAdvancedGPUSystem { get; set; } = false;
+    public bool BootSetRyzenSumCurveOptimizerAll { get; set; } = false;
     public CpuConfg AdvancedCPUSystemConfig { get; set; } = new();
 
     public NvidiaGpuConfig NvidiaGpuConfig { get; set; } = new();
@@ -60,24 +61,24 @@ public class NvidiaGpuConfig
 
 public class RyzenSumConfig
 {
-    public int SetStapmLimit { get; set; } = 0;
-    public int SetStapmTime { get; set; } = 0;
-    public int SetFastLimit { get; set; } = 0;
-    public int SetSlowLimit { get; set; } = 0;
-    public int SetSlowTime { get; set; } = 0;
-    public int SetPptLimitRsmu { get; set; } = 0;
-    public int SetVrmCurrentMp1 { get; set; } = 0;
-    public int SetVrmCurrentRsmu { get; set; } = 0;
-    public int SetTdcLimitMp1 { get; set; } = 0;
-    public int SetTdcLimitRsmu { get; set; } = 0;
-    public int SetEdcLimitMp1 { get; set; } = 0;
-    public int SetEdcLimitRsmu { get; set; } = 0;
-    public int SetTempLimitMp1 { get; set; } = 0;
-    public int SetTempLimitRsmu { get; set; } = 0;
-    public int SetPboScalar { get; set; } = 0;
-    public int SetOcClk { get; set; } = 0;
-    public int SetOcVolt { get; set; } = 0;
-    public int SetCurveOptimizerAll { get; set; } = 0;
+    public int StapmLimit { get; set; } = 0;
+    public int StapmTime { get; set; } = 0;
+    public int FastLimit { get; set; } = 0;
+    public int SlowLimit { get; set; } = 0;
+    public int SlowTime { get; set; } = 0;
+    public int PptLimitRsmu { get; set; } = 0;
+    public int VrmCurrentMp1 { get; set; } = 0;
+    public int VrmCurrentRsmu { get; set; } = 0;
+    public int TdcLimitMp1 { get; set; } = 0;
+    public int TdcLimitRsmu { get; set; } = 0;
+    public int EdcLimitMp1 { get; set; } = 0;
+    public int EdcLimitRsmu { get; set; } = 0;
+    public int TempLimitMp1 { get; set; } = 0;
+    public int TempLimitRsmu { get; set; } = 0;
+    public int PboScalar { get; set; } = 0;
+    public int OcClk { get; set; } = 0;
+    public int OcVolt { get; set; } = 0;
+    public int CurveOptimizerAll { get; set; } = 0;
 }
 public class CpuConfg
 {
