@@ -5,6 +5,7 @@ import PowerMode from "@/components/RightComponent/setting/PowerMode.vue";
 import AdvancedFanControlSystem from "@/components/RightComponent/setting/AdvancedFanControlSystem.vue";
 import BootCPUAutoStart from "@/components/RightComponent/setting/BootCPUAutoStart.vue";
 import BootGPUAutoStart from "@/components/RightComponent/setting/BootGPUAutoStart.vue";
+import BootCurveOptimizerAllAutoStart from "@/components/RightComponent/setting/BootCurveOptimizerAllAutoStart.vue";
 </script>
 
 <template>
@@ -19,6 +20,7 @@ import BootGPUAutoStart from "@/components/RightComponent/setting/BootGPUAutoSta
       <AdvancedFanControlSystem></AdvancedFanControlSystem>
       <BootCPUAutoStart></BootCPUAutoStart>
       <BootGPUAutoStart></BootGPUAutoStart>
+      <BootCurveOptimizerAllAutoStart></BootCurveOptimizerAllAutoStart>
     </a-row>
   </div>
 </template>

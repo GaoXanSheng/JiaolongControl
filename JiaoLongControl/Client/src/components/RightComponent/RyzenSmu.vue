@@ -7,36 +7,36 @@ const CONFIG_GROUPS = [
   {
     title: 'Power Limits',
     items: [
-      {label: 'STAPM Limit', key: 'SetStapmLimit', min: 0, max: 200, unit: 'W'},
-      {label: 'STAPM Time', key: 'SetStapmTime', min: 0, max: 3600, unit: 's'},
-      {label: 'Fast Limit', key: 'SetFastLimit', min: 0, max: 200, unit: 'W'},
-      {label: 'Slow Limit', key: 'SetSlowLimit', min: 0, max: 200, unit: 'W'},
-      {label: 'Slow Time', key: 'SetSlowTime', min: 0, max: 3600, unit: 's'},
-      {label: 'PPT Limit (RSMU)', key: 'SetPptLimitRsmu', min: 0, max: 200, unit: 'W'},
+      {label: 'STAPM Limit', key: 'StapmLimit', min: 0, max: 200, unit: 'W'},
+      {label: 'STAPM Time', key: 'StapmTime', min: 0, max: 3600, unit: 's'},
+      {label: 'Fast Limit', key: 'FastLimit', min: 0, max: 200, unit: 'W'},
+      {label: 'Slow Limit', key: 'SlowLimit', min: 0, max: 200, unit: 'W'},
+      {label: 'Slow Time', key: 'SlowTime', min: 0, max: 3600, unit: 's'},
+      {label: 'PPT Limit (RSMU)', key: 'PptLimitRsmu', min: 0, max: 200, unit: 'W'},
     ]
   },
   {
     title: 'Current Limits',
     items: [
-      {label: 'VRM Current (MP1)', key: 'SetVrmCurrentMp1', min: 0, max: 300000, step: 1000, unit: 'mA'},
-      {label: 'VRM Current (RSMU)', key: 'SetVrmCurrentRsmu', min: 0, max: 300000, step: 1000, unit: 'mA'},
-      {label: 'EDC Limit (MP1)', key: 'SetEdcLimitMp1', min: 0, max: 300000, step: 1000, unit: 'mA'},
-      {label: 'EDC Limit (RSMU)', key: 'SetEdcLimitRsmu', min: 0, max: 300000, step: 1000, unit: 'mA'},
+      {label: 'VRM Current (MP1)', key: 'VrmCurrentMp1', min: 0, max: 300000, step: 1000, unit: 'mA'},
+      {label: 'VRM Current (RSMU)', key: 'VrmCurrentRsmu', min: 0, max: 300000, step: 1000, unit: 'mA'},
+      {label: 'EDC Limit (MP1)', key: 'EdcLimitMp1', min: 0, max: 300000, step: 1000, unit: 'mA'},
+      {label: 'EDC Limit (RSMU)', key: 'EdcLimitRsmu', min: 0, max: 300000, step: 1000, unit: 'mA'},
     ]
   },
   {
     title: 'Thermal Control',
     items: [
-      {label: 'Temp Limit (MP1)', key: 'SetTempLimitMp1', min: 40, max: 115, unit: '℃'},
-      {label: 'Temp Limit (RSMU)', key: 'SetTempLimitRsmu', min: 40, max: 115, unit: '℃'},
+      {label: 'Temp Limit (MP1)', key: 'TempLimitMp1', min: 40, max: 115, unit: '℃'},
+      {label: 'Temp Limit (RSMU)', key: 'TempLimitRsmu', min: 40, max: 115, unit: '℃'},
     ]
   },
   {
     title: 'Clocks & OC',
     items: [
-      {label: 'PBO Scalar', key: 'SetPboScalar', min: 1, max: 100, unit: 'x'},
-      {label: 'OC Clocks', key: 'SetOcClk', min: -500, max: 500, step: 25, unit: 'MHz'},
-      {label: 'OC Volt', key: 'SetOcVolt', min: 0, max: 1550, step: 5, unit: 'mV'},
+      {label: 'PBO Scalar', key: 'PboScalar', min: 1, max: 100, unit: 'x'},
+      {label: 'OC Clocks', key: 'OcClk', min: -500, max: 500, step: 25, unit: 'MHz'},
+      {label: 'OC Volt', key: 'OcVolt', min: 0, max: 1550, step: 5, unit: 'mV'},
     ]
   }
 ];

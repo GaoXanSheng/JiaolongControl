@@ -6,20 +6,16 @@ namespace JiaoLongControl.Server.Core.Utils;
 
 public class SelfStart
 {
-    private readonly bool _startInFan;
-    private readonly bool _startInCPU;
-    private readonly bool _startInGPU;
     private Config _config = ConfigController.Config;
-
     public SelfStart()
     {
-        _startInFan = _config.BootAdvancedFanControlSystem;
-        _startInCPU = _config.BootAdvancedCPUSystem;
-        _startInGPU = _config.BootAdvancedGPUSystem;
-
-        if (_startInFan) Fan();
-        if (_startInCPU) CPU();
-        if (_startInGPU) GPU();
+        if (_config.BootAdvancedFanControlSystem) Fan();
+        if (_config.BootAdvancedCPUSystem) CPU();
+        if (_config.BootAdvancedGPUSystem) GPU();
+        if (_config.BootSetRyzenSumCurveOptimizerAll)
+        {
+            Bridge.Instance.RyzenSmu.SetCurveOptimizerAll(_config.RyzenSumConfig.CurveOptimizerAll);
+        }
     }
 
     private void Fan()

@@ -164,6 +164,7 @@ function toByte(value: number): number {
 export interface ConfigInterface {
     BootMinimized: boolean;
     BootAdvancedFanControlSystem: boolean;
+    BootSetRyzenSumCurveOptimizerAll:boolean;
     AdvancedFanControlSystemConfig:{
         GpuFan:{ temp: number; speed: number }[],
         CpuFan:{ temp: number; speed: number }[]
@@ -186,27 +187,27 @@ export interface ConfigInterface {
         PowerLimit: number
     };
     RyzenSumConfig: {
-        SetStapmLimit: number,
-        SetStapmTime: number,
-        SetFastLimit: number,
-        SetSlowLimit: number,
-        SetSlowTime: number,
-        SetPptLimitRsmu: number,
+        StapmLimit: number,
+        StapmTime: number,
+        FastLimit: number,
+        SlowLimit: number,
+        SlowTime: number,
+        PptLimitRsmu: number,
 
-        SetVrmCurrentMp1: number,
-        SetVrmCurrentRsmu: number,
-        SetTdcLimitMp1: number,
-        SetTdcLimitRsmu: number,
-        SetEdcLimitMp1: number,
-        SetEdcLimitRsmu: number,
+        VrmCurrentMp1: number,
+        VrmCurrentRsmu: number,
+        TdcLimitMp1: number,
+        TdcLimitRsmu: number,
+        EdcLimitMp1: number,
+        EdcLimitRsmu: number,
 
-        SetTempLimitMp1: number,
-        SetTempLimitRsmu: number,
+        TempLimitMp1: number,
+        TempLimitRsmu: number,
 
-        SetPboScalar: number,
-        SetOcClk: number,
-        SetOcVolt: number,
-        SetCurveOptimizerAll: number
+        PboScalar: number,
+        OcClk: number,
+        OcVolt: number,
+        CurveOptimizerAll: number
     }
 }
 
