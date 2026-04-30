@@ -105,6 +105,7 @@ declare global {
                             ResetMemoryClock(gpuIndex?: number): Promise<any>;
                             SetPowerLimit(watts: number, gpuIndex?: number): Promise<any>;
                             GetGpuTemperature(): Promise<any>;
+                            UnlockDB(): Promise<any>;
                         };
                         Power: {
                             SetCPUMaxFrequency(mhz: number): Promise<any>;
@@ -276,7 +277,8 @@ export const NvidiaGpu = {
     LockMemoryClock: (freq: number, gpuIndex?: number) => call(raw.NvidiaGpu.LockMemoryClock(freq, gpuIndex)),
     ResetMemoryClock: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetMemoryClock(gpuIndex)),
     SetPowerLimit: (watts: number, gpuIndex?: number) => call(raw.NvidiaGpu.SetPowerLimit(watts, gpuIndex)),
-    GetGpuTemperature: () => call(raw.NvidiaGpu.GetGpuTemperature())
+    GetGpuTemperature: () => call(raw.NvidiaGpu.GetGpuTemperature()),
+    UnlockDB: () => call(raw.NvidiaGpu.UnlockDB())
 };
 
 export const RyzenSmu = {

@@ -8,23 +8,23 @@ namespace JiaoLongControl.Server.Core.Drivers;
 
 public class Blding64 : IDisposable
 {
-    private const string DllFileName = "JiaoLongDriver64.dll";
-    private const string SysFileName = "JiaoLongDriver64.sys";
+    private const string DllName = "JiaoLongDriver64.dll";
+    private const string SysName = "JiaoLongDriver64.sys";
     private const string ServiceName = "JiaoLongDriver64";
     private readonly object _ioLock = new();
     private IntPtr _dllHandle = IntPtr.Zero;
     public bool IsInitialized { get; set; }
 
-    [DllImport(DllFileName, EntryPoint = "InitializeBldring", CallingConvention = CallingConvention.StdCall)]
+    [DllImport(DllName, EntryPoint = "InitializeBldring", CallingConvention = CallingConvention.StdCall)]
     private static extern bool InitializeBldring();
 
-    [DllImport(DllFileName, EntryPoint = "ShutdownBldring", CallingConvention = CallingConvention.StdCall)]
+    [DllImport(DllName, EntryPoint = "ShutdownBldring", CallingConvention = CallingConvention.StdCall)]
     private static extern void ShutdownBldring();
 
-    [DllImport(DllFileName, EntryPoint = "GetBLDPortVal", CallingConvention = CallingConvention.StdCall)]
+    [DllImport(DllName, EntryPoint = "GetBLDPortVal", CallingConvention = CallingConvention.StdCall)]
     private static extern bool GetBLDPortVal(ushort wPortAddr, ref byte pdwPortVal, byte bSize);
 
-    [DllImport(DllFileName, EntryPoint = "SetBLDPortVal", CallingConvention = CallingConvention.StdCall)]
+    [DllImport(DllName, EntryPoint = "SetBLDPortVal", CallingConvention = CallingConvention.StdCall)]
     private static extern bool SetBLDPortVal(ushort wPortAddr, byte dwPortVal, byte bSize);
 
     private bool ReadPort(ushort portAddr, out byte value)
@@ -42,12 +42,9 @@ public class Blding64 : IDisposable
     {
         try
         {
-            string resourceBase = "JiaoLongControl.Server.Resources.Drivers";
-            string fullDllPath =
-                EmbeddedResourceHelper.ExtractResourceToExeDir($"{resourceBase}.{DllFileName}", DllFileName);
-            string fullSysPath =
-                EmbeddedResourceHelper.ExtractResourceToExeDir($"{resourceBase}.{SysFileName}", SysFileName);
-
+            string driverFolderPath = Path.Combine(AppContext.BaseDirectory, "Drivers", "Blding");
+            string fullDllPath = Path.Combine(driverFolderPath, DllName);
+            string fullSysPath = Path.Combine(driverFolderPath, SysName);
             if (!File.Exists(fullSysPath))
                 throw new FileNotFoundException($"Driver file not found: {fullSysPath}");
 
@@ -55,7 +52,7 @@ public class Blding64 : IDisposable
             if (_dllHandle == IntPtr.Zero)
             {
                 int err = Marshal.GetLastWin32Error();
-                throw new Exception($"Failed to load DLL ({DllFileName}), ErrorCode: {err}");
+                throw new Exception($"Failed to load DLL ({DllName}), ErrorCode: {err}");
             }
 
             DriverLoader.LoadDriver(ServiceName, fullSysPath);

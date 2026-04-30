@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<nvi name="NVPCF" title="${{title}}" version="${{version}}" versionText="${{version}}" timestamp="2023-08-28T23:42:55" disposition="default" installerMin="2.1002.259.2274" hasDriver="true" hidden="true" continueOnFailure="true">
+	<strings>
+		<string name="version" value="537.30"/>
+		<string name="title" value="NVIDIA Platform Controllers and Framework"/>
+		<string name="InstallBlockedMessage" value="${{title}} cannot be installed on this computer."/>
+	</strings>
+	<dependencies>
+		<package type="requires" package="Display.Driver"/>
+	</dependencies>
+	<constraints>
+		<os min="10.0" level="silent" text="${{title}} requires Windows 10 or later."/>
+		<property name="Display.Driver!Feature.PCF" level="silent" text="${{InstallBlockedMessage}}"/>
+	</constraints>
+	<manifest>
+		<file name="NVPCF.nvi"/>
+		<file name="nvpcf.sys"/>
+		<file name="nvpcf.inf"/>
+		<file name="nvpcf.cat"/>
+	</manifest>
+	<phases>
+		<device phase="installPlatformControllerDriver" action="create" fixedProgress="10" deviceProgress="35" autoTick="200">
+			<inf name="nvpcf.inf"/>
+			<hwid name="ACPI\NVDA0820"/>
+		</device>
+	</phases>
+</nvi>
