@@ -59,11 +59,10 @@ public class PawnIO : IDisposable
     {
         try
         {
-            string resourceBase = "JiaoLongControl.Server.Resources.Drivers";
-            string fullDllPath = EmbeddedResourceHelper.ExtractResourceToExeDir($"{resourceBase}.{DllName}", DllName);
-            string fullSysPath = EmbeddedResourceHelper.ExtractResourceToExeDir($"{resourceBase}.{SysName}", SysName);
-            string scriptBlobPath =
-                EmbeddedResourceHelper.ExtractResourceToExeDir($"{resourceBase}.{ScriptBlobName}", ScriptBlobName);
+            string driverFolderPath = Path.Combine(AppContext.BaseDirectory, "Drivers", "PawnIO");
+            string fullDllPath = Path.Combine(driverFolderPath, DllName);
+            string fullSysPath = Path.Combine(driverFolderPath, SysName);
+            string scriptBlobPath = Path.Combine(driverFolderPath, ScriptBlobName);
 
             if (!File.Exists(fullSysPath) || !File.Exists(fullDllPath) || !File.Exists(scriptBlobPath))
                 throw new FileNotFoundException($"Driver files not found");

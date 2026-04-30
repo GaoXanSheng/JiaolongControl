@@ -10,6 +10,7 @@
         <a-layout-content>
           <a-row justify="center" :gutter="[0, 20]">
             <GPUDirectConnection></GPUDirectConnection>
+            <GPUUnlockDB></GPUUnlockDB>
             <a-col :span="16" class="item">
               <div class="slider-wrapper">
                 <span class="slider-label">锁定GPU时钟</span>
@@ -65,6 +66,7 @@ import GPUDirectConnection from "@/components/RightComponent/setting/GPUDirectCo
 import {ref} from "vue";
 import {Config, NvidiaGpu} from "@/utils/bridge.ts";
 import {Message} from "@arco-design/web-vue";
+import GPUUnlockDB from "@/components/RightComponent/setting/GPUUnlockDB.vue";
 
 const config = await Config.GetConfig()
 const loading = ref(false)

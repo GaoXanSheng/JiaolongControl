@@ -1,0 +1,83 @@
+; Installation file for the NVIDIA Platform Controllers and Framework
+; Copyright (c) NVIDIA Corporation
+;
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Provider    = NVIDIA
+ClassGUID   = {62F9C741-B25A-46CE-B54C-9BCCCE08B6F2}
+Class       = SoftwareDevice
+DriverVer   = 08/28/2023, 31.0.15.3730
+CatalogFile = nvpcf.CAT
+
+[DestinationDirs]
+DefaultDestDir = 12
+nvpcf_Device_CoInstaller_CopyFiles = 11
+
+; ================= Class section =====================
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+nvpcf.sys  = 1,,
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName%=Standard,NTamd64
+
+[Standard.NTamd64]
+%nvpcf.DeviceDesc%=nvpcf_Device, ACPI\NVDA0820
+
+[nvpcf_Device.NT]
+CopyFiles=Drivers_Dir
+
+[Drivers_Dir]
+nvpcf.sys
+
+;-------------- Service installation
+[nvpcf_Device.NT.Services]
+AddService = nvpcf,%SPSVCINST_ASSOCSERVICE%, nvpcf_Service_Inst
+
+; -------------- nvpcf driver install sections
+[nvpcf_Service_Inst]
+DisplayName    = %nvpcf.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\nvpcf.sys
+AddReg = nvpcf_Service_Reg
+
+[nvpcf_Service_Reg]
+
+;
+;--- nvpcf_Device Coinstaller installation ------
+;
+
+[nvpcf_Device.NT.CoInstallers]
+AddReg=nvpcf_Device_CoInstaller_AddReg
+CopyFiles=nvpcf_Device_CoInstaller_CopyFiles
+
+[nvpcf_Device_CoInstaller_AddReg]
+;
+
+
+[nvpcf_Device_CoInstaller_CopyFiles]
+;
+
+
+[nvpcf_Device.NT.Wdf]
+KmdfService =  nvpcf, nvpcf_wdfsect
+[nvpcf_wdfsect]
+KmdfLibraryVersion = 1.15
+
+[Strings]
+SPSVCINST_ASSOCSERVICE= 0x00000002
+ManufacturerName="NVIDIA"
+ClassName="Software devices"
+DiskName = "NVPCF Installation Disk"
+nvpcf.DeviceDesc = "NVIDIA Platform Controllers and Framework"
+nvpcf.SVCDESC = "NVPCF Service"

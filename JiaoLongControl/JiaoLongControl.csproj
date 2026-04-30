@@ -44,16 +44,36 @@
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Include="Server\Resources\Icons\app.ico"/>
-        <EmbeddedResource Include="Server\Resources\Drivers\JiaoLongDriver64.sys"/>
-        <EmbeddedResource Include="Server\Resources\Drivers\JiaoLongDriver64.dll"/>
-        <None Remove="Server\Resources\Drivers\libryzenadj.dll"/>
-        <None Remove="Server\Resources\Drivers\PawnIO.sys" />
-        <EmbeddedResource Include="Server\Resources\Drivers\PawnIO.sys" />
-        <None Remove="Server\Resources\Drivers\PawnIOLib.dll" />
-        <EmbeddedResource Include="Server\Resources\Drivers\PawnIOLib.dll" />
-        <None Remove="Server\Resources\Drivers\RyzenSMU.bin" />
-        <EmbeddedResource Include="Server\Resources\Drivers\RyzenSMU.bin" />
-        <None Remove="Client\src\assets\GPU.png" />
+        <None Update="Drivers\PawnIO\PawnIO.sys">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Drivers\PawnIO\PawnIO.LICENSE.txt">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Drivers\PawnIO\PawnIOLib.dll">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Drivers\PawnIO\RyzenSMU.bin">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Drivers\NVPCF\NVPCF.nvi">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Drivers\NVPCF\nvpcf.cat">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Drivers\NVPCF\nvpcf.inf">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Drivers\NVPCF\nvpcf.sys">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Drivers\Blding\JiaoLongDriver64.dll">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Drivers\Blding\JiaoLongDriver64.sys">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
     <ItemGroup>
         <ApplicationDefinition Include="Server\App.xaml">

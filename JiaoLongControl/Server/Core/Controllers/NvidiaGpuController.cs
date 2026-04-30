@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
+using JiaoLongControl.Server.Core.Drivers;
 using JiaoLongControl.Server.Core.Utils;
 
 namespace JiaoLongControl.Server.Core.Controllers;
@@ -17,6 +18,7 @@ public class NvidiaGpuController
             _smiPath = customSmiPath;
         }
     }
+
     public CommandResult GetGpuTemperature(int gpuIndex = -1)
         => ExecuteCommand("--query-gpu=temperature.gpu --format=csv,noheader,nounits", gpuIndex);
 
@@ -37,6 +39,68 @@ public class NvidiaGpuController
 
     public CommandResult SetPowerLimit(int watts, int gpuIndex = -1)
         => ExecuteCommand($"-pl {watts}", gpuIndex);
+
+    public CommandResult UnlockDB()
+    {
+        var driver = new NVPCF();
+        var installResult = driver.Install();
+        if (!installResult.Success)
+        {
+            return new CommandResult(false, $"驱动阶段失败: {installResult.Message}");
+        }
+
+        const string deviceId = @"ACPI\NVDA0820\NPCF";
+        var enableRes = ExecuteSystemCommand("pnputil", $"/enable-device \"{deviceId}\"");
+        if (!enableRes.Success)
+        {
+            return new CommandResult(false, $"UnlockDB 失败 (启用设备阶段): {enableRes.Message}");
+        }
+
+        Thread.Sleep(3000);
+        var disableRes = ExecuteSystemCommand("pnputil", $"/disable-device \"{deviceId}\"");
+        if (!disableRes.Success)
+        {
+            return new CommandResult(false, $"UnlockDB 失败 (禁用设备阶段): {disableRes.Message}");
+        }
+
+        return new CommandResult(true, "UnlockDB 成功。");
+    }
+
+    private CommandResult ExecuteSystemCommand(string fileName, string arguments)
+    {
+        try
+        {
+            ProcessStartInfo psi = new ProcessStartInfo
+            {
+                FileName = fileName,
+                Arguments = arguments,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using (Process? process = Process.Start(psi))
+            {
+                if (process == null) return new CommandResult(false, $"无法启动 {fileName}");
+                string output = process.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
+
+                process.WaitForExit();
+
+                if (process.ExitCode != 0)
+                {
+                    return new CommandResult(false, $"命令返回码 {process.ExitCode}: {error} {output}");
+                }
+
+                return new CommandResult(true, output);
+            }
+        }
+        catch (Exception ex)
+        {
+            return new CommandResult(false, $"执行 {fileName} 时发生异常: {ex.Message}");
+        }
+    }
 
     private CommandResult ExecuteCommand(string arguments, int gpuIndex)
     {
