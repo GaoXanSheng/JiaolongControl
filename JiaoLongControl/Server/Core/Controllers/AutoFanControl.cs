@@ -20,11 +20,33 @@ public class AutoFanControl : IDisposable
     private readonly ILog Logger = LogManager.GetLogger(typeof(AutoFanControl));
     private CancellationTokenSource? _cts;
     private Task? _controlTask;
-    private const int IntervalMs = 3000;
+    private const int IntervalMs = 1000;
+    
+    private const int RPM_UNIT_DIVISOR = 100; // 1 unit = 100 RPM
+    private const int MAX_FAN_BYTE = 68;      // 68 * 100 = 6800 RPM
+    private const int MIN_FAN_BYTE = 0;       // 0 RPM
+    
+    private const float AlphaUp = 0.35f;   
+    private const float AlphaDown = 0.05f; 
+    private const double MaxRampUpRpmPerSec = 800.0;  
+    private const double MaxRampDownRpmPerSec = 150.0; 
+    private const double MaxRampUpBytePerSec = MaxRampUpRpmPerSec / RPM_UNIT_DIVISOR;
+    private const double MaxRampDownBytePerSec = MaxRampDownRpmPerSec / RPM_UNIT_DIVISOR;
+    private const double SharedHeatPipeSyncRatio = 0.85; 
 
-    private const int RPM_UNIT_DIVISOR = 100;
-    private const int MAX_FAN_BYTE = 68;
-    private const int MIN_FAN_BYTE = 0;
+    private class FanState
+    {
+        public float SmoothedTemp { get; set; } = -1f;
+        public double CurrentSpeedByte { get; set; } = -1f;
+        public int LastAppliedByte { get; set; } = -1;
+    }
+    
+    private readonly Dictionary<FanType, FanState> _states = new()
+    {
+        { FanType.CPU, new FanState() },
+        { FanType.GPU, new FanState() }
+    };
+
     public CommandResult IsRunning()
     {
         return new CommandResult(_isRunning, _isRunning ? "自动风扇控制正在运行" : "自动风扇控制没有在运行中");
@@ -55,9 +77,7 @@ public class AutoFanControl : IDisposable
         {
             _controlTask?.Wait(2000);
         }
-        catch (AggregateException)
-        {
-        }
+        catch (AggregateException) { }
         catch (Exception ex)
         {
             Logger.Error(ex.Message);
@@ -72,10 +92,13 @@ public class AutoFanControl : IDisposable
     private void ControlLoop(CancellationToken token)
     {
         _isRunning = true;
-        Logger.Info("Auto Fan Control started.");
-        Queue<float> cpuTempQueue = new();
-        Queue<float> gpuTempQueue = new();
-        const int smoothSampleCount = 3;
+        Logger.Info("Auto Fan Control started with Cross-Cooling Algorithm.");
+        
+        lock (_states)
+        {
+            _states[FanType.CPU] = new FanState();
+            _states[FanType.GPU] = new FanState();
+        }
 
         try
         {
@@ -85,20 +108,14 @@ public class AutoFanControl : IDisposable
                 {
                     float rawCpuTemp = Convert.ToSingle(Bridge.Instance.CPU.GetCPUThermometer().Data);
                     float rawGpuTemp = Convert.ToSingle(Bridge.Instance.NvidiaGpu.GetGpuTemperature().Message);
-                    
-                    cpuTempQueue.Enqueue(rawCpuTemp);
-                    if (cpuTempQueue.Count > smoothSampleCount) cpuTempQueue.Dequeue();
-                    float smoothCpuTemp = cpuTempQueue.Average();
-                    
-                    gpuTempQueue.Enqueue(rawGpuTemp);
-                    if (gpuTempQueue.Count > smoothSampleCount) gpuTempQueue.Dequeue();
-                    float smoothGpuTemp = gpuTempQueue.Average();
-                    
-                    int targetCpuByte = CalculateFanSpeed(smoothCpuTemp, FanType.CPU);
-                    int targetGpuByte = CalculateFanSpeed(smoothGpuTemp, FanType.GPU);
-                    
-                    ApplyFanSpeed(FanType.CPU, targetCpuByte, smoothCpuTemp);
-                    ApplyFanSpeed(FanType.GPU, targetGpuByte, smoothGpuTemp);
+                    float smoothedCpuTemp = UpdateSmoothedTemp(FanType.CPU, rawCpuTemp);
+                    float smoothedGpuTemp = UpdateSmoothedTemp(FanType.GPU, rawGpuTemp);
+                    int targetCpuByte = CalculateFanSpeed(smoothedCpuTemp, FanType.CPU);
+                    int targetGpuByte = CalculateFanSpeed(smoothedGpuTemp, FanType.GPU);
+                    int syncedCpuTarget = Math.Max(targetCpuByte, (int)(targetGpuByte * SharedHeatPipeSyncRatio));
+                    int syncedGpuTarget = Math.Max(targetGpuByte, (int)(targetCpuByte * SharedHeatPipeSyncRatio));
+                    ProcessAndApplyFanSpeed(FanType.CPU, syncedCpuTarget);
+                    ProcessAndApplyFanSpeed(FanType.GPU, syncedGpuTarget);
 
                     Task.Delay(IntervalMs, token).Wait(token);
                 }
@@ -119,15 +136,69 @@ public class AutoFanControl : IDisposable
             Logger.Info("Auto Fan Control stopped.");
         }
     }
+    
+    private float UpdateSmoothedTemp(FanType type, float rawTemp)
+    {
+        FanState state;
+        lock (_states) { state = _states[type]; }
 
+        if (state.SmoothedTemp < 0)
+        {
+            state.SmoothedTemp = rawTemp;
+        }
+        else
+        {
+            float alpha = rawTemp > state.SmoothedTemp ? AlphaUp : AlphaDown;
+            state.SmoothedTemp = (alpha * rawTemp) + ((1f - alpha) * state.SmoothedTemp);
+        }
+        return state.SmoothedTemp;
+    }
+    private void ProcessAndApplyFanSpeed(FanType type, int targetSpeedByte)
+    {
+        FanState state;
+        lock (_states) { state = _states[type]; }
+        if (state.CurrentSpeedByte < 0)
+        {
+            state.CurrentSpeedByte = targetSpeedByte;
+        }
+        else
+        {
+            double diff = targetSpeedByte - state.CurrentSpeedByte;
+            if (diff > 0)
+            {
+                state.CurrentSpeedByte += Math.Min(diff, MaxRampUpBytePerSec);
+            }
+            else if (diff < 0)
+            {
+                state.CurrentSpeedByte -= Math.Min(-diff, MaxRampDownBytePerSec);
+            }
+        }
+
+        int finalSpeedByte = (int)Math.Clamp(Math.Round(state.CurrentSpeedByte), MIN_FAN_BYTE, MAX_FAN_BYTE);
+        if (finalSpeedByte == state.LastAppliedByte) return;
+
+        int rpm = finalSpeedByte * RPM_UNIT_DIVISOR;
+        if (type == FanType.CPU)
+        {
+            Bridge.Instance.Fan.CpuFanSetSpeed((byte)finalSpeedByte);
+            Logger.Info($"CPU Temp: {state.SmoothedTemp:F1}°C | CPU Fan Applied: {rpm} RPM");
+        }
+        else if (type == FanType.GPU)
+        {
+            Bridge.Instance.Fan.GpuFanSetSpeed((byte)finalSpeedByte);
+            Logger.Info($"GPU Temp: {state.SmoothedTemp:F1}°C | GPU Fan Applied: {rpm} RPM");
+        }
+
+        state.LastAppliedByte = finalSpeedByte;
+    }
     private int CalculateFanSpeed(float currentTemp, FanType type)
     {
         var config = ConfigController.Config.AdvancedFanControlSystemConfig;
-        if (config == null) return 25;
+        if (config == null) return 25; 
         
         List<FanPoint> configPoints = type == FanType.CPU ? config.CpuFan : config.GpuFan;
         if (configPoints == null || configPoints.Count == 0)
-            return 25;
+            return 25; 
             
         var sortedPoints = configPoints.OrderBy(p => p.temp).ToList();
         double targetRpm;
@@ -155,24 +226,8 @@ public class AutoFanControl : IDisposable
                 }
             }
         }
-
         int targetByte = (int)Math.Round(targetRpm / RPM_UNIT_DIVISOR);
         return Math.Clamp(targetByte, MIN_FAN_BYTE, MAX_FAN_BYTE);
-    }
-
-    private void ApplyFanSpeed(FanType type, int speedByte, float temp)
-    {
-        int rpm = speedByte * 100;
-        if (type == FanType.CPU)
-        {
-            Bridge.Instance.Fan.CpuFanSetSpeed((byte)speedByte);
-            Logger.Info($"CPU Temp: {temp:F1}°C | CPU Fan Applied: {rpm} RPM");
-        }
-        else if (type == FanType.GPU)
-        {
-            Bridge.Instance.Fan.GpuFanSetSpeed((byte)speedByte);
-            Logger.Info($"GPU Temp: {temp:F1}°C | GPU Fan Applied: {rpm} RPM");
-        }
     }
 
     public void Dispose()
