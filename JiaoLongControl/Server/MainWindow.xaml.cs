@@ -7,6 +7,7 @@ using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
+using Microsoft.Win32;
 
 namespace JiaoLongControl.Server
 {
@@ -42,9 +43,20 @@ namespace JiaoLongControl.Server
             }
 
             Closing += OnClosing;
+            SystemEvents.PowerModeChanged += OnPowerModeChanged;
             new SelfStart();
         }
-
+        private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
+        {
+            // 当系统从休眠/睡眠中恢复时
+            if (e.Mode == PowerModes.Resume)
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    new SelfStart();
+                });
+            }
+        }
         #region 初始化
 
         private void InitializePaths()
