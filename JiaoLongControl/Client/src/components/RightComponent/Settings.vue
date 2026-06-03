@@ -6,6 +6,7 @@ import AdvancedFanControlSystem from "@/components/RightComponent/setting/Advanc
 import BootCPUAutoStart from "@/components/RightComponent/setting/BootCPUAutoStart.vue";
 import BootGPUAutoStart from "@/components/RightComponent/setting/BootGPUAutoStart.vue";
 import BootCurveOptimizerAllAutoStart from "@/components/RightComponent/setting/BootCurveOptimizerAllAutoStart.vue";
+import FanCurveMerge from "@/components/RightComponent/setting/FanCurveMerge.vue";
 </script>
 
 <template>
@@ -18,6 +19,7 @@ import BootCurveOptimizerAllAutoStart from "@/components/RightComponent/setting/
       <LogoLight></LogoLight>
       <PowerMode></PowerMode>
       <AdvancedFanControlSystem></AdvancedFanControlSystem>
+      <FanCurveMerge></FanCurveMerge>
       <BootCPUAutoStart></BootCPUAutoStart>
       <BootGPUAutoStart></BootGPUAutoStart>
       <BootCurveOptimizerAllAutoStart></BootCurveOptimizerAllAutoStart>

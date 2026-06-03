@@ -12,6 +12,7 @@ public class Config
     public bool BootAdvancedCPUSystem { get; set; } = false;
     public bool BootAdvancedGPUSystem { get; set; } = false;
     public bool BootSetRyzenSumCurveOptimizerAll { get; set; } = false;
+    public bool FanCurveMerge { get; set; } = false;
     public CpuConfg AdvancedCPUSystemConfig { get; set; } = new();
 
     public NvidiaGpuConfig NvidiaGpuConfig { get; set; } = new();

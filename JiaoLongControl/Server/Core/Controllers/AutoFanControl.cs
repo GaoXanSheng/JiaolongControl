@@ -112,10 +112,20 @@ public class AutoFanControl : IDisposable
                     float smoothedGpuTemp = UpdateSmoothedTemp(FanType.GPU, rawGpuTemp);
                     int targetCpuByte = CalculateFanSpeed(smoothedCpuTemp, FanType.CPU);
                     int targetGpuByte = CalculateFanSpeed(smoothedGpuTemp, FanType.GPU);
-                    int syncedCpuTarget = Math.Max(targetCpuByte, (int)(targetGpuByte * SharedHeatPipeSyncRatio));
-                    int syncedGpuTarget = Math.Max(targetGpuByte, (int)(targetCpuByte * SharedHeatPipeSyncRatio));
-                    ProcessAndApplyFanSpeed(FanType.CPU, syncedCpuTarget);
-                    ProcessAndApplyFanSpeed(FanType.GPU, syncedGpuTarget);
+                  
+                    if (ConfigController.Config.FanCurveMerge)
+                    {
+                        int targetByte = Math.Max(targetCpuByte, targetGpuByte);
+                        ProcessAndApplyFanSpeed(FanType.CPU, targetByte);
+                        ProcessAndApplyFanSpeed(FanType.GPU, targetByte);
+                    }
+                    else
+                    {
+                        int syncedCpuTarget = Math.Max(targetCpuByte, (int)(targetGpuByte * SharedHeatPipeSyncRatio));
+                        int syncedGpuTarget = Math.Max(targetGpuByte, (int)(targetCpuByte * SharedHeatPipeSyncRatio));
+                        ProcessAndApplyFanSpeed(FanType.CPU, syncedCpuTarget);
+                        ProcessAndApplyFanSpeed(FanType.GPU, syncedGpuTarget);
+                    }
 
                     Task.Delay(IntervalMs, token).Wait(token);
                 }
