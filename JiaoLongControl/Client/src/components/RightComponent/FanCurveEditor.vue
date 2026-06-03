@@ -11,7 +11,6 @@
           <a-button type="primary" @click="handleRemoveFanClick">移除转速设置</a-button>
         </a-space>
       </div>
-
       <!-- 中间：服务控制开关 -->
       <div class="control-section">
         <a-space size="medium">
@@ -186,7 +185,7 @@ interface Point {
   temp: number
   speed: number
 }
-
+const config = (await Config.GetConfig()).Data
 const activeTab = ref<'CPU' | 'GPU'>('CPU')
 const cpuPoints = ref<Point[]>([
   {temp: 60, speed: 1500},
@@ -263,7 +262,6 @@ const handleServiceToggle = async (newValue: any): Promise<boolean> => {
 }
 const autoSave = async () => {
   try {
-    const config = (await Config.GetConfig()).Data
     config.AdvancedFanControlSystemConfig = {
       CpuFan: cpuPoints.value,
       GpuFan: gpuPoints.value
@@ -349,7 +347,7 @@ onMounted(async () => {
 
   await checkServiceStatus()
   try {
-    const config = (await Config.GetConfig()).Data
+
     const advancedConfig = config.AdvancedFanControlSystemConfig
     console.log(config)
     const parsedCpu = parseConfigPoints(advancedConfig.CpuFan)

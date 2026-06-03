@@ -166,6 +166,7 @@ export interface ConfigInterface {
     BootMinimized: boolean;
     BootAdvancedFanControlSystem: boolean;
     BootSetRyzenSumCurveOptimizerAll:boolean;
+    FanCurveMerge:boolean;
     AdvancedFanControlSystemConfig:{
         GpuFan:{ temp: number; speed: number }[],
         CpuFan:{ temp: number; speed: number }[]
