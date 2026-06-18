@@ -14,9 +14,10 @@ export type CommandResult<T = void> = {
 } & (T extends void ? {} : { Data: T });
 
 export enum SystemPerMode {
-    BalanceMode = 0,
-    PerformanceMode = 1,
-    QuietMode = 2,
+    PerformanceMode = 0,
+    QuietMode = 1,
+    BalanceMode = 2,
+    CustomMode = 3
 }
 
 export enum RGBKeyboardMode {
@@ -42,10 +43,18 @@ export interface ColorInfo {
     blue: number;
 }
 
+export interface SystemOverview {
+    CpuName: string;
+    GpuName: string;
+    OsVersion: string;
+    MemoryInfo: string;
+}
+
 declare global {
     interface Window {
         chrome?: {
             webview?: {
+                postMessage: (message: any) => any;
                 hostObjects: {
                     bridge: {
                         CPU: {
@@ -117,6 +126,9 @@ declare global {
                             GetCPUMaxState(): Promise<any>;
                             GetTurboEnabled(): Promise<any>;
                         };
+                        SystemInfo: {
+                            GetSystemOverview(): Promise<any>;
+                        };
                         RyzenSmu: {
                             SetStapmLimit(watts: number): Promise<any>;
                             SetStapmTime(seconds: number): Promise<any>;
@@ -165,11 +177,11 @@ function toByte(value: number): number {
 export interface ConfigInterface {
     BootMinimized: boolean;
     BootAdvancedFanControlSystem: boolean;
-    BootSetRyzenSumCurveOptimizerAll:boolean;
-    FanCurveMerge:boolean;
-    AdvancedFanControlSystemConfig:{
-        GpuFan:{ temp: number; speed: number }[],
-        CpuFan:{ temp: number; speed: number }[]
+    BootSetRyzenSumCurveOptimizerAll: boolean;
+    FanCurveMerge: boolean;
+    AdvancedFanControlSystemConfig: {
+        GpuFan: { temp: number; speed: number }[],
+        CpuFan: { temp: number; speed: number }[]
     };
     BootAdvancedCPUSystem: boolean;
     BootAdvancedGPUSystem: boolean;
@@ -278,8 +290,12 @@ export const NvidiaGpu = {
     LockMemoryClock: (freq: number, gpuIndex?: number) => call(raw.NvidiaGpu.LockMemoryClock(freq, gpuIndex)),
     ResetMemoryClock: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetMemoryClock(gpuIndex)),
     SetPowerLimit: (watts: number, gpuIndex?: number) => call(raw.NvidiaGpu.SetPowerLimit(watts, gpuIndex)),
-    GetGpuTemperature: () => call(raw.NvidiaGpu.GetGpuTemperature()),
+    GetGpuTemperature: () => call<number>(raw.NvidiaGpu.GetGpuTemperature()),
     UnlockDB: () => call(raw.NvidiaGpu.UnlockDB())
+};
+
+export const SystemInfo = {
+    GetSystemOverview: () => call<SystemOverview>(raw.SystemInfo.GetSystemOverview()),
 };
 
 export const RyzenSmu = {
@@ -311,4 +327,12 @@ export const Power = {
     EnableTurbo: () => call(raw.Power.EnableTurbo()),
     GetCPUMaxFrequency: () => call<{ ac: number; dc: number }>(raw.Power.GetCPUMaxFrequency()),
     GetTurboEnabled: () => call<{ ac: boolean; dc: boolean }>(raw.Power.GetTurboEnabled()),
+};
+const postMessage = window.chrome!.webview!.postMessage;
+
+export const Window = {
+    Minimize: () => postMessage('window-minimize'),
+    Maximize: () => postMessage('window-maximize'),
+    Drag: () => postMessage('window-drag'),
+    Close: () => postMessage('window-close'),
 };

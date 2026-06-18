@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import RightSide from '@/components/rightSide.vue'
+import TitleBar from '@/components/TitleBar.vue'
 import useStore, { HomeCardType } from '@/stores'
 
 const store = useStore()
@@ -9,61 +10,61 @@ function onClickMenuItem(key: any) {
 </script>
 
 <template>
-  <a-layout class="layout-container">
-    <a-layout-sider collapsible breakpoint="xl" :width="200" class="sider">
-      <a-menu :selected-keys="[store.SwitchPages]" @menu-item-click="onClickMenuItem" class="menu">
-        <a-menu-item v-for="item in HomeCardType" :key="item.eum">
-          <template #icon>
-            <img class="menu-icon" :src="item.icon" alt="icon" />
-          </template>
-          {{ item.title }}
-        </a-menu-item>
-      </a-menu>
-    </a-layout-sider>
+  <div class="flex flex-col h-screen text-white overflow-hidden select-none">
+    <!-- 极简标题栏 -->
+    <TitleBar class="z-50 bg-transparent" />
 
-    <a-layout-content class="content">
-      <RightSide />
-    </a-layout-content>
-  </a-layout>
+    <div class="flex flex-1 overflow-hidden">
+      
+      <!-- 侧边栏 (严格对标图左) -->
+      <aside class="w-[240px] flex flex-col shadow-10 mt-6">
+
+        <div class="flex-1 h-10 px-4 flex flex-col justify-between overflow-y-auto no-scrollbar">
+          <!-- 主导航 -->
+          <nav class="space-y-1.5">
+            <button
+              v-for="item in HomeCardType" 
+              :key="item.eum"
+              @click="onClickMenuItem(item.eum)"
+              :class="[
+                'w-full flex items-center gap-4 px-5 py-3.5 rounded-[5px] transition-all duration-300',
+                store.SwitchPages === item.eum ? 'nav-item-active' : 'hover:bg-white/[0.03] text-gray-400 hover:text-gray-1000'
+              ]"
+            >
+              <div class="w-5 h-5 flex items-center justify-center">
+                <img 
+                  :src="item.icon" 
+                  :class="['w-full h-full brightness-0 transition-all', store.SwitchPages === item.eum ? 'invert opacity-100' : 'invert opacity-60 group-hover:opacity-100']" 
+                  alt="icon"
+                />
+              </div>
+              <span class="font-medium text-[13px] tracking-wide">{{ item.title }}</span>
+            </button>
+          </nav>
+
+          <!-- 底部工具/设置 -->
+          <div class="pb-6">
+            <button class="w-full flex items-center justify-between px-5 py-4 text-gray-400 hover:text-white transition-colors">
+              <div class="flex items-center gap-4">
+                <icon-settings class="text-lg" />
+                <span class="font-medium text-[13px] tracking-wide">更多</span>
+              </div>
+              <icon-right />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- 主内容区 -->
+      <main class="flex-1 relative overflow-hidden">
+        <!-- 主内容背景发光点缀 -->
+        <div class="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-[radial-gradient(circle_at_center,rgba(138,43,226,0.08),transparent_60%)] pointer-events-none"></div>
+        <div class="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.05),transparent_60%)] pointer-events-none"></div>
+        
+        <div class="relative h-full z-10">
+          <RightSide />
+        </div>
+      </main>
+    </div>
+  </div>
 </template>
-
-<style lang="scss" scoped>
-
-.layout-container {
-  width: 100vw;
-  height: 100vh;
-  background: var(--color-bg-1);
-}
-
-.sider {
-  height: 100%;
-  background: var(--color-bg-2);
-}
-
-.menu {
-  height: 100%;
-}
-
-.menu-icon {
-  width: 16px;
-  height: 16px;
-  transition: filter 0.3s;
-}
-
-.content {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  background: var(--color-bg-3);
-  padding: 2px;
-  color: var(--color-text-1);
-}
-
-:global(body[arco-theme='dark']) .menu-icon {
-  filter: invert(100%);
-}
-
-:global(body[arco-theme='light']) .menu-icon {
-  filter: invert(0);
-}
-</style>
