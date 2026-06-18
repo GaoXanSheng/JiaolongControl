@@ -17,7 +17,7 @@ async function GPU_UnlockDB_handleClick() {
 </script>
 
 <template>
-  <setting-card-component title="解锁DB">
+  <setting-card-component title="解锁 Dynamic Boost" description="实验性功能，尝试解锁 NVIDIA 显卡的动态功耗调整（Dynamic Boost），使之能在 CPU 负载低时将更多功耗分配给 GPU。">
     <template #extra>
       <a-switch
           v-model="GPU_UnlockDB"

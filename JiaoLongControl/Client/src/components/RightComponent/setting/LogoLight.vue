@@ -24,7 +24,7 @@ async function LogoLight_handleClick() {
 </script>
 
 <template>
-  <setting-card-component title="Logo灯">
+  <setting-card-component title="Logo A壳徽标灯" description="控制笔记本电脑 A 面（顶盖）个性化 Logo 氛围指示灯的开启与关闭">
     <template #extra>
       <a-switch v-model="logolight" :loading="loading" @click="LogoLight_handleClick">
         <template #checked-icon>

@@ -1,149 +1,126 @@
-﻿using System.Diagnostics;
+using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading;
 using JiaoLongControl.Server.Core.Drivers;
+using JiaoLongControl.Server.Core.Services;
 using JiaoLongControl.Server.Core.Utils;
 
-namespace JiaoLongControl.Server.Core.Controllers;
-
-[ComVisible(true)]
-[ClassInterface(ClassInterfaceType.AutoDual)]
-public class NvidiaGpuController
+namespace JiaoLongControl.Server.Core.Controllers
 {
-    private readonly string _smiPath = "nvidia-smi";
-
-    public NvidiaGpuController(string customSmiPath = null)
+    [ComVisible(true)]
+    [ClassInterface(ClassInterfaceType.AutoDual)]
+    public class NvidiaGpuController : IDisposable
     {
-        if (!string.IsNullOrEmpty(customSmiPath))
+        private readonly NvidiaApiService _apiService;
+        private bool _isDisposed;
+
+        public NvidiaGpuController()
         {
-            _smiPath = customSmiPath;
-        }
-    }
-
-    public CommandResult GetGpuTemperature(int gpuIndex = -1)
-        => ExecuteCommand("--query-gpu=temperature.gpu --format=csv,noheader,nounits", gpuIndex);
-
-    public CommandResult LockGpuClock(int freq, int gpuIndex = -1)
-        => ExecuteCommand($"-lgc {freq}", gpuIndex);
-
-    public CommandResult LockGpuClock(int minFreq, int maxFreq, int gpuIndex = -1)
-        => ExecuteCommand($"-lgc {minFreq},{maxFreq}", gpuIndex);
-
-    public CommandResult ResetGpuClock(int gpuIndex = -1)
-        => ExecuteCommand("-rgc", gpuIndex);
-
-    public CommandResult LockMemoryClock(int freq, int gpuIndex = -1)
-        => ExecuteCommand($"-lmc {freq}", gpuIndex);
-
-    public CommandResult ResetMemoryClock(int gpuIndex = -1)
-        => ExecuteCommand("-rmc", gpuIndex);
-
-    public CommandResult SetPowerLimit(int watts, int gpuIndex = -1)
-        => ExecuteCommand($"-pl {watts}", gpuIndex);
-
-    public CommandResult UnlockDB()
-    {
-        var driver = new NVPCF();
-        var installResult = driver.Install();
-        if (!installResult.Success)
-        {
-            return new CommandResult(false, $"驱动阶段失败: {installResult.Message}");
+            _apiService = new NvidiaApiService();
         }
 
-        const string deviceId = @"ACPI\NVDA0820\NPCF";
-        var enableRes = ExecuteSystemCommand("pnputil", $"/enable-device \"{deviceId}\"");
-        if (!enableRes.Success)
-        {
-            return new CommandResult(false, $"UnlockDB 失败 (启用设备阶段): {enableRes.Message}");
-        }
+        private int SanitizeGpuIndex(int gpuIndex) => gpuIndex < 0 ? 0 : gpuIndex;
 
-        Thread.Sleep(3000);
-        var disableRes = ExecuteSystemCommand("pnputil", $"/disable-device \"{deviceId}\"");
-        if (!disableRes.Success)
-        {
-            return new CommandResult(false, $"UnlockDB 失败 (禁用设备阶段): {disableRes.Message}");
-        }
+        public CommandResult GetGpuTemperature(int gpuIndex = -1)
+            => _apiService.GetGpuTemperature(SanitizeGpuIndex(gpuIndex));
+        
+        public CommandResult LockGpuClock(int freq, int gpuIndex = -1)
+            => _apiService.LockGpuClock(freq, freq, SanitizeGpuIndex(gpuIndex));
 
-        return new CommandResult(true, "UnlockDB 成功。");
-    }
+        public CommandResult LockGpuClock(int minFreq, int maxFreq, int gpuIndex = -1)
+            => _apiService.LockGpuClock(minFreq, maxFreq, SanitizeGpuIndex(gpuIndex));
 
-    private CommandResult ExecuteSystemCommand(string fileName, string arguments)
-    {
-        try
+        public CommandResult ResetGpuClock(int gpuIndex = -1)
+            => _apiService.ResetGpuClock(SanitizeGpuIndex(gpuIndex));
+
+        public CommandResult LockMemoryClock(int freq, int gpuIndex = -1)
+            => _apiService.LockMemoryClock(freq, SanitizeGpuIndex(gpuIndex));
+
+        public CommandResult ResetMemoryClock(int gpuIndex = -1)
+            => _apiService.ResetMemoryClock(SanitizeGpuIndex(gpuIndex));
+
+        public CommandResult SetPowerLimit(int watts, int gpuIndex = -1)
+            => _apiService.SetPowerLimit(watts, SanitizeGpuIndex(gpuIndex));
+            
+        public CommandResult UnlockDB()
         {
-            ProcessStartInfo psi = new ProcessStartInfo
+            var driver = new NVPCF();
+            var installResult = driver.Install();
+            if (!installResult.Success)
             {
-                FileName = fileName,
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+                return new CommandResult(false, $"驱动阶段失败: {installResult.Message}");
+            }
 
-            using (Process? process = Process.Start(psi))
+            const string deviceId = @"ACPI\NVDA0820\NPCF";
+            var enableRes = ExecuteSystemCommand("pnputil", string.Format("/enable-device \"{0}\"", deviceId));
+            if (!enableRes.Success)
             {
-                if (process == null) return new CommandResult(false, $"无法启动 {fileName}");
-                string output = process.StandardOutput.ReadToEnd();
-                string error = process.StandardError.ReadToEnd();
+                return new CommandResult(false, $"UnlockDB 失败 (启用设备阶段): {enableRes.Message}");
+            }
 
-                process.WaitForExit();
+            Thread.Sleep(3000);
+            var disableRes = ExecuteSystemCommand("pnputil", string.Format("/disable-device \"{0}\"", deviceId));
+            if (!disableRes.Success)
+            {
+                return new CommandResult(false, $"UnlockDB 失败 (禁用设备阶段): {disableRes.Message}");
+            }
 
-                if (process.ExitCode != 0)
+            return new CommandResult(true, "UnlockDB 成功。");
+        }
+
+        private CommandResult ExecuteSystemCommand(string fileName, string arguments)
+        {
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo
                 {
-                    return new CommandResult(false, $"命令返回码 {process.ExitCode}: {error} {output}");
-                }
+                    FileName = fileName,
+                    Arguments = arguments,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
 
-                return new CommandResult(true, output);
+                using (Process? process = Process.Start(psi))
+                {
+                    if (process == null) return new CommandResult(false, $"无法启动 {fileName}");
+                    string output = process.StandardOutput.ReadToEnd();
+                    string error = process.StandardError.ReadToEnd();
+
+                    process.WaitForExit();
+
+                    if (process.ExitCode != 0)
+                    {
+                        return new CommandResult(false, $"命令返回码 {process.ExitCode}: {error} {output}");
+                    }
+
+                    return new CommandResult(true, output);
+                }
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"执行 {fileName} 时发生异常: {ex.Message}");
             }
         }
-        catch (Exception ex)
-        {
-            return new CommandResult(false, $"执行 {fileName} 时发生异常: {ex.Message}");
-        }
-    }
 
-    private CommandResult ExecuteCommand(string arguments, int gpuIndex)
-    {
-        if (gpuIndex >= 0)
+        ~NvidiaGpuController() => Dispose(false);
+
+        public void Dispose()
         {
-            arguments = $"-i {gpuIndex} {arguments}";
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
-        try
+        protected virtual void Dispose(bool disposing)
         {
-            ProcessStartInfo psi = new ProcessStartInfo
+            if (_isDisposed) return;
+            if (disposing)
             {
-                FileName = _smiPath,
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using (Process process = Process.Start(psi))
-            {
-                if (process == null)
-                    return new CommandResult(false, "无法启动 nvidia-smi 进程。");
-                string output = process.StandardOutput.ReadToEnd();
-                string error = process.StandardError.ReadToEnd();
-                process.WaitForExit();
-                if (process.ExitCode != 0 || !string.IsNullOrWhiteSpace(error))
-                {
-                    string errMsg = !string.IsNullOrWhiteSpace(error) ? error : output;
-                    return new CommandResult(false, $"执行失败: {errMsg.Trim()}");
-                }
-
-                return new CommandResult(true, "获取成功", output.Trim());
+                _apiService?.Dispose();
             }
-        }
-        catch (System.ComponentModel.Win32Exception)
-        {
-            return new CommandResult(false, "找不到 nvidia-smi，请确保安装了 NVIDIA 显卡驱动。");
-        }
-        catch (Exception ex)
-        {
-            return new CommandResult(false, $"发生异常: {ex.Message}");
+            _isDisposed = true;
         }
     }
 }

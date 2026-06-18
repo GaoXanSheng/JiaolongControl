@@ -21,7 +21,7 @@ async function GPUDirectConnection_handleClick() {
 </script>
 
 <template>
-  <setting-card-component title="独显直连">
+  <setting-card-component title="独显直连（重启生效）" description="强制系统渲染和视频输出始终通过独立显卡（dGPU）运行，以获取最强劲的游戏与专业应用性能。切换后需重启电脑。">
     <template #extra>
       <a-switch
           v-model="GPUDirectConnection"

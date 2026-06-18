@@ -7,28 +7,42 @@ import BootCPUAutoStart from "@/components/RightComponent/setting/BootCPUAutoSta
 import BootGPUAutoStart from "@/components/RightComponent/setting/BootGPUAutoStart.vue";
 import BootCurveOptimizerAllAutoStart from "@/components/RightComponent/setting/BootCurveOptimizerAllAutoStart.vue";
 import FanCurveMerge from "@/components/RightComponent/setting/FanCurveMerge.vue";
+import GPUDirectConnection from "@/components/RightComponent/setting/GPUDirectConnection.vue";
+import GPUUnlockDB from "@/components/RightComponent/setting/GPUUnlockDB.vue";
+import ThemeSwitch from "@/components/RightComponent/setting/theme.vue";
 </script>
 
 <template>
-  <div class="setting">
-    <a-row justify="center">
-      <a-col :span="16">
-        <a-typography-title class="title">设置</a-typography-title>
-      </a-col>
-      <BootAutoStart><</BootAutoStart>
-      <LogoLight></LogoLight>
-      <PowerMode></PowerMode>
-      <AdvancedFanControlSystem></AdvancedFanControlSystem>
-      <FanCurveMerge></FanCurveMerge>
-      <BootCPUAutoStart></BootCPUAutoStart>
-      <BootGPUAutoStart></BootGPUAutoStart>
-      <BootCurveOptimizerAllAutoStart></BootCurveOptimizerAllAutoStart>
-    </a-row>
+  <div class="p-6 h-full overflow-y-auto space-y-5 text-white no-scrollbar pb-20">
+    <!-- Header -->
+    <div class="max-w-[1000px] mx-auto">
+      <h1 class="text-2xl font-bold tracking-wider">系统设置</h1>
+      <p class="text-[13px] text-gray-500 mt-1.5">管理 JiaoLongControl 的全局参数、自启动行为及显示偏好。</p>
+    </div>
+
+    <!-- Setting Grid -->
+    <div class="max-w-[1000px] mx-auto grid grid-cols-1 gap-4 pt-4">
+      
+      <!-- 通用设置 -->
+      <BootAutoStart />
+      <LogoLight />
+      <PowerMode />
+      
+      <!-- 高级硬件控制 -->
+      <GPUDirectConnection />
+      <GPUUnlockDB />
+      <AdvancedFanControlSystem />
+      <FanCurveMerge />
+
+      <!-- 自动应用策略 -->
+      <BootCPUAutoStart />
+      <BootGPUAutoStart />
+      <BootCurveOptimizerAllAutoStart />
+
+    </div>
   </div>
 </template>
 
-<style lang="scss" scoped>
-.setting {
-  padding-top: 20px;
-}
+<style scoped>
+/* Scoped styles can remain empty if all styling is handled by Tailwind classes */
 </style>

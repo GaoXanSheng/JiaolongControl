@@ -350,9 +350,9 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
             <p><strong>Curve Optimizer (PBO2)</strong>: 通过调校不同内核的电压频率曲线（降压超频），能实现在更低温度下达到更高运行频率的目标。</p>
             <p><strong>RSMU / MP1</strong>: 芯片内部不同模块的系统级微处理器，两者的限制参数相互协调限制。</p>
           </div>
-          <div class="text-[11px] text-blue-400 hover:text-blue-300 cursor-pointer pt-1 flex items-center gap-0.5 font-medium transition-colors">
-            参考 AMD PBO 手册 <span>&gt;</span>
-          </div>
+          <a target="_blank" href="https://www.amd.com/zh-cn/developer/browse-by-resource-type/documentation.html" class="text-[11px] text-blue-400 hover:text-blue-300 cursor-pointer pt-1 flex items-center gap-0.5 font-medium transition-colors">
+            参考 AMD PBO 手册
+          </a>
         </div>
 
       </div>

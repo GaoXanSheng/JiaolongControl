@@ -13,11 +13,11 @@ async function PowerMode_handleClick(PowerMode: SystemPerMode) {
 </script>
 
 <template>
-	<setting-card-component title="模式切换">
+	<setting-card-component title="系统性能模式切换" description="快速选择系统预设的全局电源调度与风扇策略方案（如性能、狂飙、办公模式），即时满足不同场景下的性能需求。">
 		<template #extra>
 			<a-space size="large">
 				<a-dropdown>
-					<a-button :loading="loading">选择</a-button>
+					<a-button :loading="loading">选择策略</a-button>
 					<template #content>
 						<a-doption @click="PowerMode_handleClick(SystemPerMode.BalanceMode)"
 							>性能模式
