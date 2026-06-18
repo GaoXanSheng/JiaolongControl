@@ -50,6 +50,20 @@ export interface SystemOverview {
     MemoryInfo: string;
 }
 
+export interface GpuStats {
+    GpuName: string;
+    DriverVersion: string;
+    MemoryTotal: string;
+    BusWidth: string;
+    GpuUtilization: string;
+    MemoryUtilization: string;
+    CoreClock: string;
+    MemoryClock: string;
+    GpuTemperature: string;
+    FanSpeed: string;
+    DriverDate: string;
+}
+
 declare global {
     interface Window {
         chrome?: {
@@ -107,6 +121,7 @@ declare global {
                             IsRunning(): Promise<any>;
                         };
                         NvidiaGpu: {
+                            GetGpuAllStats(gpuIndex?: number): Promise<any>;
                             LockGpuClock(freq: number, gpuIndex?: number): Promise<any>;
                             LockGpuClockRange(minFreq: number, maxFreq: number, gpuIndex?: number): Promise<any>;
                             ResetGpuClock(gpuIndex?: number): Promise<any>;
@@ -283,6 +298,7 @@ export const AutoFanControl = {
 };
 
 export const NvidiaGpu = {
+    GetGpuAllStats: (gpuIndex?: number) => call<GpuStats>(raw.NvidiaGpu.GetGpuAllStats(gpuIndex)),
     LockGpuClock: (freq: number, gpuIndex?: number) => call(raw.NvidiaGpu.LockGpuClock(freq, gpuIndex)),
     LockGpuClockRange: (minFreq: number, maxFreq: number, gpuIndex?: number) =>
         call(raw.NvidiaGpu.LockGpuClockRange(minFreq, maxFreq, gpuIndex)),

@@ -39,10 +39,15 @@ public class ConfigController
                 Config = newConfig;
                 Save();
             }
+            else
+            {
+                return new CommandResult(false, "Deserialization resulted in a null config.");
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            // 忽略错误
+            Console.WriteLine($"[ConfigController] Error deserializing or saving config: {ex.Message}");
+            return new CommandResult(false, $"Error updating config: {ex.Message}");
         }
         return new CommandResult(true, "配置已成功更新.");
     }
