@@ -1,33 +1,34 @@
 <script async setup lang="ts">
-import SettingCardComponent from "@/components/RightComponent/setting/SettingCardComponent.vue";
+import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
+
 import {onMounted, ref} from "vue";
 import {Config} from "@/utils/bridge.ts";
 
 const loading = ref(false)
-const BootStartAdvancedGPUSystem = ref(false)
+const BootStartAdvancedCPUSystem = ref(false)
 onMounted(async () => {
   const config = (await Config.GetConfig()).Data
-  BootStartAdvancedGPUSystem.value = config.BootAdvancedGPUSystem
+  BootStartAdvancedCPUSystem.value = config.BootAdvancedCPUSystem
 })
 
-async function SetBootStartAdvancedGPUSystem(value: string | number | boolean) {
+async function SetBootStartAdvancedCPUSystem(value: string | number | boolean) {
   if (typeof value !== 'boolean') return
   loading.value = true
   const config = (await Config.GetConfig()).Data
-  config.BootAdvancedGPUSystem = value;
+  config.BootAdvancedCPUSystem = value;
   await Config.SetConfig(config)
-  BootStartAdvancedGPUSystem.value = value
+  BootStartAdvancedCPUSystem.value = value
   loading.value = false
 }
 </script>
 
 <template>
-  <setting-card-component title="GPU 参数自动应用" description="在软件启动时，自动载入并应用【GPU】设置页面中保存的核心与显存超频、电压曲线、功耗目标等参数。">
+  <setting-card-component title="CPU 参数自动应用" description="在软件启动时，自动载入并应用【CPU】设置页面中保存的功耗、频率、温度墙等高级参数。">
     <template #extra>
       <a-switch
-          :model-value="BootStartAdvancedGPUSystem"
+          :model-value="BootStartAdvancedCPUSystem"
           :loading="loading"
-          @change="SetBootStartAdvancedGPUSystem($event)"
+          @change="SetBootStartAdvancedCPUSystem($event)"
       >
         <template #checked-icon>
           <icon-check/>

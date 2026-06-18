@@ -5,7 +5,8 @@ const loading = ref(false)
 
 const config = (await Config.GetConfig()).Data
 const FanCurveMerge = ref(config.FanCurveMerge)
-import SettingCardComponent from "@/components/RightComponent/setting/SettingCardComponent.vue";
+import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
+
 import {Config} from "@/utils/bridge.ts";
 async function setFanCurveMerge(value: string | number | boolean) {
   if (typeof value !== 'boolean') return

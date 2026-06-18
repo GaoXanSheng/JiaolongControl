@@ -283,7 +283,7 @@ export const Config = {
     GetConfig: async () => {
         return await call<ConfigInterface>(raw.Config.GetConfig());
     },
-    SetConfig: (config: ConfigInterface) => call(raw.Config.SetConfig(JSON.stringify(config))),
+    SetConfig: (config: ConfigInterface) => call(raw.Config.SetConfig(config)),
     Boot: {
         Enable: () => call(raw.AutoStart.Enable()),
         Disable: () => call(raw.AutoStart.Disable()),

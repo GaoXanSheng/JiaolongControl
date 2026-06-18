@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import useStore, {HomeCardType} from '../stores'
+import useStore, {HomeCardType} from '@/stores'
 import {computed} from 'vue'
 
 const store = useStore()

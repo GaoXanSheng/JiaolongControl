@@ -7,14 +7,14 @@ import Settings from '@/assets/icon/Settings.png'
 import AMD from '@/assets/icon/AMD.png'
 import GPU from '@/assets/icon/GPU.png'
 import FanCurve from '@/assets/icon/FanCurve.png'
-import HOME_Page from '@/components/RightComponent/HOME.vue'
-import CPU_Page from '@/components/RightComponent/CPU.vue'
-import Fan_Page from '@/components/RightComponent/Fan.vue'
-import Keyboard_Page from '@/components/RightComponent/KeyBoard.vue'
-import Settings_Page from '@/components/RightComponent/Settings.vue'
-import GPU_Page from "@/components/RightComponent/GPU.vue";
-import RyzenSmu_Page from "@/components/RightComponent/RyzenSmu.vue";
-import FanCurveEditor from "@/components/RightComponent/FanCurveEditor.vue";
+import HOME_Page from '@/pages/Home.vue'
+import CPU_Page from '@/pages/CPU.vue'
+import Fan_Page from '@/pages/Fan.vue'
+import Keyboard_Page from '@/pages/KeyBoard.vue'
+import Settings_Page from '@/pages/Settings.vue'
+import GPU_Page from "@/pages/GPU.vue";
+import RyzenSmu_Page from "@/pages/RyzenSmu.vue";
+import FanCurveEditor from "@/pages/FanCurveEditor.vue";
 const useStore = defineStore('store', {
     state: () => {
         return {

@@ -40,20 +40,20 @@ export const useConfigStore = defineStore('config', {
 
   actions: {
     async fetchConfig() {
-      this.loading = true
-      try {
-        const result = await Config.GetConfig()
-        if (result.Success && typeof result.Data === 'string') {
-          this.config = JSON.parse(result.Data);
-        } else {
-          this.error = result.Message || 'Failed to parse config data'
-        }
-      } catch (err: any) {
-        this.error = err.message || 'Failed to fetch config'
-      } finally {
-        this.loading = false
-      }
-    },
+          this.loading = true
+          try {
+            const result = await Config.GetConfig()
+            if (result.Success && result.Data) {
+              this.config = result.Data as ConfigInterface;
+            } else {
+              this.error = result.Message || 'Failed to parse config data'
+            }
+          } catch (err: any) {
+            this.error = err.message || 'Failed to fetch config'
+          } finally {
+            this.loading = false
+          }
+        },
 
     updateConfig(newConfig: Partial<ConfigInterface>) {
       if (!this.config) return

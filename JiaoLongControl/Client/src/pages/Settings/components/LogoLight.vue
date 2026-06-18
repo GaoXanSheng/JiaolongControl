@@ -2,7 +2,8 @@
 import {onMounted, ref} from 'vue'
 import {LogoLight, ResultState} from '@/utils/bridge.ts'
 import {Message} from '@arco-design/web-vue'
-import SettingCardComponent from '@/components/RightComponent/setting/SettingCardComponent.vue'
+import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
+
 
 const loading = ref(false)
 const logolight = ref(false)

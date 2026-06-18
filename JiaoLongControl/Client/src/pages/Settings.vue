@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import LogoLight from '@/components/RightComponent/setting/LogoLight.vue'
-import BootAutoStart from "@/components/RightComponent/setting/BootAutoStart.vue";
-import PowerMode from "@/components/RightComponent/setting/PowerMode.vue";
-import AdvancedFanControlSystem from "@/components/RightComponent/setting/AdvancedFanControlSystem.vue";
-import BootCPUAutoStart from "@/components/RightComponent/setting/BootCPUAutoStart.vue";
-import BootGPUAutoStart from "@/components/RightComponent/setting/BootGPUAutoStart.vue";
-import BootCurveOptimizerAllAutoStart from "@/components/RightComponent/setting/BootCurveOptimizerAllAutoStart.vue";
-import FanCurveMerge from "@/components/RightComponent/setting/FanCurveMerge.vue";
-import GPUDirectConnection from "@/components/RightComponent/setting/GPUDirectConnection.vue";
-import GPUUnlockDB from "@/components/RightComponent/setting/GPUUnlockDB.vue";
-import ThemeSwitch from "@/components/RightComponent/setting/theme.vue";
+import LogoLight from './Settings/components/LogoLight.vue'
+import BootAutoStart from "./Settings/components/BootAutoStart.vue";
+import PowerMode from "./Settings/components/PowerMode.vue";
+import AdvancedFanControlSystem from "./Settings/components/AdvancedFanControlSystem.vue";
+import BootCPUAutoStart from "./Settings/components/BootCPUAutoStart.vue";
+import BootGPUAutoStart from "./Settings/components/BootGPUAutoStart.vue";
+import BootCurveOptimizerAllAutoStart from "./Settings/components/BootCurveOptimizerAllAutoStart.vue";
+import FanCurveMerge from "./Settings/components/FanCurveMerge.vue";
+import GPUDirectConnection from "./Settings/components/GPUDirectConnection.vue";
+import GPUUnlockDB from "./Settings/components/GPUUnlockDB.vue";
 </script>
 
 <template>

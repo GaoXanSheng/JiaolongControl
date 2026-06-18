@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { Message } from '@arco-design/web-vue'
 import { AutoFanControl, Fan } from '@/utils/bridge'
 import { useConfigStore } from '@/stores/config'
-import FanSpeed from "@/components/ProSettingComponent/FanCurve/FanSpeed.vue";
+import FanSpeed from "@/components/common/FanSpeed.vue";
 
 const loading = ref(false)
 const visible = ref(false)
