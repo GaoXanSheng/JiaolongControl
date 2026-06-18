@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import SettingCardComponent from '@/components/RightComponent/setting/SettingCardComponent.vue'
+import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
+
 import {onMounted, ref} from 'vue'
 import {Config} from '@/utils/bridge'
 

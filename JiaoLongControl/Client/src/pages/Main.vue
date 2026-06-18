@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import RightSide from '@/components/rightSide.vue'
-import TitleBar from '@/components/TitleBar.vue'
+import RightSide from '@/components/layout/RightSide.vue'
+import TitleBar from '@/components/layout/TitleBar.vue'
 import useStore, {HomeCardType} from '@/stores'
 
 const store = useStore()
 
-function onClickMenuItem(key: Number) {
+function onClickMenuItem(key: number) {
   store.$state.SwitchPages = key
 }
 

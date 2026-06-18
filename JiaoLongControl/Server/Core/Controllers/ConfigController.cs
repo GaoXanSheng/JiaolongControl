@@ -2,9 +2,10 @@
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Microsoft.Extensions.Configuration;
 using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Utils;
+using log4net;
+using Microsoft.Extensions.Configuration;
 
 namespace JiaoLongControl.Server.Core.Controllers;
 
@@ -12,6 +13,7 @@ namespace JiaoLongControl.Server.Core.Controllers;
 [ClassInterface(ClassInterfaceType.AutoDual)]
 public class ConfigController
 {
+    private static readonly ILog _logger = LogManager.GetLogger(typeof(ConfigController));
     public static Config Config { get; private set; } = new();
 
     private static readonly string ConfigDir = Path.Combine(AppContext.BaseDirectory, "config");
@@ -29,11 +31,10 @@ public class ConfigController
         return new CommandResult(true, "成功", Config);
     }
 
-    public CommandResult SetConfig(string json)
+    public CommandResult SetConfig(Config newConfig)
     {
         try
         {
-            var newConfig = JsonSerializer.Deserialize<Config>(json);
             if (newConfig != null)
             {
                 Config = newConfig;
@@ -41,12 +42,12 @@ public class ConfigController
             }
             else
             {
-                return new CommandResult(false, "Deserialization resulted in a null config.");
+                return new CommandResult(false, "Received a null config object.");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ConfigController] Error deserializing or saving config: {ex.Message}");
+            _logger.Error($"[ConfigController] Error saving config: {ex.Message}", ex);
             return new CommandResult(false, $"Error updating config: {ex.Message}");
         }
         return new CommandResult(true, "配置已成功更新.");

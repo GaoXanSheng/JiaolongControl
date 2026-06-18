@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref} from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import VChart from 'vue-echarts'
-import {use} from 'echarts/core'
-import {CanvasRenderer} from 'echarts/renderers'
-import {LineChart} from 'echarts/charts'
-import {GridComponent, LegendComponent, TooltipComponent} from 'echarts/components'
-import {CPU, Fan, NvidiaGpu, PerformanceMode, SystemInfo, SystemPerMode} from '@/utils/bridge'
+import { use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import { LineChart } from 'echarts/charts'
+import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
+import { PerformanceMode, SystemInfo, SystemPerMode } from '@/utils/bridge'
+import { useSystemInfoStore } from '@/stores/systemInfo'
+import { storeToRefs } from 'pinia'
 import imgCPU from '@/assets/icon/iconCPU.png'
 import imgGPU from '@/assets/icon/gpu2.png'
 import imgFan from '@/assets/icon/iconFan.png'
@@ -13,11 +15,14 @@ import iconQuiet from '@/assets/icon/iconQuiet.png'
 import iconBalanced from '@/assets/icon/iconBalanced.png'
 import iconPerformance from '@/assets/icon/iconPerformance.png'
 import iconCustom from '@/assets/icon/iconCustom.png'
-import PerformanceModeComp from './HOME/PerformanceMode.vue'
-import CoreMonitoringComp from './HOME/CoreMonitoring.vue'
-import WelcomeBannerComp from './HOME/WelcomeBanner.vue'
+import PerformanceModeComp from './Home/PerformanceMode.vue'
+import CoreMonitoringComp from './Home/CoreMonitoring.vue'
+import WelcomeBannerComp from './Home/WelcomeBanner.vue'
 
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent])
+
+const systemInfoStore = useSystemInfoStore()
+const { cpuTemp, gpuTemp, fanSpeed, gpuStats } = storeToRefs(systemInfoStore)
 
 const performanceModes = ref([
   { id: SystemPerMode.BalanceMode, name: '静音', icon: iconQuiet, active: false },
@@ -33,7 +38,7 @@ async function fetchPerformanceMode() {
     const res = await PerformanceMode.Get()
     if (res.Success) {
       performanceModes.value.forEach(e => {
-        e.active = e.id === res.Data;
+        e.active = e.id === res.Data
       })
     }
   } catch (e) { console.error(e) }
@@ -48,12 +53,9 @@ function setMode(id: SystemPerMode) {
   })
 }
 
-const cpuTemp = ref(0)
-const gpuTemp = ref(0)
-const cpuUsage = ref(0)
-const gpuUsage = ref(0)
-const fanSpeed = ref(0)
-const noiseLevel = ref(0)
+const cpuUsage = ref(0) // This seems to be fake data, will keep it for now
+const gpuUsage = computed(() => parseInt(gpuStats.value?.GpuUtilization || '0', 10))
+const noiseLevel = ref(0) // This seems to be fake data
 
 const sysCpuName = ref('Loading...')
 const sysGpuName = ref('Loading...')
@@ -61,117 +63,93 @@ const sysMemory = ref('Loading...')
 const sysOs = ref('Loading...')
 
 // 模拟历史数据
-const tempHistory = ref([
-  {cpu: 0, gpu: 0},
-])
+const tempHistory = ref<{ cpu: number; gpu: number }[]>([])
 
 // 心电图数据与生成逻辑
-const ecgData = ref<number[]>(Array(50).fill(30)) // 初始在高度 30 的基线
+const ecgData = ref<number[]>(Array(50).fill(30))
 let ecgIndex = 0
-// 标准心电信号波形偏移序列（负数代表向上刺，正数代表向下刺）
 const ecgPattern = [0, 0, 0, 0, -2, 2, -25, 12, -2, -6, 0, 0, 0, 0, 0, 0]
 
 function tickEcg() {
   const offset = ecgPattern[ecgIndex]
   ecgIndex = (ecgIndex + 1) % ecgPattern.length
-
-  // 注入微小的白噪音，使基线在运动时更自然
   const noise = (Math.random() - 0.5) * 1.5
   const nextY = 30 + offset + noise
-
   ecgData.value.push(nextY)
   if (ecgData.value.length > 50) {
     ecgData.value.shift()
   }
 }
 
-// 将数组转换为 SVG polyline 的 points 字符串
 const ecgPointsString = computed(() => {
   return ecgData.value
-      .map((y, i) => {
-        const x = (i / (ecgData.value.length - 1)) * 300 // 假设 SVG viewBox 宽度为 300
-        return `${x.toFixed(1)},${y.toFixed(1)}`
-      })
-      .join(' ')
+    .map((y, i) => {
+      const x = (i / (ecgData.value.length - 1)) * 300
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
 })
 
 async function fetchStaticInfo() {
   try {
-    const res = await SystemInfo.GetSystemOverview();
+    const res = await SystemInfo.GetSystemOverview()
     if (res.Success && res.Data) {
-      sysCpuName.value = res.Data.CpuName;
-      sysGpuName.value = res.Data.GpuName;
-      sysMemory.value = res.Data.MemoryInfo;
-      sysOs.value = res.Data.OsVersion;
+      sysCpuName.value = res.Data.CpuName
+      sysGpuName.value = res.Data.GpuName
+      sysMemory.value = res.Data.MemoryInfo
+      sysOs.value = res.Data.OsVersion
     }
   } catch (e) {
     console.error('Failed to fetch system info', e)
   }
 }
 
-async function updateHardwareInfo() {
-  try {
-    const [cTemp, fSpeed, gTemp] = await Promise.all([
-      CPU.GetCPUThermometer(),
-      Fan.GetFanSpeed(),
-      NvidiaGpu.GetGpuTemperature()
-    ])
-    if (cTemp.Success) cpuTemp.value = cTemp.Data
-    if (fSpeed.Success) fanSpeed.value = fSpeed.Data.CPUFanSpeed || 0
-    if (gTemp.Success) {
-      gpuTemp.value = Number(gTemp.Data) || 0
-    }
-    // todo fake
-    cpuUsage.value = Math.floor(Math.random() * 30) + 10
-    gpuUsage.value = Math.floor(Math.random() * 40) + 20
-    noiseLevel.value = Math.floor(Math.random() * 10) + 30
-    
-    tempHistory.value.push({cpu: cpuTemp.value, gpu: gpuTemp.value})
-    if (tempHistory.value.length > 10) tempHistory.value.shift()
-  } catch (e) {
-    console.error(e)
-  }
-}
-
-let timer: ReturnType<typeof setInterval> | null = null
 let ecgTimer: ReturnType<typeof setInterval> | null = null
+let historyTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
-  fetchStaticInfo();
-  fetchPerformanceMode();
-  updateHardwareInfo();
-  timer = setInterval(updateHardwareInfo, 2000)
-  ecgTimer = setInterval(tickEcg, 100) // 100ms 驱动一次心电图动画
+  fetchStaticInfo()
+  fetchPerformanceMode()
+  ecgTimer = setInterval(tickEcg, 100)
+  
+  historyTimer = setInterval(() => {
+    // todo fake usage data
+    cpuUsage.value = Math.floor(Math.random() * 30) + 10
+    noiseLevel.value = Math.floor(Math.random() * 10) + 30
+    
+    tempHistory.value.push({ cpu: cpuTemp.value, gpu: gpuTemp.value })
+    if (tempHistory.value.length > 10) tempHistory.value.shift()
+  }, 2000)
 })
 
 onUnmounted(() => {
-  if (timer) clearInterval(timer)
   if (ecgTimer) clearInterval(ecgTimer)
+  if (historyTimer) clearInterval(historyTimer)
 })
 
 // 2. 温度曲线 - 折线图
 const lineChartOption = computed(() => ({
-  grid: {top: 30, bottom: 20, left: 35, right: 10},
+  grid: { top: 30, bottom: 20, left: 35, right: 10 },
   legend: {
     data: ['CPU', 'GPU'],
     icon: 'roundRect',
     itemWidth: 12,
     itemHeight: 4,
-    textStyle: {color: '#A0AEC0', fontSize: 10},
+    textStyle: { color: '#A0AEC0', fontSize: 10 },
     top: 0
   },
   xAxis: {
     type: 'category',
     data: [],
-    axisLine: {show: false},
-    axisTick: {show: false},
-    axisLabel: {color: '#6B7280', fontSize: 10, margin: 12}
+    axisLine: { show: false },
+    axisTick: { show: false },
+    axisLabel: { color: '#6B7280', fontSize: 10, margin: 12 }
   },
   yAxis: {
     type: 'value',
     min: 0, max: 100, interval: 25,
-    splitLine: {lineStyle: {color: 'rgba(255, 255, 255, 0.05)'}},
-    axisLabel: {color: '#6B7280', fontSize: 10, formatter: '{value}°C'}
+    splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.05)' } },
+    axisLabel: { color: '#6B7280', fontSize: 10, formatter: '{value}°C' }
   },
   series: [
     {
@@ -181,8 +159,8 @@ const lineChartOption = computed(() => ({
       smooth: true,
       symbol: 'circle',
       symbolSize: 6,
-      lineStyle: {color: '#3B82F6', width: 3},
-      itemStyle: {color: '#3B82F6'}
+      lineStyle: { color: '#3B82F6', width: 3 },
+      itemStyle: { color: '#3B82F6' }
     },
     {
       name: 'GPU',
@@ -191,8 +169,8 @@ const lineChartOption = computed(() => ({
       smooth: true,
       symbol: 'circle',
       symbolSize: 6,
-      lineStyle: {color: '#10B981', width: 3},
-      itemStyle: {color: '#10B981'}
+      lineStyle: { color: '#10B981', width: 3 },
+      itemStyle: { color: '#10B981' }
     }
   ]
 }))
@@ -272,7 +250,7 @@ const lineChartOption = computed(() => ({
           </div>
           <div>
             <div class="flex items-baseline gap-1">
-              <span class="text-3xl font-semibold">{{ fanSpeed }}</span>
+              <span class="text-3xl font-semibold">{{ Math.max(fanSpeed.CPUFanSpeed, fanSpeed.GPUFanSpeed) }}</span>
               <span class="text-xs text-gray-400">RPM</span>
             </div>
             <div class="text-xs text-gray-500">风扇转速</div>

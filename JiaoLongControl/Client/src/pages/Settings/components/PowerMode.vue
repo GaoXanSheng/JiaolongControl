@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Message } from '@arco-design/web-vue'
 import  {PerformanceMode, SystemPerMode} from '@/utils/bridge.ts'
-import SettingCardComponent from '@/components/RightComponent/setting/SettingCardComponent.vue'
+import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
+
 import { ref, onMounted } from 'vue'
 
 const loading = ref(false)

@@ -236,7 +236,7 @@
 import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {Message} from '@arco-design/web-vue'
 import {AutoFanControl, Config, Fan} from '@/utils/bridge.ts'
-import FanSpeed from "@/components/ProSettingComponent/FanCurve/FanSpeed.vue";
+import FanSpeed from "@/components/common/FanSpeed.vue";
 
 interface Point {
   temp: number

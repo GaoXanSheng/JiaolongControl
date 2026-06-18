@@ -1,27 +1,15 @@
 <script setup lang="ts">
-import {ref, computed, onMounted, onUnmounted, type Ref} from "vue";
-import {Message} from "@arco-design/web-vue";
-import {NvidiaGpu, type GpuStats} from "@/utils/bridge.ts";
-import {useConfigStore} from '@/stores/config'
+import { ref, computed, onMounted, onUnmounted, type Ref, watch } from "vue";
+import { Message } from "@arco-design/web-vue";
+import { NvidiaGpu, type GpuStats } from "@/utils/bridge.ts";
+import { useConfigStore } from '@/stores/config'
+import { useSystemInfoStore } from "@/stores/systemInfo";
+import { storeToRefs } from "pinia";
 
 const configStore = useConfigStore()
+const systemInfoStore = useSystemInfoStore()
+const { gpuStats } = storeToRefs(systemInfoStore)
 const loading = ref(false)
-let timer: number | undefined;
-
-// --- Real-time Data State ---
-const gpuStats = ref<GpuStats>({
-  GpuName: 'Loading...',
-  DriverVersion: '...',
-  MemoryTotal: '...',
-  BusWidth: '...',
-  GpuUtilization: '0',
-  MemoryUtilization: '0',
-  CoreClock: '0',
-  MemoryClock: '0',
-  GpuTemperature: '0',
-  FanSpeed: '0',
-  DriverDate: '...'
-});
 
 // --- Sparkline Chart History ---
 const historyLength = 20;
@@ -32,34 +20,43 @@ const memClockHistory = ref<number[]>([]);
 const tempHistory = ref<number[]>([]);
 const fanSpeedHistory = ref<number[]>([]);
 
-// --- Data Fetching ---
-async function fetchGpuStats() {
-  try {
-    const res = await NvidiaGpu.GetGpuAllStats();
-    if (res.Success && res.Data) {
-      const stats = res.Data as GpuStats;
-      gpuStats.value = stats;
-
-      // Update history arrays for charts
-      const updateHistory  = (history: Ref<number[]>, value: string, divisor = 1) => {
-        const numValue = parseInt(value, 10) || 0;
-        history.value.push(numValue / divisor);
-        if (history.value.length > historyLength) {
-          history.value.shift();
-        }
-      };
-
-      updateHistory(utilHistory, stats.GpuUtilization);
-      updateHistory(memUtilHistory, stats.MemoryUtilization);
-      updateHistory(coreClockHistory, stats.CoreClock, 100); // Scale down for charting
-      updateHistory(memClockHistory, stats.MemoryClock, 100); // Scale down for charting
-      updateHistory(tempHistory, stats.GpuTemperature);
-      updateHistory(fanSpeedHistory, stats.FanSpeed, 100); // Scale down for charting
-    }
-  } catch (error) {
-    console.error("Failed to fetch GPU stats:", error);
+const updateHistory = (history: Ref<number[]>, value: string, divisor = 1) => {
+  const numValue = parseInt(value, 10) || 0;
+  history.value.push(numValue / divisor);
+  if (history.value.length > historyLength) {
+    history.value.shift();
   }
-}
+};
+
+let unwatch: (() => void) | null = null;
+
+onMounted(() => {
+  if (gpuStats.value) {
+    updateHistory(utilHistory, gpuStats.value.GpuUtilization);
+    updateHistory(memUtilHistory, gpuStats.value.MemoryUtilization);
+    updateHistory(coreClockHistory, gpuStats.value.CoreClock, 100);
+    updateHistory(memClockHistory, gpuStats.value.MemoryClock, 100);
+    updateHistory(tempHistory, gpuStats.value.GpuTemperature);
+    updateHistory(fanSpeedHistory, gpuStats.value.FanSpeed, 100);
+  }
+
+  unwatch = watch(gpuStats, (stats) => {
+    if (!stats) return;
+    updateHistory(utilHistory, stats.GpuUtilization);
+    updateHistory(memUtilHistory, stats.MemoryUtilization);
+    updateHistory(coreClockHistory, stats.CoreClock, 100);
+    updateHistory(memClockHistory, stats.MemoryClock, 100);
+    updateHistory(tempHistory, stats.GpuTemperature);
+    updateHistory(fanSpeedHistory, stats.FanSpeed, 100);
+  }, { deep: true });
+});
+
+onUnmounted(() => {
+  if (unwatch) {
+    unwatch();
+  }
+});
+
 
 // --- Chart Generation ---
 function generateSvgPath(history: number[], yMax: number, smooth = true) {
@@ -99,17 +96,6 @@ const memClockChart = computed(() => generateSvgPath(memClockHistory.value, 100)
 const tempChart = computed(() => generateSvgPath(tempHistory.value, 100));
 const fanChart = computed(() => generateSvgPath(fanSpeedHistory.value, 40)); // Corresponds to 4000 RPM
 
-onMounted(() => {
-  fetchGpuStats();
-  timer = setInterval(fetchGpuStats, 5000);
-});
-
-onUnmounted(() => {
-  if (timer) {
-    clearInterval(timer);
-  }
-});
-
 // --- Settings and Presets Logic ---
 const GPUData = computed(() => configStore.config?.NvidiaGpuConfig)
 const gpuVoltageOffset = ref(0)
@@ -148,7 +134,6 @@ async function handleResetAll() {
     loading.value = false;
   }
 }
-
 </script>
 
 <template>
