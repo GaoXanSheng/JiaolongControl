@@ -131,10 +131,10 @@ public class NvidiaGpuController
                 if (process.ExitCode != 0 || !string.IsNullOrWhiteSpace(error))
                 {
                     string errMsg = !string.IsNullOrWhiteSpace(error) ? error : output;
-                    return new CommandResult(false, $"执行失败: {errMsg}");
+                    return new CommandResult(false, $"执行失败: {errMsg.Trim()}");
                 }
 
-                return new CommandResult(true, output);
+                return new CommandResult(true, "获取成功", output.Trim());
             }
         }
         catch (System.ComponentModel.Win32Exception)

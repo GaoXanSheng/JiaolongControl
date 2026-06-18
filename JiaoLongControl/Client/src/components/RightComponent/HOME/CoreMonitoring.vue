@@ -13,11 +13,9 @@ const props = defineProps<{
   gpuUsage: number
   cpuTemp: number
   gpuTemp: number
-  cpuFreq: string
-  gpuFreq: string
 }>()
 
-const getRingOption = (value: number, colorStart: string, colorEnd: string, format: string = '{value}%') => ({
+const getRingOption = (value: number, colorStart: string, colorEnd: string, suffix: string = '%') => ({
   series: [
     {
       type: 'pie',
@@ -27,8 +25,8 @@ const getRingOption = (value: number, colorStart: string, colorEnd: string, form
       label: {
         show: true,
         position: 'center',
-        formatter: format,
-        fontSize: 24,
+        formatter: () => `${value}${suffix}`,
+        fontSize: 24, // 稍微降低字体大小（24 -> 20），确保 100°C 或 100% 这种三位数不会溢出换行
         fontWeight: 'bold',
         color: '#FFFFFF'
       },
@@ -44,7 +42,7 @@ const getRingOption = (value: number, colorStart: string, colorEnd: string, form
           }
         },
         {
-          value: 100 - (format.includes('%') ? value : (value / 100) * 100),
+          value: 100 - value,
           itemStyle: { color: 'rgba(255, 255, 255, 0.05)' }
         }
       ]
@@ -52,10 +50,10 @@ const getRingOption = (value: number, colorStart: string, colorEnd: string, form
   ]
 })
 
-const cpuUsageOption = computed(() => getRingOption(props.cpuUsage, '#3B82F6', '#8A2BE2'))
-const gpuUsageOption = computed(() => getRingOption(props.gpuUsage, '#10B981', '#3B82F6'))
-const cpuTempOption = computed(() => getRingOption(props.cpuTemp, '#3B82F6', '#3B82F6', '{value}°C'))
-const gpuTempOption = computed(() => getRingOption(props.gpuTemp, '#8A2BE2', '#8A2BE2', '{value}°C'))
+const cpuUsageOption = computed(() => getRingOption(props.cpuUsage || 0, '#3B82F6', '#8A2BE2'))
+const gpuUsageOption = computed(() => getRingOption(props.gpuUsage || 0, '#10B981', '#3B82F6'))
+const cpuTempOption = computed(() => getRingOption(props.cpuTemp || 0, '#3B82F6', '#3B82F6', '°C'))
+const gpuTempOption = computed(() => getRingOption(props.gpuTemp || 0, '#8A2BE2', '#8A2BE2', '°C'))
 </script>
 
 <template>
@@ -68,7 +66,6 @@ const gpuTempOption = computed(() => getRingOption(props.gpuTemp, '#8A2BE2', '#8
           <VChart :option="cpuUsageOption" autoresize />
         </div>
         <span class="text-xs text-gray-400 mt-2">CPU 使用率</span>
-        <span class="text-xs text-gray-500 mt-1">{{ cpuFreq }}</span>
       </div>
 
       <!-- GPU 使用率 -->
@@ -77,7 +74,6 @@ const gpuTempOption = computed(() => getRingOption(props.gpuTemp, '#8A2BE2', '#8
           <VChart :option="gpuUsageOption" autoresize />
         </div>
         <span class="text-xs text-gray-400 mt-2">GPU 使用率</span>
-        <span class="text-xs text-gray-500 mt-1">{{ gpuFreq }}</span>
       </div>
 
       <!-- CPU 温度 -->
@@ -86,7 +82,6 @@ const gpuTempOption = computed(() => getRingOption(props.gpuTemp, '#8A2BE2', '#8
           <VChart :option="cpuTempOption" autoresize />
         </div>
         <span class="text-xs text-gray-400 mt-2">CPU 温度</span>
-        <span class="text-xs text-gray-500 mt-1 opacity-0">-</span>
       </div>
 
       <!-- GPU 温度 -->
@@ -95,7 +90,6 @@ const gpuTempOption = computed(() => getRingOption(props.gpuTemp, '#8A2BE2', '#8
           <VChart :option="gpuTempOption" autoresize />
         </div>
         <span class="text-xs text-gray-400 mt-2">GPU 温度</span>
-        <span class="text-xs text-gray-500 mt-1 opacity-0">-</span>
       </div>
     </div>
   </div>

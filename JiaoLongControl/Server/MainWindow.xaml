@@ -6,8 +6,8 @@
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         ResizeMode="CanResize"
-        Width="1000" Height="650"
-        MinWidth="800" MinHeight="600"
+        Width="1300" Height="820"
+        MinWidth="1300" MinHeight="820"
         Background="#202020">
 
     <WindowChrome.WindowChrome>
