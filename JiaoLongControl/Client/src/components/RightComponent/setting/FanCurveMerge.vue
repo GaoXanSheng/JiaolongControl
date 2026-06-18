@@ -19,7 +19,7 @@ async function setFanCurveMerge(value: string | number | boolean) {
 </script>
 
 <template>
-  <setting-card-component title="传统风扇曲线">
+  <setting-card-component title="切换为合并风扇曲线模式" description="使风扇转速同步">
     <template #extra>
       <a-switch
           :model-value="FanCurveMerge"

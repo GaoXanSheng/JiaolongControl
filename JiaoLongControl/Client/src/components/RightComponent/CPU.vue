@@ -98,9 +98,6 @@ function handleCancel() {
         <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg">
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-[13px] font-semibold text-gray-300">CPU 配置文件</h2>
-            <button class="bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-gray-300 text-xs px-3 py-1.5 rounded-[6px] transition flex items-center gap-1.5">
-              <span class="text-sm leading-none">+</span> 新建配置
-            </button>
           </div>
 
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -260,7 +257,6 @@ function handleCancel() {
               <div>Alder Lake</div>
               <div>14 核心 / 20 线程</div>
               <div>基础频率 2.3 GHz</div>
-              <div>最大睿频 4.7 GHz</div>
             </div>
           </div>
         </div>
@@ -331,28 +327,10 @@ function handleCancel() {
                 <div class="text-xs text-purple-300 font-bold font-mono mt-0.5">{{ String(i).padStart(2, '0') }}</div>
               </div>
             </div>
-
-            <!-- E-Cores 能效核（8个，占满整行，格口略窄） -->
-            <div class="grid grid-cols-8 gap-1">
-              <div v-for="i in 8" :key="'e'+i" class="bg-blue-950/20 border border-blue-500/25 rounded-lg py-1.5 text-center">
-                <div class="text-[7px] text-blue-400 leading-none">E</div>
-                <div class="text-[10px] text-blue-300 font-semibold font-mono mt-0.5">{{ String(i + 6).padStart(2, '0') }}</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 说明图例 -->
-          <div class="flex items-center gap-4 text-[10px] text-gray-400 pt-1">
-            <span class="flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span> P-Core 性能核
-            </span>
-            <span class="flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> E-Core 能效核
-            </span>
           </div>
         </div>
 
-        <!-- 4. 说明说明卡片 -->
+        <!-- 4. 说明卡片 -->
         <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-2.5">
           <h2 class="text-[13px] font-semibold text-gray-300">说明</h2>
           <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">

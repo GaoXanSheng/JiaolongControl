@@ -14,15 +14,16 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1"/>
-        <PackageReference Include="log4net" Version="3.3.0"/>
+        <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
+        <PackageReference Include="log4net" Version="3.3.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.5" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.5" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.5" />
-        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3800.47"/>
-        <PackageReference Include="System.Management" Version="10.0.3"/>
-        <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.3"/>
-        <PackageReference Include="TaskScheduler" Version="2.12.2"/>
+        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3800.47" />
+        <PackageReference Include="NvAPIWrapper.Net" Version="0.8.1.101" />
+        <PackageReference Include="System.Management" Version="10.0.3" />
+        <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.3" />
+        <PackageReference Include="TaskScheduler" Version="2.12.2" />
     </ItemGroup>
 
     <ItemGroup>
@@ -43,7 +44,7 @@
         </Content>
     </ItemGroup>
     <ItemGroup>
-        <EmbeddedResource Include="Server\Resources\Icons\app.ico"/>
+        <EmbeddedResource Include="Server\Resources\Icons\app.ico" />
         <None Update="Drivers\PawnIO\PawnIO.sys">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
@@ -83,7 +84,7 @@
         </ApplicationDefinition>
     </ItemGroup>
     <ItemGroup>
-        <None Include="App.config"/>
+        <None Include="App.config" />
     </ItemGroup>
     <ItemGroup>
         <Content Include="Server/Resources/WebRoot/**">

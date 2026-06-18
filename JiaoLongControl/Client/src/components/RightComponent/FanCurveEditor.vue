@@ -416,9 +416,7 @@ onMounted(async () => {
 
   await checkServiceStatus()
   try {
-
     const advancedConfig = config.AdvancedFanControlSystemConfig
-    console.log(config)
     const parsedCpu = parseConfigPoints(advancedConfig.CpuFan)
     if (parsedCpu) cpuPoints.value = parsedCpu
     const parsedGpu = parseConfigPoints(advancedConfig.GpuFan)
