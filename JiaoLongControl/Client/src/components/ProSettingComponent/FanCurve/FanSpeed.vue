@@ -6,13 +6,19 @@ const INTERVAL = 2000
 const PADDING_X = 40
 const PADDING_Y = 20
 
+// 定义色板（与系统全局风格统一）
+const COLOR_CPU_FAN = '#8A2BE2'   // CPU转速：科技紫
+const COLOR_GPU_FAN = '#3B82F6'   // GPU转速：科技蓝
+const COLOR_CPU_TEMP = '#E11D48'  // CPU温度：玫瑰红
+const COLOR_GPU_TEMP = '#10B981'  // GPU温度：薄荷绿
+
 const MAX_FAN_RPM = 7800
 const MAX_TEMP_C = 110
 
-// 响应式宽高，初始值设为一个合理的大小
+// 响应式宽高
 const container = ref<HTMLElement | null>(null)
 const width = ref(600)
-const height = ref(300)
+const height = ref(180) // 略微调高画布高度以获取更舒展的波形展示
 
 const cpuFan = ref<number[]>([])
 const gpuFan = ref<number[]>([])
@@ -27,8 +33,6 @@ function push(arr: number[], v: number) {
   if (arr.length >= MAX_POINTS) arr.shift()
   arr.push(v)
 }
-
-
 
 const chartW = computed(() => Math.max(0, width.value - PADDING_X * 2))
 const chartH = computed(() => Math.max(0, height.value - PADDING_Y * 2))
@@ -83,7 +87,7 @@ async function poll() {
     push(cpuFan.value, fan.Data.CPUFanSpeed)
     push(gpuFan.value, fan.Data.GPUFanSpeed)
     push(cpuTemp.value, hw.Data)
-    push(gpuTemp.value, Number(gpu.Message))
+    push(gpuTemp.value, Number(gpu.Data))
   } catch (e) {
     console.error(e)
   }
@@ -112,87 +116,117 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div
-      ref="container"
-      class="chart-container"
-      @mousemove="onMouseMove"
-      @mouseleave="hoverIndex = null"
-  >
-    <svg :width="width" :height="height" v-if="width > 0">
-      <g stroke="#f2f3f5" stroke-width="1" stroke-dasharray="4 2">
-        <line
-            v-for="i in 5"
-            :key="'h'+i"
-            :x1="PADDING_X"
-            :x2="width - PADDING_X"
-            :y1="PADDING_Y + (i-1) * chartH / 4"
-            :y2="PADDING_Y + (i-1) * chartH / 4"
-        />
-      </g>
-      <polyline :points="cpuFanPath" fill="none" stroke="#1f77b4" stroke-width="2" />
-      <polyline :points="gpuFanPath" fill="none" stroke="#ff7f0e" stroke-width="2" />
-      <polyline :points="cpuTempPath" fill="none" stroke="#2ca02c" stroke-width="2" />
-      <polyline :points="gpuTempPath" fill="none" stroke="#d62728" stroke-width="2" />
-      <g v-for="(x, i) in xs" :key="'nodes-'+i">
-        <circle :cx="x" :cy="getY(cpuFan[i]!, MAX_FAN_RPM)" r="3" fill="#1f77b4"/>
-        <circle :cx="x" :cy="getY(gpuFan[i]!, MAX_FAN_RPM)" r="3" fill="#ff7f0e"/>
-        <circle :cx="x" :cy="getY(cpuTemp[i]!, MAX_TEMP_C)" r="3" fill="#2ca02c"/>
-        <circle :cx="x" :cy="getY(gpuTemp[i]!, MAX_TEMP_C)" r="3" fill="#d62728"/>
-      </g>
-      <template v-if="hoverIndex !== null && xs[hoverIndex] !== undefined">
-        <line
-            :x1="xs[hoverIndex]"
-            :x2="xs[hoverIndex]"
-            :y1="PADDING_Y"
-            :y2="height - PADDING_Y"
-            stroke="#999"
-            stroke-width="1"
-            stroke-dasharray="4"
-        />
-        <g>
-          <circle :cx="xs[hoverIndex]" :cy="getY(cpuFan[hoverIndex]!, MAX_FAN_RPM)" r="5" fill="#fff" stroke="#1f77b4" stroke-width="2"/>
-          <circle :cx="xs[hoverIndex]" :cy="getY(gpuFan[hoverIndex]!, MAX_FAN_RPM)" r="5" fill="#fff" stroke="#ff7f0e" stroke-width="2"/>
-          <circle :cx="xs[hoverIndex]" :cy="getY(cpuTemp[hoverIndex]!, MAX_TEMP_C)" r="5" fill="#fff" stroke="#2ca02c" stroke-width="2"/>
-          <circle :cx="xs[hoverIndex]" :cy="getY(gpuTemp[hoverIndex]!, MAX_TEMP_C)" r="5" fill="#fff" stroke="#d62728" stroke-width="2"/>
-        </g>
-        <g :transform="`translate(${
-            xs[hoverIndex]! + (xs[hoverIndex]! > width / 2 ? -200 : 20)
-          }, ${ PADDING_Y + 10 })`" style="pointer-events: none">
-          <rect
-              width="180"
-              height="120"
-              rx="6"
-              fill="rgba(255, 255, 255, 0.95)"
-              stroke="#ccc"
+  <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-4">
+    <!-- 图表顶栏标题 -->
+    <div class="flex justify-between items-center select-none">
+      <h2 class="text-[13px] font-semibold text-gray-300 flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></span>
+        实时运行状态遥测
+      </h2>
+      <span class="text-[10px] text-gray-500 font-mono">{{ INTERVAL / 1000 }}s 采样间隔</span>
+    </div>
+
+    <div
+        ref="container"
+        class="chart-container"
+        @mousemove="onMouseMove"
+        @mouseleave="hoverIndex = null"
+    >
+      <svg :width="width" :height="height" v-if="width > 0">
+        <!-- SVG 视觉滤镜定义 -->
+        <defs>
+          <!-- 荧光微弱发光滤镜 -->
+          <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="1.5" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+
+        <!-- 1. 背景网格横线 -->
+        <g stroke="rgba(255, 255, 255, 0.03)" stroke-width="1" stroke-dasharray="3">
+          <line
+              v-for="i in 5"
+              :key="'h'+i"
+              :x1="PADDING_X"
+              :x2="width - PADDING_X"
+              :y1="PADDING_Y + (i-1) * chartH / 4"
+              :y2="PADDING_Y + (i-1) * chartH / 4"
           />
-          <text x="15" y="25" font-size="12" font-weight="bold" fill="#333">Index: {{ hoverIndex }}</text>
-          <g transform="translate(15, 45)">
-            <circle r="4" fill="#1f77b4" cy="-4" />
-            <text x="15" font-size="12" fill="#333">CPU Fan: {{ cpuFan[hoverIndex] }} RPM</text>
-          </g>
-          <g transform="translate(15, 65)">
-            <circle r="4" fill="#ff7f0e" cy="-4" />
-            <text x="15" font-size="12" fill="#333">GPU Fan: {{ gpuFan[hoverIndex] }} RPM</text>
-          </g>
-          <g transform="translate(15, 85)">
-            <circle r="4" fill="#2ca02c" cy="-4" />
-            <text x="15" font-size="12" fill="#333">CPU Temp: {{ cpuTemp[hoverIndex] }} °C</text>
-          </g>
-          <g transform="translate(15, 105)">
-            <circle r="4" fill="#d62728" cy="-4" />
-            <text x="15" font-size="12" fill="#333">GPU Temp: {{ gpuTemp[hoverIndex] }} °C</text>
-          </g>
         </g>
-      </template>
-    </svg>
+
+        <!-- 2. 实数折线路径（配有发光滤镜） -->
+        <polyline :points="cpuFanPath" fill="none" :stroke="COLOR_CPU_FAN" stroke-width="2" filter="url(#neon-glow)" />
+        <polyline :points="gpuFanPath" fill="none" :stroke="COLOR_GPU_FAN" stroke-width="2" filter="url(#neon-glow)" />
+        <polyline :points="cpuTempPath" fill="none" :stroke="COLOR_CPU_TEMP" stroke-width="2" filter="url(#neon-glow)" />
+        <polyline :points="gpuTempPath" fill="none" :stroke="COLOR_GPU_TEMP" stroke-width="2" filter="url(#neon-glow)" />
+
+        <!-- 3. 数据拐点微圆点 -->
+        <g v-for="(x, i) in xs" :key="'nodes-'+i">
+          <circle :cx="x" :cy="getY(cpuFan[i]!, MAX_FAN_RPM)" r="2.5" :fill="COLOR_CPU_FAN"/>
+          <circle :cx="x" :cy="getY(gpuFan[i]!, MAX_FAN_RPM)" r="2.5" :fill="COLOR_GPU_FAN"/>
+          <circle :cx="x" :cy="getY(cpuTemp[i]!, MAX_TEMP_C)" r="2.5" :fill="COLOR_CPU_TEMP"/>
+          <circle :cx="x" :cy="getY(gpuTemp[i]!, MAX_TEMP_C)" r="2.5" :fill="COLOR_GPU_TEMP"/>
+        </g>
+
+        <!-- 4. 交互式悬浮垂直标线及 Tooltip 卡片 -->
+        <template v-if="hoverIndex !== null && xs[hoverIndex] !== undefined">
+          <!-- 悬浮轴标虚线 -->
+          <line
+              :x1="xs[hoverIndex]"
+              :x2="xs[hoverIndex]"
+              :y1="PADDING_Y"
+              :y2="height - PADDING_Y"
+              stroke="rgba(255, 255, 255, 0.15)"
+              stroke-width="1"
+              stroke-dasharray="3"
+          />
+          <!-- 悬浮高亮圆圈 -->
+          <g>
+            <circle :cx="xs[hoverIndex]" :cy="getY(cpuFan[hoverIndex]!, MAX_FAN_RPM)" r="4" fill="#fff" :stroke="COLOR_CPU_FAN" stroke-width="2"/>
+            <circle :cx="xs[hoverIndex]" :cy="getY(gpuFan[hoverIndex]!, MAX_FAN_RPM)" r="4" fill="#fff" :stroke="COLOR_GPU_FAN" stroke-width="2"/>
+            <circle :cx="xs[hoverIndex]" :cy="getY(cpuTemp[hoverIndex]!, MAX_TEMP_C)" r="4" fill="#fff" :stroke="COLOR_CPU_TEMP" stroke-width="2"/>
+            <circle :cx="xs[hoverIndex]" :cy="getY(gpuTemp[hoverIndex]!, MAX_TEMP_C)" r="4" fill="#fff" :stroke="COLOR_GPU_TEMP" stroke-width="2"/>
+          </g>
+
+          <!-- 悬浮数据指示卡（高透暗色玻璃卡） -->
+          <g :transform="`translate(${
+              xs[hoverIndex]! + (xs[hoverIndex]! > width / 2 ? -200 : 20)
+            }, ${ PADDING_Y - 5 })`" style="pointer-events: none">
+            <rect
+                width="180"
+                height="124"
+                rx="8"
+                fill="rgba(18, 19, 32, 0.95)"
+                stroke="rgba(255, 255, 255, 0.08)"
+                stroke-width="1"
+            />
+            <text x="15" y="24" font-size="11" font-weight="bold" fill="#ffffff">时间切片: {{ hoverIndex + 1 }} / 10</text>
+            <g transform="translate(15, 46)">
+              <circle r="3.5" :fill="COLOR_CPU_FAN" cy="-3.5" />
+              <text x="14" font-size="11" fill="rgba(255,255,255,0.7)">CPU风扇: <tspan font-weight="bold" fill="#ffffff" font-family="monospace">{{ cpuFan[hoverIndex] }}</tspan> RPM</text>
+            </g>
+            <g transform="translate(15, 66)">
+              <circle r="3.5" :fill="COLOR_GPU_FAN" cy="-3.5" />
+              <text x="14" font-size="11" fill="rgba(255,255,255,0.7)">GPU风扇: <tspan font-weight="bold" fill="#ffffff" font-family="monospace">{{ gpuFan[hoverIndex] }}</tspan> RPM</text>
+            </g>
+            <g transform="translate(15, 86)">
+              <circle r="3.5" :fill="COLOR_CPU_TEMP" cy="-3.5" />
+              <text x="14" font-size="11" fill="rgba(255,255,255,0.7)">CPU温度: <tspan font-weight="bold" fill="#ffffff" font-family="monospace">{{ cpuTemp[hoverIndex] }}</tspan> °C</text>
+            </g>
+            <g transform="translate(15, 106)">
+              <circle r="3.5" :fill="COLOR_GPU_TEMP" cy="-3.5" />
+              <text x="14" font-size="11" fill="rgba(255,255,255,0.7)">GPU温度: <tspan font-weight="bold" fill="#ffffff" font-family="monospace">{{ gpuTemp[hoverIndex] }}</tspan> °C</text>
+            </g>
+          </g>
+        </template>
+      </svg>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .chart-container {
   width: 100%;
-  height: 150px;
-  bottom: -100px;
   position: relative;
   overflow: hidden;
 }
@@ -203,6 +237,6 @@ svg {
 
 text {
   user-select: none;
-  font-family: sans-serif;
+  font-family: system-ui, -apple-system, sans-serif;
 }
 </style>

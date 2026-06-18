@@ -1,32 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { PerformanceMode, SystemPerMode } from '@/utils/bridge'
-import iconQuiet from '@/assets/icon/iconQuiet.png'
-import iconBalanced from '@/assets/icon/iconBalanced.png'
-import iconPerformance from '@/assets/icon/iconPerformance.png'
-import iconCustom from '@/assets/icon/iconCustom.png'
+import { SystemPerMode } from '@/utils/bridge'
 
-const performanceModes = ref([
-  { id: SystemPerMode.BalanceMode, name: '静音', icon: iconQuiet, active: false },
-  { id: SystemPerMode.PerformanceMode, name: '平衡', icon: iconBalanced, active: false },
-  { id: SystemPerMode.QuietMode, name: '高性能', icon: iconPerformance, active: false },
-  { id: SystemPerMode.CustomMode, name: '自定义', icon: iconCustom, active: false }
-])
+defineProps<{
+  modes: Array<{
+    id: SystemPerMode
+    name: string
+    icon: string
+    active: boolean
+  }>
+}>()
 
-PerformanceMode.Get().then(res => {
-  performanceModes.value.forEach(e => {
-    e.active = e.id === res.Data;
-  })
-})
-
-function setMode(id: SystemPerMode) {
-  performanceModes.value.forEach(m => {
-    m.active = (m.id === id)
-    if (id != SystemPerMode.CustomMode) {
-      PerformanceMode.Set(id)
-    }
-  })
-}
+const emit = defineEmits<{
+  (e: 'change-mode', id: SystemPerMode): void
+}>()
 </script>
 
 <template>
@@ -34,8 +20,8 @@ function setMode(id: SystemPerMode) {
     <h2 class="text-[15px] font-medium text-white/90 mb-6">性能模式</h2>
     <div class="flex-1 grid grid-cols-4 gap-4 items-center">
       <button
-        v-for="mode in performanceModes" :key="mode.id"
-        @click="setMode(mode.id)"
+        v-for="mode in modes" :key="mode.id"
+        @click="emit('change-mode', mode.id)"
         :class="[
           'py-6 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all duration-300',
           mode.active 
