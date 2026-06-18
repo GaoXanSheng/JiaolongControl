@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { Config, type ConfigInterface } from '@/utils/bridge'
 
+// --- Utility Functions ---
+
 // 防抖函数
 function debounce(fn: Function, delay: number) {
   let timer: any = null
@@ -11,6 +13,23 @@ function debounce(fn: Function, delay: number) {
     }, delay)
   }
 }
+
+// 深合并函数
+function deepMerge(target: any, source: any) {
+  for (const key in source) {
+    if (source.hasOwnProperty(key)) {
+      if (source[key] instanceof Object && key in target) {
+        target[key] = deepMerge(target[key], source[key]);
+      } else {
+        target[key] = source[key];
+      }
+    }
+  }
+  return target;
+}
+
+
+// --- Pinia Store Definition ---
 
 export const useConfigStore = defineStore('config', {
   state: () => ({
@@ -24,10 +43,10 @@ export const useConfigStore = defineStore('config', {
       this.loading = true
       try {
         const result = await Config.GetConfig()
-        if (result.Success) {
-          this.config = result.Data
+        if (result.Success && typeof result.Data === 'string') {
+          this.config = JSON.parse(result.Data);
         } else {
-          this.error = result.Message
+          this.error = result.Message || 'Failed to parse config data'
         }
       } catch (err: any) {
         this.error = err.message || 'Failed to fetch config'
@@ -36,17 +55,16 @@ export const useConfigStore = defineStore('config', {
       }
     },
 
-    async updateConfig(newConfig: Partial<ConfigInterface>) {
+    updateConfig(newConfig: Partial<ConfigInterface>) {
       if (!this.config) return
       
-      // 合并新配置
-      this.config = { ...this.config, ...newConfig }
+      // 使用深合并代替浅合并
+      this.config = deepMerge(this.config, newConfig);
       
       // 触发自动保存
       this.debouncedSave()
     },
 
-    // 内部使用的保存逻辑
     async saveConfig() {
       if (!this.config) return
       try {
@@ -56,7 +74,6 @@ export const useConfigStore = defineStore('config', {
       }
     },
 
-    // 暴露给外部的手动保存（可选）
     debouncedSave: debounce(async function(this: any) {
       await this.saveConfig()
     }, 1000)

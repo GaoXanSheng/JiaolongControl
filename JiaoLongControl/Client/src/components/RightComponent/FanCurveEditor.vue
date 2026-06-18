@@ -707,6 +707,11 @@ async function handleRemoveFanClick() {
     height: 24px !important;
     line-height: 24px !important;
 
+    &:not(.arco-radio-button-checked):hover {
+      background-color: rgba(255, 255, 255, 0.05) !important;
+      color: rgba(255, 255, 255, 0.8) !important;
+    }
+
     &.arco-radio-button-checked {
       background-color: #8A2BE2 !important;
       color: #ffffff !important;
