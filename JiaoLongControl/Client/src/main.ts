@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import App from './App.vue'
+import './style.css'
 import '@arco-design/web-vue/dist/arco.css'
 import './assets/magic.min.css'
 import ArcoVue from '@arco-design/web-vue'
