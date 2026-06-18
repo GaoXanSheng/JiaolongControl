@@ -90,4 +90,7 @@
             <CopyToOutputDirectory>Never</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
+    <ItemGroup>
+      <Folder Include="low\" />
+    </ItemGroup>
 </Project>

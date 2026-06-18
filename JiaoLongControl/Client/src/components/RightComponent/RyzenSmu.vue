@@ -1,7 +1,8 @@
-<script async setup lang="ts">
-import {reactive, ref, watch} from 'vue';
-import {Message} from "@arco-design/web-vue";
-import {Config, type ConfigInterface, RyzenSmu} from "@/utils/bridge";
+<script setup lang="ts">
+import { reactive, ref, watch, computed } from 'vue';
+import { Message } from "@arco-design/web-vue";
+import { RyzenSmu } from "@/utils/bridge";
+import { useConfigStore } from '@/stores/config';
 
 const CONFIG_GROUPS = [
   {
@@ -42,8 +43,8 @@ const CONFIG_GROUPS = [
 ];
 
 const loadingMap = reactive<Record<string, boolean>>({});
-const config = await Config.GetConfig();
-const smuData = ref<ConfigInterface['RyzenSumConfig'] & { [key: string]: number }>(config.Data.RyzenSumConfig);
+const configStore = useConfigStore();
+const smuData = computed(() => configStore.config?.RyzenSumConfig);
 
 const coreCount = ref(8);
 const perCoreCurve = reactive<number[]>([]);
@@ -64,11 +65,6 @@ watch(coreCount, (newCount) => {
 }, {immediate: true});
 
 const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) => {
-  if (!(methodName in RyzenSmu)) {
-    Message.error(`Method ${methodName} is not defined`);
-    return;
-  }
-
   loadingMap[methodName] = true;
   try {
     const fn = RyzenSmu[methodName] as (...args: any[]) => Promise<any>;
@@ -79,263 +75,166 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
     } else {
       Message.success('Command executed successfully');
     }
+    configStore.debouncedSave();
   } catch (e) {
     Message.error('Execution failed');
     console.error(e);
   } finally {
-    config.Data.RyzenSumConfig = smuData.value;
-    await Config.SetConfig(config.Data);
     loadingMap[methodName] = false;
   }
 };
 </script>
 
 <template>
-  <a-layout class="smu-container">
-    <a-layout-content class="content-body">
+  <div class="p-6 h-full overflow-y-auto bg-gradient-to-br from-[#11121A] to-[#0D0E15] text-white" v-if="smuData">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold tracking-tight">Ryzen SMU</h1>
+      <p class="text-gray-400 mt-1">高级电源、电流及频率限制调整 (AMD Ryzen 平台专用)</p>
+    </div>
 
-      <!-- 瀑布流容器 -->
-      <div class="masonry-layout">
-
-        <!-- 动态生成的基础配置卡片 -->
-        <div class="masonry-item" v-for="group in CONFIG_GROUPS" :key="group.title">
-          <a-card :title="group.title" size="small" class="group-card">
-            <div v-for="item in group.items" :key="item.key" class="control-row">
-              <div class="info">
-                <span class="label">{{ item.label }}</span>
-                <span class="value">{{ smuData[item.key] }}{{ item.unit }}</span>
-              </div>
-              <div class="actions">
-                <a-slider
-                    v-model="smuData[item.key]"
-                    :min="item.min"
-                    :max="item.max"
-                    :step="item.step || 1"
-                    class="slider"
-                />
-                <a-input-number
-                    v-model="smuData[item.key]"
-                    :min="item.min"
-                    :max="item.max"
-                    size="small"
-                    style="width: 80px"
-                    hide-button
-                />
-                <a-button
-                    type="primary"
-                    size="small"
-                    :loading="loadingMap[item.key]"
-                    @click="applySetting(item.key as keyof typeof RyzenSmu, smuData[item.key])"
-                >Apply
-                </a-button>
-              </div>
+    <div class="columns-1 xl:columns-2 gap-8 space-y-8">
+      <!-- 动态生成的配置卡片 -->
+      <div v-for="group in CONFIG_GROUPS" :key="group.title" 
+      class="break-inside-avoid bg-[#1A1B26]/60 border border-white/5 p-6 rounded-3xl shadow-xl hover:bg-[#1A1B26]/80 transition-all">
+        <h3 class="text-xs font-black text-purple-500 uppercase tracking-widest mb-6 border-l-4 border-purple-600 pl-3">
+          {{ group.title }}
+        </h3>
+        
+        <div class="space-y-6">
+          <div v-for="item in group.items" :key="item.key" class="space-y-2">
+            <div class="flex justify-between items-center px-1">
+              <span class="text-xs font-bold text-gray-400">{{ item.label }}</span>
+              <span class="text-sm font-mono text-white">{{ smuData[item.key] }}{{ item.unit }}</span>
             </div>
-
-            <div v-if="group.title === 'Clocks & OC'" class="oc-actions">
+            <div class="flex items-center gap-4">
+              <a-slider
+                v-model="smuData[item.key]"
+                :min="item.min"
+                :max="item.max"
+                :step="item.step || 1"
+                class="flex-1"
+                :style="{ '--color-primary-6': '#8A2BE2' }"
+              />
               <a-button
-                  type="primary"
-                  status="success"
-                  :loading="loadingMap['EnableOc']"
-                  @click="applySetting('EnableOc')"
-              >
-                Enable OC
-              </a-button>
-              <a-button
-                  type="primary"
-                  status="danger"
-                  :loading="loadingMap['DisableOc']"
-                  @click="applySetting('DisableOc')"
-              >
-                Disable OC
-              </a-button>
+                type="primary"
+                size="mini"
+                class="!bg-purple-600 !border-none rounded-lg"
+                :loading="loadingMap[item.key]"
+                @click="applySetting(item.key as keyof typeof RyzenSmu, smuData[item.key])"
+              >Apply</a-button>
             </div>
-          </a-card>
+          </div>
         </div>
 
-        <!-- Curve Optimizer 卡片 -->
-        <div class="masonry-item">
-          <a-card title="Curve Optimizer" size="small" class="group-card">
-            <template #extra>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 12px; color: var(--color-text-3)">Core Count:</span>
-                <a-input-number
-                    v-model="coreCount"
-                    :min="1"
-                    :max="64"
-                    size="mini"
-                    style="width: 60px"
-                />
-              </div>
-            </template>
-            <div class="control-row global-opt">
-              <span class="label">All Core Offset</span>
-              <div class="actions">
-                <a-input-number v-model="smuData.CurveOptimizerAll" :min="-100" :max="100" size="small"/>
-                <a-button
-                    type="primary"
-                    size="small"
-                    :loading="loadingMap['SetCurveOptimizerAll']"
-                    @click="applySetting('SetCurveOptimizerAll', smuData.CurveOptimizerAll)"
-                >Apply
-                </a-button>
-              </div>
-            </div>
-            <a-divider style="margin: 12px 0;"/>
-            <div class="per-core-grid">
-              <div v-for="(_, index) in perCoreCurve" :key="index" class="core-item">
-                <span class="core-label">Core {{ index }}</span>
-                <a-input-number
-                    v-model="perCoreCurve[index]"
-                    :min="-50"
-                    :max="50"
-                    size="small"
-                    style="width: 70px"
-                    hide-button
-                />
-                <a-button
-                    type="primary"
-                    size="mini"
-                    :loading="loadingMap['SetCurveOptimizerPerCore']"
-                    @click="applySetting('SetCurveOptimizerPerCore', index, perCoreCurve[index])"
-                >
-                  <template #icon>✓</template>
-                </a-button>
-              </div>
-            </div>
-          </a-card>
+        <div v-if="group.title === 'Clocks & OC'" class="mt-8 flex gap-4 pt-6 border-t border-white/5">
+          <a-button
+            type="primary"
+            status="success"
+            class="flex-1 !rounded-xl font-bold"
+            :loading="loadingMap['EnableOc']"
+            @click="applySetting('EnableOc')"
+          >Enable OC</a-button>
+          <a-button
+            type="primary"
+            status="danger"
+            class="flex-1 !rounded-xl font-bold"
+            :loading="loadingMap['DisableOc']"
+            @click="applySetting('DisableOc')"
+          >Disable OC</a-button>
         </div>
-
-        <!-- Per Core OC Clocks 卡片 -->
-        <div class="masonry-item">
-          <a-card title="Per Core OC Clocks" size="small" class="group-card">
-            <template #extra>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 12px; color: var(--color-text-3)">MHz</span>
-              </div>
-            </template>
-            <div class="per-core-grid">
-              <div v-for="(_, index) in perCoreOcClk" :key="index" class="core-item">
-                <span class="core-label">Core {{ index }}</span>
-                <a-input-number
-                    v-model="perCoreOcClk[index]"
-                    :min="0"
-                    :max="1000"
-                    :step="25"
-                    size="small"
-                    style="width: 70px"
-                    hide-button
-                />
-                <a-button
-                    type="primary"
-                    size="mini"
-                    :loading="loadingMap['SetPerCoreOcClk']"
-                    @click="applySetting('SetPerCoreOcClk', index, perCoreOcClk[index])"
-                >
-                  <template #icon>✓</template>
-                </a-button>
-              </div>
-            </div>
-          </a-card>
-        </div>
-
       </div>
-    </a-layout-content>
-  </a-layout>
+
+      <!-- Curve Optimizer 卡片 -->
+      <div class="break-inside-avoid bg-[#1A1B26]/60 border border-white/5 p-6 rounded-3xl shadow-xl">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-xs font-black text-orange-500 uppercase tracking-widest border-l-4 border-orange-600 pl-3">
+            Curve Optimizer
+          </h3>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-bold text-gray-500 uppercase">Cores</span>
+            <a-input-number
+              v-model="coreCount"
+              :min="1" :max="64"
+              size="mini"
+              class="!w-16 !bg-white/5 !border-white/10 !text-white rounded-lg"
+              hide-button
+            />
+          </div>
+        </div>
+
+        <div class="bg-black/20 p-4 rounded-2xl mb-6 border border-white/5">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-xs font-bold text-gray-300">All Core Offset</span>
+            <span class="text-xs font-mono text-orange-400">{{ smuData.CurveOptimizerAll }}</span>
+          </div>
+          <div class="flex items-center gap-4">
+            <a-slider v-model="smuData.CurveOptimizerAll" :min="-100" :max="100" class="flex-1" :style="{ '--color-primary-6': '#ff7d00' }"/>
+            <a-button
+              type="primary"
+              size="mini"
+              class="!bg-orange-600 !border-none rounded-lg"
+              :loading="loadingMap['SetCurveOptimizerAll']"
+              @click="applySetting('SetCurveOptimizerAll', smuData.CurveOptimizerAll)"
+            >Apply</a-button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div v-for="(_, index) in perCoreCurve" :key="index" 
+          class="bg-white/5 p-3 rounded-xl border border-white/5 flex items-center justify-between">
+            <span class="text-[10px] font-bold text-gray-500 uppercase">Core {{ index }}</span>
+            <div class="flex items-center gap-2">
+              <a-input-number
+                v-model="perCoreCurve[index]"
+                :min="-50" :max="50"
+                size="mini"
+                class="!w-12 !bg-transparent !border-none !text-white p-0"
+                hide-button
+              />
+              <button
+                class="w-6 h-6 bg-orange-600/20 text-orange-500 hover:bg-orange-600 hover:text-white transition-colors rounded flex items-center justify-center text-[10px]"
+                @click="applySetting('SetCurveOptimizerPerCore', index, perCoreCurve[index])"
+              >✓</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Per Core OC Clocks 卡片 -->
+      <div class="break-inside-avoid bg-[#1A1B26]/60 border border-white/5 p-6 rounded-3xl shadow-xl">
+        <h3 class="text-xs font-black text-blue-500 uppercase tracking-widest mb-6 border-l-4 border-blue-600 pl-3">
+          Per Core OC Clocks
+        </h3>
+        <div class="grid grid-cols-2 gap-3">
+          <div v-for="(_, index) in perCoreOcClk" :key="index" 
+          class="bg-white/5 p-3 rounded-xl border border-white/5 flex items-center justify-between">
+            <span class="text-[10px] font-bold text-gray-500 uppercase">Core {{ index }}</span>
+            <div class="flex items-center gap-2">
+              <a-input-number
+                v-model="perCoreOcClk[index]"
+                :min="0" :max="1000" :step="25"
+                size="mini"
+                class="!w-14 !bg-transparent !border-none !text-white p-0"
+                hide-button
+              />
+              <button
+                class="w-6 h-6 bg-blue-600/20 text-blue-500 hover:bg-blue-600 hover:text-white transition-colors rounded flex items-center justify-center text-[10px]"
+                @click="applySetting('SetPerCoreOcClk', index, perCoreOcClk[index])"
+              >✓</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div v-else class="flex items-center justify-center h-full">
+    <a-spin dot />
+  </div>
 </template>
 
 <style scoped lang="scss">
-.smu-container {
-  .content-body {
-    padding: 16px;
-  }
-
-  /* 瀑布流核心布局 */
-
-  .masonry-layout {
-    column-count: 2;
-    column-gap: 24px;
-    width: 100%;
-  }
-
-  /* 瀑布流子项 */
-
-  .masonry-item {
-    break-inside: avoid;
-    margin-bottom: 24px;
-    transform: translateZ(0);
-  }
-
-  .group-card {
-    width: 100%;
-  }
-
-  .control-row {
-    margin-bottom: 5px;
-
-    .info {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 5px;
-      font-size: 13px;
-
-      .label {
-        color: var(--color-text-2);
-      }
-
-      .value {
-        color: var(--color-primary-light-4);
-        font-weight: bold;
-      }
-    }
-
-    .actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-
-      .slider {
-        flex: 1;
-      }
-    }
-  }
-
-  .oc-actions {
-    display: flex;
-    justify-content: center;
-    gap: 16px;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--color-border-1);
-  }
-
-  .global-opt {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: var(--color-fill-2);
-    padding: 8px 12px;
-    border-radius: 4px;
-  }
-
-  .per-core-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-
-    .core-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--color-fill-1);
-      padding: 4px 8px;
-      border-radius: 4px;
-      border: 1px solid var(--color-border-1);
-
-      .core-label {
-        font-size: 12px;
-        color: var(--color-text-3);
-      }
-    }
-  }
+:deep(.arco-slider-button) {
+  width: 12px;
+  height: 12px;
 }
 </style>

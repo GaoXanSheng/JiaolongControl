@@ -19,6 +19,7 @@ namespace JiaoLongControl.Server.Interop
         public PowerController Power { get; } = new();
         public NvidiaGpuController NvidiaGpu { get; } = new();
         public RyzenSmuController RyzenSmu { get; } = new();
+        public SystemInfoController SystemInfo { get; } = new();
 
         public void Dispose()
         {
