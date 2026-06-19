@@ -148,6 +148,7 @@ declare global {
                             GetCpuInfo(): Promise<any>;
                             GetCpuFrequency(): Promise<any>;
                             GetCpuVoltage(): Promise<any>;
+                            GetPhysicalCoreCount(): Promise<any>;
                             SetCPUTempWall(tw: number): Promise<any>;
                         };
                         Fan: {
@@ -261,6 +262,7 @@ declare global {
                             DisableOc(): Promise<any>;
                             SetCurveOptimizerAll(value: number): Promise<any>;
                             SetCurveOptimizerPerCore(coreIdx: number, value: number): Promise<any>;
+                            GetSmuTelemetry(): Promise<any>;
                         }
                     };
                 };
@@ -360,6 +362,7 @@ export const CPU = {
     GetCpuInfo: () => call<{Name: string, Cores: number, Threads: number, BaseFreqMhz: number}>(raw.CPU.GetCpuInfo()),
     GetCpuFrequency: () => call<number>(raw.CPU.GetCpuFrequency()),
     GetCpuVoltage: () => call<number>(raw.CPU.GetCpuVoltage()),
+    GetPhysicalCoreCount: () => call<number>(raw.CPU.GetPhysicalCoreCount()),
 };
 
 export const Fan = {
@@ -465,6 +468,7 @@ export const RyzenSmu = {
     DisableOc: () => call(raw.RyzenSmu.DisableOc()),
     SetCurveOptimizerAll: (value: number) => call(raw.RyzenSmu.SetCurveOptimizerAll(value)),
     SetCurveOptimizerPerCore: (coreIdx: number, value: number) => call(raw.RyzenSmu.SetCurveOptimizerPerCore(coreIdx, value)),
+    GetSmuTelemetry: () => call<{ Ppt: number; Tdc: number; Edc: number; Temp: number; FreqMhz: number; Usage: number }>(raw.RyzenSmu.GetSmuTelemetry()),
 };
 export const Power = {
     SetCPUMaxFrequency: (mhz: number) => call(raw.Power.SetCPUMaxFrequency(mhz)),
