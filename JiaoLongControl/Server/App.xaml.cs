@@ -1,5 +1,6 @@
-﻿using System.Windows;
+using System.Windows;
 using JiaoLongControl.Server.Interop;
+using JiaoLongControl.Server.Core.Models;
 using log4net;
 using log4net.Config;
 
@@ -22,6 +23,8 @@ namespace JiaoLongControl.Server
                 Current.Shutdown();
                 return;
             }
+
+            PageConfigBase.InitializeConfigs();
 
             AppDomain.CurrentDomain.ProcessExit += (_, __) => Cleanup();
             AppDomain.CurrentDomain.UnhandledException += (_, __) => Cleanup();

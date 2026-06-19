@@ -8,12 +8,15 @@ import FanSpeed from "@/components/common/FanSpeed.vue";
 const loading = ref(false)
 const visible = ref(false)
 const configStore = useConfigStore()
+if (!configStore.fan) {
+  await configStore.reloadFanConfig()
+}
 
-const FanPageStore = computed(() => configStore.config?.FanPageStore)
+const FanPageStore = computed(() => configStore.fan)
 
 const handleClick = () => {
   if (!FanPageStore.value) return
-  if (FanPageStore.value.FanSpeed > 5800 || FanPageStore.value.FanSpeed < 1500) {
+  if (FanPageStore.value.ManualFanSpeed > 5800 || FanPageStore.value.ManualFanSpeed < 1500) {
     visible.value = true
   } else {
     handleOk()
@@ -28,7 +31,7 @@ const handleOk = async () => {
   if (isRunningRes.Success && isRunningRes.Data) {
     await AutoFanControl.Stop()
   }
-  const res = await Fan.SetFanSpeed(FanPageStore.value.FanSpeed)
+  const res = await Fan.SetFanSpeed(FanPageStore.value.ManualFanSpeed)
   res.Success ? Message.success(res.Message) : Message.error(res.Message)
   configStore.debouncedSave()
   loading.value = false
@@ -69,14 +72,14 @@ async function handleRemoveFanClick() {
                 <h2 class="text-base font-semibold mt-1 text-gray-200">目标转速设定</h2>
               </div>
               <div class="text-right">
-                <span class="text-3xl font-black font-mono text-white leading-none">{{ FanPageStore.FanSpeed }}</span>
+                <span class="text-3xl font-black font-mono text-white leading-none">{{ FanPageStore.ManualFanSpeed }}</span>
                 <span class="text-gray-500 text-xs ml-1 font-bold font-mono">RPM</span>
               </div>
             </div>
 
             <!-- 自定义发光滑块 -->
             <a-slider
-                v-model="FanPageStore.FanSpeed"
+                v-model="FanPageStore.ManualFanSpeed"
                 :min="0"
                 :max="8000"
                 :step="100"

@@ -31,7 +31,7 @@ defineProps<{
         <p class="text-1xl text-gray-400">欢迎回来</p>
         <h1
           class="text-2xl font-semibold tracking-wide bg-gradient-to-r from-white via-indigo-400 to-purple-400 bg-clip-text text-transparent">
-          JiaoLong Control Console
+          JiaoLong Control
         </h1>
         <p class="text-sm text-gray-400 mt-2">为极致性能而生，掌控每一分潜能</p>
       </div>

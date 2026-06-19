@@ -7,16 +7,16 @@ import {Config} from "@/utils/bridge.ts";
 const loading = ref(false)
 const BootStartAdvancedFanControlSystem = ref(false)
 onMounted(async () => {
-  const config = (await Config.GetConfig()).Data
+  const config = (await Config.GetAppConfig()).Data
   BootStartAdvancedFanControlSystem.value = config.BootAdvancedFanControlSystem
 })
 
 async function SetBootStartAdvancedFanControlSystem(value: string | number | boolean) {
   if (typeof value !== 'boolean') return
   loading.value = true
-  const config = (await Config.GetConfig()).Data
+  const config = (await Config.GetAppConfig()).Data
   config.BootAdvancedFanControlSystem = value;
-  await Config.SetConfig(config)
+  await Config.SetAppConfig(config)
   BootStartAdvancedFanControlSystem.value = value
   loading.value = false
 }

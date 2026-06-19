@@ -3,13 +3,11 @@ import { onMounted, onUnmounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useSystemInfoStore } from '@/stores/systemInfo'
 
-const configStore = useConfigStore()
 const systemInfoStore = useSystemInfoStore()
 
 let stopPolling: () => void;
 
 onMounted(() => {
-  configStore.fetchConfig()
   stopPolling = systemInfoStore.startPolling()
 })
 

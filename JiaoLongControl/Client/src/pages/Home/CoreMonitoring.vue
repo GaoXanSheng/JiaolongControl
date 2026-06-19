@@ -26,7 +26,7 @@ const getRingOption = (value: number, colorStart: string, colorEnd: string, suff
         show: true,
         position: 'center',
         formatter: () => `${value}${suffix}`,
-        fontSize: 24, // 稍微降低字体大小（24 -> 20），确保 100°C 或 100% 这种三位数不会溢出换行
+        fontSize: 24, 
         fontWeight: 'bold',
         color: '#FFFFFF'
       },
