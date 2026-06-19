@@ -7,16 +7,16 @@ import {Config} from "@/utils/bridge.ts";
 const loading = ref(false)
 const BootStartAdvancedCPUSystem = ref(false)
 onMounted(async () => {
-  const config = (await Config.GetConfig()).Data
+  const config = (await Config.GetAppConfig()).Data
   BootStartAdvancedCPUSystem.value = config.BootAdvancedCPUSystem
 })
 
 async function SetBootStartAdvancedCPUSystem(value: string | number | boolean) {
   if (typeof value !== 'boolean') return
   loading.value = true
-  const config = (await Config.GetConfig()).Data
+  const config = (await Config.GetAppConfig()).Data
   config.BootAdvancedCPUSystem = value;
-  await Config.SetConfig(config)
+  await Config.SetAppConfig(config)
   BootStartAdvancedCPUSystem.value = value
   loading.value = false
 }

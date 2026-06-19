@@ -1,11 +1,8 @@
-﻿using System.IO;
+using System.IO;
 using System.Runtime.InteropServices;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Utils;
-using log4net;
-using Microsoft.Extensions.Configuration;
+using JiaoLongControl.Server.Interop;
 
 namespace JiaoLongControl.Server.Core.Controllers;
 
@@ -13,136 +10,93 @@ namespace JiaoLongControl.Server.Core.Controllers;
 [ClassInterface(ClassInterfaceType.AutoDual)]
 public class ConfigController
 {
-    private static readonly ILog _logger = LogManager.GetLogger(typeof(ConfigController));
-    public static Config Config { get; private set; } = new();
-
-    private static readonly string ConfigDir = Path.Combine(AppContext.BaseDirectory, "config");
-    private static readonly string ConfigPath = Path.Combine(ConfigDir, "config.json");
-
-    private static IConfigurationRoot? _configuration;
-
     static ConfigController()
     {
-        Load();
+        PageConfigBase.ConfigDir = Path.Combine(AppContext.BaseDirectory, "config");
     }
 
-    public CommandResult GetConfig()
+    public CommandResult GetAppConfig()
     {
-        return new CommandResult(true, "成功", Config);
+        try { return new CommandResult(true, "成功", Bridge.Instance.AppConfig); }
+        catch (Exception ex) { return new CommandResult(false, ex.Message); }
     }
 
-    public CommandResult SetConfig(Config newConfig)
+    public CommandResult SetAppConfig(AppPageConfig config)
     {
-        try
-        {
-            if (newConfig != null)
-            {
-                Config = newConfig;
-                Save();
-            }
-            else
-            {
-                return new CommandResult(false, "Received a null config object.");
-            }
+        try 
+        { 
+            config.Save("app.json"); 
+            Bridge.Instance.AppConfig = config;
+            return new CommandResult(true, "保存成功"); 
         }
-        catch (Exception ex)
-        {
-            _logger.Error($"[ConfigController] Error saving config: {ex.Message}", ex);
-            return new CommandResult(false, $"Error updating config: {ex.Message}");
-        }
-        return new CommandResult(true, "配置已成功更新.");
+        catch (Exception ex) { return new CommandResult(false, ex.Message); }
     }
 
-    public static void Reload()
+    public CommandResult GetCpuConfig()
     {
-        _configuration?.Reload();
-        Bind();
+        try { return new CommandResult(true, "成功", Bridge.Instance.CpuConfig); }
+        catch (Exception ex) { return new CommandResult(false, ex.Message); }
     }
 
-    private static void Bind()
+    public CommandResult SetCpuConfig(CpuPageConfig config)
     {
-        var newConfig = new Config();
-        newConfig.AdvancedFanControlSystemConfig.CpuFan.Clear();
-        newConfig.AdvancedFanControlSystemConfig.GpuFan.Clear();
-        _configuration?.Bind(newConfig);
-        if (newConfig.AdvancedFanControlSystemConfig.CpuFan.Count == 0)
-        {
-            var defaultConfig = new AdvancedFanControlSystemConfig();
-            newConfig.AdvancedFanControlSystemConfig.CpuFan = defaultConfig.CpuFan;
+        try 
+        { 
+            config.Save("cpu.json"); 
+            Bridge.Instance.CpuConfig = config;
+            return new CommandResult(true, "保存成功"); 
         }
-        if (newConfig.AdvancedFanControlSystemConfig.GpuFan.Count == 0)
-        {
-            var defaultConfig = new AdvancedFanControlSystemConfig();
-            newConfig.AdvancedFanControlSystemConfig.GpuFan = defaultConfig.GpuFan;
-        }
-        Config = newConfig; 
+        catch (Exception ex) { return new CommandResult(false, ex.Message); }
     }
 
-    public static void Load()
+    public CommandResult GetGpuConfig()
     {
-        if (!Directory.Exists(ConfigDir))
-            Directory.CreateDirectory(ConfigDir);
-
-        if (!File.Exists(ConfigPath))
-        {
-            Save();
-        }
-        else
-        {
-            MigrateOldConfig(); 
-        }
-
-        _configuration = new ConfigurationBuilder()
-            .SetBasePath(ConfigDir)
-            .AddJsonFile("config.json", optional: true, reloadOnChange: true)
-            .Build();
-
-        Bind();
+        try { return new CommandResult(true, "成功", Bridge.Instance.GpuConfig); }
+        catch (Exception ex) { return new CommandResult(false, ex.Message); }
     }
 
-    public static void Save()
+    public CommandResult SetGpuConfig(GpuPageConfig config)
     {
-        if (!Directory.Exists(ConfigDir))
-            Directory.CreateDirectory(ConfigDir);
-
-        var json = JsonSerializer.Serialize(Config, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(ConfigPath, json);
+        try 
+        { 
+            config.Save("gpu.json"); 
+            Bridge.Instance.GpuConfig = config;
+            return new CommandResult(true, "保存成功"); 
+        }
+        catch (Exception ex) { return new CommandResult(false, ex.Message); }
     }
-    
-    // 处理老版本配置文件兼容性
-    private static void MigrateOldConfig()
-    {
-        try
-        {
-            string jsonString = File.ReadAllText(ConfigPath);
-            var jsonNode = JsonNode.Parse(jsonString);
 
-            if (jsonNode is JsonObject jsonObj)
-            {
-                bool isMigrated = false;
-                if (jsonObj.TryGetPropertyValue("AdvancedFanControlSystemConfig", out var fanConfigNode))
-                {
-                    if (fanConfigNode is JsonArray oldArray)
-                    {
-                        var oldPoints = JsonSerializer.Deserialize<List<FanPoint>>(oldArray.ToJsonString());
-                        var newFanConfig = new AdvancedFanControlSystemConfig();
-                        if (oldPoints != null && oldPoints.Count > 0)
-                        {
-                            newFanConfig.CpuFan = oldPoints;
-                        }
-                        jsonObj["AdvancedFanControlSystemConfig"] = JsonSerializer.SerializeToNode(newFanConfig);
-                        isMigrated = true;
-                    }
-                }
-                
-                if (isMigrated)
-                {
-                    File.WriteAllText(ConfigPath, jsonObj.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
-                }
-            }
+    public CommandResult GetFanConfig()
+    {
+        try { return new CommandResult(true, "成功", Bridge.Instance.FanConfig); }
+        catch (Exception ex) { return new CommandResult(false, ex.Message); }
+    }
+
+    public CommandResult SetFanConfig(FanPageConfig config)
+    {
+        try 
+        { 
+            config.Save("fan.json"); 
+            Bridge.Instance.FanConfig = config;
+            return new CommandResult(true, "保存成功"); 
         }
-        catch
-        {
+        catch (Exception ex) { return new CommandResult(false, ex.Message); }
+    }
+
+    public CommandResult GetSmuConfig()
+    {
+        try { return new CommandResult(true, "成功", Bridge.Instance.SmuConfig); }
+        catch (Exception ex) { return new CommandResult(false, ex.Message); }
+    }
+
+    public CommandResult SetSmuConfig(SmuPageConfig config)
+    {
+        try 
+        { 
+            config.Save("smu.json"); 
+            Bridge.Instance.SmuConfig = config;
+            return new CommandResult(true, "保存成功"); 
         }
+        catch (Exception ex) { return new CommandResult(false, ex.Message); }
     }
 }

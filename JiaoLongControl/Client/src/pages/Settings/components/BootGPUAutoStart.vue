@@ -7,16 +7,16 @@ import {Config} from "@/utils/bridge.ts";
 const loading = ref(false)
 const BootStartAdvancedGPUSystem = ref(false)
 onMounted(async () => {
-  const config = (await Config.GetConfig()).Data
+  const config = (await Config.GetAppConfig()).Data
   BootStartAdvancedGPUSystem.value = config.BootAdvancedGPUSystem
 })
 
 async function SetBootStartAdvancedGPUSystem(value: string | number | boolean) {
   if (typeof value !== 'boolean') return
   loading.value = true
-  const config = (await Config.GetConfig()).Data
+  const config = (await Config.GetAppConfig()).Data
   config.BootAdvancedGPUSystem = value;
-  await Config.SetConfig(config)
+  await Config.SetAppConfig(config)
   BootStartAdvancedGPUSystem.value = value
   loading.value = false
 }

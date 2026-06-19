@@ -6,14 +6,14 @@ import {Config} from "@/utils/bridge.ts";
 
 const loading = ref(false)
 
-const config = (await Config.GetConfig()).Data
+const config = (await Config.GetAppConfig()).Data
 const BootStart = ref(config.BootSetRyzenSumCurveOptimizerAll)
 async function SetBootStart(value: string | number | boolean) {
   if (typeof value !== 'boolean') return
   loading.value = true
-  const config = (await Config.GetConfig()).Data
+  const config = (await Config.GetAppConfig()).Data
   config.BootSetRyzenSumCurveOptimizerAll = value;
-  await Config.SetConfig(config)
+  await Config.SetAppConfig(config)
   BootStart.value = value
   loading.value = false
 }

@@ -236,13 +236,17 @@
 import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {Message} from '@arco-design/web-vue'
 import {AutoFanControl, Config, Fan} from '@/utils/bridge.ts'
+import {useConfigStore} from '@/stores/config'
 import FanSpeed from "@/components/common/FanSpeed.vue";
 
 interface Point {
   temp: number
   speed: number
 }
-const config = (await Config.GetConfig()).Data
+const configStore = useConfigStore()
+if (!configStore.fan) {
+  await configStore.reloadFanConfig()
+}
 const activeTab = ref<'CPU' | 'GPU'>('CPU')
 const cpuPoints = ref<Point[]>([
   {temp: 60, speed: 1500},
@@ -319,11 +323,11 @@ const handleServiceToggle = async (newValue: any): Promise<boolean> => {
 }
 const autoSave = async () => {
   try {
-    config.AdvancedFanControlSystemConfig = {
-      CpuFan: cpuPoints.value,
-      GpuFan: gpuPoints.value
+    if (configStore.fan) {
+      configStore.fan.CpuFanCurve = cpuPoints.value
+      configStore.fan.GpuFanCurve = gpuPoints.value
+      configStore.debouncedSave()
     }
-    await Config.SetConfig(config)
   } catch (e) {
     console.error('Save failed:', e)
   }
@@ -416,10 +420,10 @@ onMounted(async () => {
 
   await checkServiceStatus()
   try {
-    const advancedConfig = config.AdvancedFanControlSystemConfig
-    const parsedCpu = parseConfigPoints(advancedConfig.CpuFan)
+    const advancedConfig = configStore.fan
+    const parsedCpu = parseConfigPoints(advancedConfig?.CpuFanCurve)
     if (parsedCpu) cpuPoints.value = parsedCpu
-    const parsedGpu = parseConfigPoints(advancedConfig.GpuFan)
+    const parsedGpu = parseConfigPoints(advancedConfig?.GpuFanCurve)
     if (parsedGpu) gpuPoints.value = parsedGpu
   } catch (e) {
     console.error(e)

@@ -64,6 +64,73 @@ export interface GpuStats {
     DriverDate: string;
 }
 
+export interface AppConfigType {
+    BootMinimized: boolean;
+    BootAdvancedFanControlSystem: boolean;
+    BootAdvancedCPUSystem: boolean;
+    BootAdvancedGPUSystem: boolean;
+    BootSetRyzenSumCurveOptimizerAll: boolean;
+}
+
+export interface CpuProfilePreset {
+    CpuLongPower: number;
+    CpuShortPower: number;
+    CpuTempWall: number;
+    CpuMaxFrequency: number;
+    CpuTurbo: boolean;
+}
+
+export interface CpuConfigType {
+    CpuLongPower: number;
+    CpuShortPower: number;
+    CpuTempWall: number;
+    CpuMaxFrequency: number;
+    CpuTurbo: boolean;
+    DefaultProfile: CpuProfilePreset;
+    PerformanceProfile: CpuProfilePreset;
+    SavingProfile: CpuProfilePreset;
+    CustomProfile: CpuProfilePreset;
+}
+
+export interface GpuConfigType {
+    GpuClock: number;
+    MemoryClock: number;
+    PowerLimit: number;
+}
+
+export interface FanPoint {
+    temp: number;
+    speed: number;
+}
+
+export interface FanConfigType {
+    FanCurveMerge: boolean;
+    ManualFanSpeed: number;
+    CpuFanCurve: FanPoint[];
+    GpuFanCurve: FanPoint[];
+}
+
+export interface SmuConfigType {
+    StapmLimit: number;
+    StapmTime: number;
+    FastLimit: number;
+    SlowLimit: number;
+    SlowTime: number;
+    PptLimitRsmu: number;
+    VrmCurrentMp1: number;
+    VrmCurrentRsmu: number;
+    TdcLimitMp1: number;
+    TdcLimitRsmu: number;
+    EdcLimitMp1: number;
+    EdcLimitRsmu: number;
+    TempLimitMp1: number;
+    TempLimitRsmu: number;
+    PboScalar: number;
+    OcClk: number;
+    OcVolt: number;
+    CurveOptimizerAll: number;
+}
+
 declare global {
     interface Window {
         chrome?: {
@@ -77,6 +144,10 @@ declare global {
                             SetCustomMode(open: boolean): Promise<any>;
                             GetCustomMode(): Promise<any>;
                             GetCPUThermometer(): Promise<any>;
+                            GetCpuUsage(): Promise<any>;
+                            GetCpuInfo(): Promise<any>;
+                            GetCpuFrequency(): Promise<any>;
+                            GetCpuVoltage(): Promise<any>;
                             SetCPUTempWall(tw: number): Promise<any>;
                         };
                         Fan: {
@@ -107,8 +178,16 @@ declare global {
                             Set(mode: SystemPerMode): Promise<any>;
                         };
                         Config: {
-                            GetConfig(): Promise<any>;
-                            SetConfig(config: string): Promise<any>;
+                            GetAppConfig(): Promise<any>;
+                            SetAppConfig(config: any): Promise<any>;
+                            GetCpuConfig(): Promise<any>;
+                            SetCpuConfig(config: any): Promise<any>;
+                            GetGpuConfig(): Promise<any>;
+                            SetGpuConfig(config: any): Promise<any>;
+                            GetFanConfig(): Promise<any>;
+                            SetFanConfig(config: any): Promise<any>;
+                            GetSmuConfig(): Promise<any>;
+                            SetSmuConfig(config: any): Promise<any>;
                         };
                         AutoStart: {
                             Enable(): Promise<any>;
@@ -121,7 +200,19 @@ declare global {
                             IsRunning(): Promise<any>;
                         };
                         NvidiaGpu: {
-                            GetGpuAllStats(gpuIndex?: number): Promise<any>;
+                            GetGpuName(gpuIndex?: number): Promise<any>;
+                            GetGpuDriverVersion(gpuIndex?: number): Promise<any>;
+                            GetGpuMemoryTotal(gpuIndex?: number): Promise<any>;
+                            GetGpuBusWidth(gpuIndex?: number): Promise<any>;
+                            GetGpuUtilization(gpuIndex?: number): Promise<any>;
+                            GetGpuMemoryUtilization(gpuIndex?: number): Promise<any>;
+                            GetGpuCoreClock(gpuIndex?: number): Promise<any>;
+                            GetGpuMemoryClock(gpuIndex?: number): Promise<any>;
+                            GetGpuTemperature(gpuIndex?: number): Promise<any>;
+                            GetGpuFanSpeed(gpuIndex?: number): Promise<any>;
+                            GetGpuCoreClockRange(gpuIndex?: number): Promise<any>;
+                            GetGpuMemoryClockRange(gpuIndex?: number): Promise<any>;
+                            GetGpuPowerLimitRange(gpuIndex?: number): Promise<any>;
                             LockGpuClock(freq: number, gpuIndex?: number): Promise<any>;
                             LockGpuClockRange(minFreq: number, maxFreq: number, gpuIndex?: number): Promise<any>;
                             ResetGpuClock(gpuIndex?: number): Promise<any>;
@@ -129,6 +220,9 @@ declare global {
                             ResetMemoryClock(gpuIndex?: number): Promise<any>;
                             SetPowerLimit(watts: number, gpuIndex?: number): Promise<any>;
                             GetGpuTemperature(): Promise<any>;
+                            GetGpuCoreClockRange(gpuIndex?: number): Promise<any>;
+                            GetGpuMemoryClockRange(gpuIndex?: number): Promise<any>;
+                            GetGpuPowerLimitRange(gpuIndex?: number): Promise<any>;
                             UnlockDB(): Promise<any>;
                         };
                         Power: {
@@ -240,6 +334,21 @@ export interface ConfigInterface {
     }
 }
 
+export interface CpuStatsInfo {
+    Temperature: number;
+    Usage: number;
+    FrequencyMhz: number;
+    Voltage: number;
+    PowerWatts: number;
+}
+
+export interface CpuInfo {
+    Name: string;
+    Cores: number;
+    Threads: number;
+    BaseFreqMhz: number;
+}
+
 export const CPU = {
     SetCpuShortPower: (sp: number) => call(raw.CPU.SetCpuShortPower(toByte(sp))),
     SetCpuLongPower: (lp: number) => call(raw.CPU.SetCpuLongPower(toByte(lp))),
@@ -247,6 +356,10 @@ export const CPU = {
     GetCustomMode: () => call(raw.CPU.GetCustomMode()),
     SetCPUTempWall: (tw: number) => call(raw.CPU.SetCPUTempWall(toByte(tw))),
     GetCPUThermometer: () => call<number>(raw.CPU.GetCPUThermometer()),
+    GetCpuUsage: () => call<number>(raw.CPU.GetCpuUsage()),
+    GetCpuInfo: () => call<{Name: string, Cores: number, Threads: number, BaseFreqMhz: number}>(raw.CPU.GetCpuInfo()),
+    GetCpuFrequency: () => call<number>(raw.CPU.GetCpuFrequency()),
+    GetCpuVoltage: () => call<number>(raw.CPU.GetCpuVoltage()),
 };
 
 export const Fan = {
@@ -280,10 +393,16 @@ export const PerformanceMode = {
 };
 
 export const Config = {
-    GetConfig: async () => {
-        return await call<ConfigInterface>(raw.Config.GetConfig());
-    },
-    SetConfig: (config: ConfigInterface) => call(raw.Config.SetConfig(config)),
+    GetAppConfig: () => call<AppConfigType>(raw.Config.GetAppConfig()),
+    SetAppConfig: (config: AppConfigType) => call(raw.Config.SetAppConfig(config)),
+    GetCpuConfig: () => call<CpuConfigType>(raw.Config.GetCpuConfig()),
+    SetCpuConfig: (config: CpuConfigType) => call(raw.Config.SetCpuConfig(config)),
+    GetGpuConfig: () => call<GpuConfigType>(raw.Config.GetGpuConfig()),
+    SetGpuConfig: (config: GpuConfigType) => call(raw.Config.SetGpuConfig(config)),
+    GetFanConfig: () => call<FanConfigType>(raw.Config.GetFanConfig()),
+    SetFanConfig: (config: FanConfigType) => call(raw.Config.SetFanConfig(config)),
+    GetSmuConfig: () => call<SmuConfigType>(raw.Config.GetSmuConfig()),
+    SetSmuConfig: (config: SmuConfigType) => call(raw.Config.SetSmuConfig(config)),
     Boot: {
         Enable: () => call(raw.AutoStart.Enable()),
         Disable: () => call(raw.AutoStart.Disable()),
@@ -298,7 +417,19 @@ export const AutoFanControl = {
 };
 
 export const NvidiaGpu = {
-    GetGpuAllStats: (gpuIndex?: number) => call<GpuStats>(raw.NvidiaGpu.GetGpuAllStats(gpuIndex)),
+    GetGpuName: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuName(gpuIndex)),
+    GetGpuDriverVersion: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuDriverVersion(gpuIndex)),
+    GetGpuMemoryTotal: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuMemoryTotal(gpuIndex)),
+    GetGpuBusWidth: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuBusWidth(gpuIndex)),
+    GetGpuUtilization: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuUtilization(gpuIndex)),
+    GetGpuMemoryUtilization: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuMemoryUtilization(gpuIndex)),
+    GetGpuCoreClock: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuCoreClock(gpuIndex)),
+    GetGpuMemoryClock: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuMemoryClock(gpuIndex)),
+    GetGpuTemperature: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuTemperature(gpuIndex)),
+    GetGpuFanSpeed: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuFanSpeed(gpuIndex)),
+    GetGpuCoreClockRange: (gpuIndex?: number) => call<{Min: number, Max: number}>(raw.NvidiaGpu.GetGpuCoreClockRange(gpuIndex)),
+    GetGpuMemoryClockRange: (gpuIndex?: number) => call<{Min: number, Max: number}>(raw.NvidiaGpu.GetGpuMemoryClockRange(gpuIndex)),
+    GetGpuPowerLimitRange: (gpuIndex?: number) => call<{Min: number, Max: number}>(raw.NvidiaGpu.GetGpuPowerLimitRange(gpuIndex)),
     LockGpuClock: (freq: number, gpuIndex?: number) => call(raw.NvidiaGpu.LockGpuClock(freq, gpuIndex)),
     LockGpuClockRange: (minFreq: number, maxFreq: number, gpuIndex?: number) =>
         call(raw.NvidiaGpu.LockGpuClockRange(minFreq, maxFreq, gpuIndex)),
@@ -306,7 +437,6 @@ export const NvidiaGpu = {
     LockMemoryClock: (freq: number, gpuIndex?: number) => call(raw.NvidiaGpu.LockMemoryClock(freq, gpuIndex)),
     ResetMemoryClock: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetMemoryClock(gpuIndex)),
     SetPowerLimit: (watts: number, gpuIndex?: number) => call(raw.NvidiaGpu.SetPowerLimit(watts, gpuIndex)),
-    GetGpuTemperature: () => call<number>(raw.NvidiaGpu.GetGpuTemperature()),
     UnlockDB: () => call(raw.NvidiaGpu.UnlockDB())
 };
 

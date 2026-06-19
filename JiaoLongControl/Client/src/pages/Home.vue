@@ -63,7 +63,9 @@ const sysMemory = ref('Loading...')
 const sysOs = ref('Loading...')
 
 // 模拟历史数据
-const tempHistory = ref<{ cpu: number; gpu: number }[]>([])
+const tempHistory = ref<{ cpu: number | null; gpu: number | null }[]>(
+  Array(10).fill({ cpu: null, gpu: null })
+)
 
 // 心电图数据与生成逻辑
 const ecgData = ref<number[]>(Array(50).fill(30))
@@ -140,7 +142,7 @@ const lineChartOption = computed(() => ({
   },
   xAxis: {
     type: 'category',
-    data: [],
+    data: Array(10).fill(''),
     axisLine: { show: false },
     axisTick: { show: false },
     axisLabel: { color: '#6B7280', fontSize: 10, margin: 12 }

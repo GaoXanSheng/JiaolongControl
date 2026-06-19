@@ -3,18 +3,29 @@ import { ref, computed } from 'vue'
 import { Message } from '@arco-design/web-vue'
 import { CPU, Power } from '@/utils/bridge.ts'
 import { useConfigStore } from '@/stores/config'
+import { useSystemInfoStore } from '@/stores/systemInfo'
 
 const loading = ref(false)
 const configStore = useConfigStore()
+const systemInfoStore = useSystemInfoStore()
+
+if (!configStore.cpu) {
+  await configStore.reloadCpuConfig()
+}
+
+const cpuInfo = ref<any>(null)
+const infoResult = await CPU.GetCpuInfo()
+if (infoResult.Success) {
+  cpuInfo.value = infoResult.Data
+}
 
 // 使用 computed 来简化对配置项的访问，并确保响应性
-const CPUData = computed(() => configStore.config?.AdvancedCPUSystemConfig)
+const CPUData = computed(() => configStore.cpu)
+const cpuStats = computed(() => systemInfoStore.cpuStats)
 
 // 页面内部交互状态
 const selectedProfile = ref('default')
-const cpuVoltageOffset = ref(-50) // 模拟核心电压偏移
-const cpuSpeedShift = ref(true)    // 模拟 Speed Shift
-const cStateControl = ref('auto')   // 模拟 C-State
+const cpuVoltageOffset = ref(-50)
 
 // 配置文件切换预设值（点击卡片时自动调整滑块，增强交互感）
 function selectProfile(profile: string) {
@@ -77,7 +88,7 @@ function handleReset() {
 
 // 取消修改
 function handleCancel() {
-  configStore.loadConfig?.() // 重新加载 store 原始配置
+  configStore.reloadCpuConfig() // 重新加载 store 原始配置
   Message.info('已取消修改')
 }
 </script>
@@ -253,10 +264,9 @@ function handleCancel() {
             </div>
 
             <div class="space-y-1 text-[11px] text-gray-400">
-              <div class="text-[13px] font-bold text-white">Intel Core i7-12700H</div>
-              <div>Alder Lake</div>
-              <div>14 核心 / 20 线程</div>
-              <div>基础频率 2.3 GHz</div>
+              <div class="text-[13px] font-bold text-white">{{ cpuInfo?.Name || 'Unknown CPU' }}</div>
+              <div>{{ cpuInfo?.Cores || 0 }} 核心 / {{ cpuInfo?.Threads || 0 }} 线程</div>
+              <div>基础频率 {{ cpuInfo?.BaseFreqMhz ? (cpuInfo.BaseFreqMhz / 1000).toFixed(1) : 0 }} GHz</div>
             </div>
           </div>
         </div>
@@ -270,10 +280,10 @@ function handleCancel() {
             <div class="space-y-1.5">
               <div class="flex justify-between text-[11px]">
                 <span class="text-gray-400">频率</span>
-                <span class="text-white font-mono font-medium">3.60 GHz</span>
+                <span class="text-white font-mono font-medium">{{ cpuStats?.FrequencyMhz ? (cpuStats.FrequencyMhz / 1000).toFixed(2) : '0.00' }} GHz</span>
               </div>
               <div class="h-1.5 bg-white/[0.03] rounded-full overflow-hidden">
-                <div class="h-full bg-[#8A2BE2]" style="width: 76%"></div>
+                <div class="h-full bg-[#8A2BE2]" :style="{ width: `${Math.min((cpuStats?.FrequencyMhz || 0) / (CPUData?.CpuMaxFrequency || 5000) * 100, 100)}%` }"></div>
               </div>
             </div>
 
@@ -281,21 +291,21 @@ function handleCancel() {
             <div class="space-y-1.5">
               <div class="flex justify-between text-[11px]">
                 <span class="text-gray-400">电压</span>
-                <span class="text-white font-mono font-medium">1.120 V</span>
+                <span class="text-white font-mono font-medium">{{ cpuStats?.Voltage ? cpuStats.Voltage.toFixed(3) : '0.000' }} V</span>
               </div>
               <div class="h-1.5 bg-white/[0.03] rounded-full overflow-hidden">
-                <div class="h-full bg-[#8A2BE2]" style="width: 50%"></div>
+                <div class="h-full bg-[#8A2BE2]" :style="{ width: `${Math.min((cpuStats?.Voltage || 0) / 1.5 * 100, 100)}%` }"></div>
               </div>
             </div>
 
-            <!-- 功耗 -->
+            <!-- 使用率 -->
             <div class="space-y-1.5">
               <div class="flex justify-between text-[11px]">
-                <span class="text-gray-400">功耗</span>
-                <span class="text-white font-mono font-medium">38 W</span>
+                <span class="text-gray-400">使用率</span>
+                <span class="text-white font-mono font-medium">{{ cpuStats?.Usage || 0 }} %</span>
               </div>
               <div class="h-1.5 bg-white/[0.03] rounded-full overflow-hidden">
-                <div class="h-full bg-[#3B82F6]" style="width: 32%"></div>
+                <div class="h-full bg-[#3B82F6]" :style="{ width: `${cpuStats?.Usage || 0}%` }"></div>
               </div>
             </div>
 
@@ -303,10 +313,10 @@ function handleCancel() {
             <div class="space-y-1.5">
               <div class="flex justify-between text-[11px]">
                 <span class="text-gray-400">温度</span>
-                <span class="text-white font-mono font-medium">58 °C</span>
+                <span class="text-white font-mono font-medium">{{ cpuStats?.Temperature || 0 }} °C</span>
               </div>
               <div class="h-1.5 bg-white/[0.03] rounded-full overflow-hidden">
-                <div class="h-full bg-[#8A2BE2]" style="width: 58%"></div>
+                <div class="h-full bg-[#8A2BE2]" :style="{ width: `${Math.min(cpuStats?.Temperature || 0, 100)}%` }"></div>
               </div>
             </div>
           </div>
@@ -320,11 +330,11 @@ function handleCancel() {
           </div>
 
           <div class="space-y-2">
-            <!-- P-Cores 性能核（6个，占满整行） -->
+            <!-- 动态渲染所有核心 -->
             <div class="grid grid-cols-6 gap-1.5">
-              <div v-for="i in 6" :key="'p'+i" class="bg-purple-950/20 border border-purple-500/25 rounded-lg py-2 text-center">
-                <div class="text-[8px] text-purple-400 leading-none">P</div>
-                <div class="text-xs text-purple-300 font-bold font-mono mt-0.5">{{ String(i).padStart(2, '0') }}</div>
+              <div v-for="i in (cpuInfo?.Cores || 0)" :key="'core'+i" class="bg-purple-950/20 border border-purple-500/25 rounded-lg py-2 text-center">
+                <div class="text-[8px] text-purple-400 leading-none">C</div>
+                <div class="text-xs text-purple-300 font-bold font-mono mt-0.5">{{ String(i - 1).padStart(2, '0') }}</div>
               </div>
             </div>
           </div>

@@ -44,7 +44,10 @@ const CONFIG_GROUPS = [
 
 const loadingMap = reactive<Record<string, boolean>>({});
 const configStore = useConfigStore();
-const smuData = computed(() => configStore.config?.RyzenSumConfig);
+if (!configStore.smu) {
+  await configStore.reloadSmuConfig();
+}
+const smuData = computed(() => configStore.smu);
 
 const coreCount = ref(8);
 const perCoreCurve = reactive<number[]>([]);
@@ -126,7 +129,7 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
                         size="small"
                         class="!bg-purple-600/10 !text-purple-400 !border-purple-500/20 hover:!bg-purple-600 hover:!text-white rounded-md px-3 font-semibold transition"
                         :loading="loadingMap[item.key]"
-                        @click="applySetting(item.key as keyof typeof RyzenSmu, smuData[item.key])"
+                        @click="applySetting(('Set' + item.key) as keyof typeof RyzenSmu, smuData[item.key])"
                     >应用</a-button>
                   </div>
                 </div>

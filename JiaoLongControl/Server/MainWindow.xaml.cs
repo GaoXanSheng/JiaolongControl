@@ -1,8 +1,9 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using JiaoLongControl.Server.Core.Controllers;
+using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
 using Microsoft.Web.WebView2.Core;
@@ -27,11 +28,10 @@ namespace JiaoLongControl.Server
 
         public MainWindow()
         {
-            ConfigController.Load();
             InitializeComponent();
             _startInTray =
                 IsBootStart &&
-                ConfigController.Config.BootMinimized;
+                Bridge.Instance.AppConfig.BootMinimized;
             InitializePaths();
             InitializeTray();
             CreateWebView();

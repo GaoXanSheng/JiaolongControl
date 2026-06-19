@@ -1,28 +1,35 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, type Ref, watch } from "vue";
 import { Message } from "@arco-design/web-vue";
-import { NvidiaGpu, type GpuStats } from "@/utils/bridge.ts";
+import { NvidiaGpu } from "@/utils/bridge.ts";
 import { useConfigStore } from '@/stores/config'
 import { useSystemInfoStore } from "@/stores/systemInfo";
 import { storeToRefs } from "pinia";
 
 const configStore = useConfigStore()
 const systemInfoStore = useSystemInfoStore()
-const { gpuStats } = storeToRefs(systemInfoStore)
+const {
+  gpuName, gpuDriverVersion, gpuMemoryTotal, gpuBusWidth,
+  gpuUtilization, gpuMemoryUtilization, gpuCoreClock, gpuMemoryClock,
+  gpuTemp, gpuFanSpeed
+} = storeToRefs(systemInfoStore)
 const loading = ref(false)
+
+if (!configStore.gpu) {
+  await configStore.reloadGpuConfig()
+}
 
 // --- Sparkline Chart History ---
 const historyLength = 20;
-const utilHistory = ref<number[]>([]);
-const memUtilHistory = ref<number[]>([]);
-const coreClockHistory = ref<number[]>([]);
-const memClockHistory = ref<number[]>([]);
-const tempHistory = ref<number[]>([]);
-const fanSpeedHistory = ref<number[]>([]);
+const utilHistory = ref<number[]>(Array(historyLength).fill(0));
+const memUtilHistory = ref<number[]>(Array(historyLength).fill(0));
+const coreClockHistory = ref<number[]>(Array(historyLength).fill(0));
+const memClockHistory = ref<number[]>(Array(historyLength).fill(0));
+const tempHistory = ref<number[]>(Array(historyLength).fill(0));
+const fanSpeedHistory = ref<number[]>(Array(historyLength).fill(0));
 
-const updateHistory = (history: Ref<number[]>, value: string, divisor = 1) => {
-  const numValue = parseInt(value, 10) || 0;
-  history.value.push(numValue / divisor);
+const updateHistory = (history: Ref<number[]>, value: number, divisor = 1) => {
+  history.value.push(value / divisor);
   if (history.value.length > historyLength) {
     history.value.shift();
   }
@@ -31,30 +38,26 @@ const updateHistory = (history: Ref<number[]>, value: string, divisor = 1) => {
 let unwatch: (() => void) | null = null;
 
 onMounted(() => {
-  if (gpuStats.value) {
-    updateHistory(utilHistory, gpuStats.value.GpuUtilization);
-    updateHistory(memUtilHistory, gpuStats.value.MemoryUtilization);
-    updateHistory(coreClockHistory, gpuStats.value.CoreClock, 100);
-    updateHistory(memClockHistory, gpuStats.value.MemoryClock, 100);
-    updateHistory(tempHistory, gpuStats.value.GpuTemperature);
-    updateHistory(fanSpeedHistory, gpuStats.value.FanSpeed, 100);
-  }
+  updateHistory(utilHistory, gpuUtilization.value);
+  updateHistory(memUtilHistory, gpuMemoryUtilization.value);
+  updateHistory(coreClockHistory, gpuCoreClock.value, 100);
+  updateHistory(memClockHistory, gpuMemoryClock.value, 100);
+  updateHistory(tempHistory, gpuTemp.value);
+  updateHistory(fanSpeedHistory, gpuFanSpeed.value, 100);
 
-  unwatch = watch(gpuStats, (stats) => {
-    if (!stats) return;
-    updateHistory(utilHistory, stats.GpuUtilization);
-    updateHistory(memUtilHistory, stats.MemoryUtilization);
-    updateHistory(coreClockHistory, stats.CoreClock, 100);
-    updateHistory(memClockHistory, stats.MemoryClock, 100);
-    updateHistory(tempHistory, stats.GpuTemperature);
-    updateHistory(fanSpeedHistory, stats.FanSpeed, 100);
-  }, { deep: true });
+  const stopWatchers = [
+    watch(gpuUtilization, v => updateHistory(utilHistory, v)),
+    watch(gpuMemoryUtilization, v => updateHistory(memUtilHistory, v)),
+    watch(gpuCoreClock, v => updateHistory(coreClockHistory, v, 100)),
+    watch(gpuMemoryClock, v => updateHistory(memClockHistory, v, 100)),
+    watch(gpuTemp, v => updateHistory(tempHistory, v)),
+    watch(gpuFanSpeed, v => updateHistory(fanSpeedHistory, v, 100)),
+  ];
+  unwatch = () => stopWatchers.forEach(fn => fn());
 });
 
 onUnmounted(() => {
-  if (unwatch) {
-    unwatch();
-  }
+  if (unwatch) unwatch();
 });
 
 
@@ -97,8 +100,54 @@ const tempChart = computed(() => generateSvgPath(tempHistory.value, 100));
 const fanChart = computed(() => generateSvgPath(fanSpeedHistory.value, 40)); // Corresponds to 4000 RPM
 
 // --- Settings and Presets Logic ---
-const GPUData = computed(() => configStore.config?.NvidiaGpuConfig)
+const GPUData = computed(() => configStore.gpu)
 const gpuVoltageOffset = ref(0)
+const gpuClockOffset = ref(120)
+const memClockOffset = ref(500)
+const coreClockRange = ref({ Min: 0, Max: 500 })
+const memClockRange = ref({ Min: 0, Max: 1500 })
+const powerLimitRange = ref({ Min: 50, Max: 140 })
+
+async function fetchGpuRanges() {
+  try {
+    const [core, mem, power] = await Promise.all([
+      NvidiaGpu.GetGpuCoreClockRange(),
+      NvidiaGpu.GetGpuMemoryClockRange(),
+      NvidiaGpu.GetGpuPowerLimitRange(),
+    ])
+    
+    if (core.Success && core.Data) {
+      const min = core.Data.Min ?? 0;
+      const max = core.Data.Max ?? 500;
+      coreClockRange.value = { Min: min, Max: max }
+      if (GPUData.value && (GPUData.value.GpuClock < min || GPUData.value.GpuClock > max)) {
+        GPUData.value.GpuClock = max;
+      }
+    }
+    
+    if (mem.Success && mem.Data) {
+      const min = mem.Data.Min  ?? 0;
+      const max = mem.Data.Max  ?? 1500;
+      memClockRange.value = { Min: min, Max: max }
+      if (GPUData.value && (GPUData.value.MemoryClock < min || GPUData.value.MemoryClock > max)) {
+        GPUData.value.MemoryClock = max;
+      }
+    }
+    
+    if (power.Success && power.Data) {
+      const min = power.Data.Min ?? 50;
+      const max = power.Data.Max ?? 140;
+      powerLimitRange.value = { Min: min, Max: max }
+      if (GPUData.value && (GPUData.value.PowerLimit < min || GPUData.value.PowerLimit > max)) {
+        GPUData.value.PowerLimit = max;
+      }
+    }
+  } catch (err) {
+    console.error('Failed to fetch GPU ranges', err)
+  }
+}
+
+await fetchGpuRanges();
 
 async function handleApplyAll() {
   if (!GPUData.value) return;
@@ -107,7 +156,7 @@ async function handleApplyAll() {
     await NvidiaGpu.LockGpuClock(GPUData.value.GpuClock);
     await NvidiaGpu.LockMemoryClock(GPUData.value.MemoryClock);
     await NvidiaGpu.SetPowerLimit(GPUData.value.PowerLimit);
-    configStore.debouncedSave();
+    await configStore.saveGpuConfig()
     Message.success('显卡设置已成功应用并保存');
   } catch (error) {
     Message.error('应用设置失败，请检查显卡驱动及桥接服务');
@@ -122,10 +171,12 @@ async function handleResetAll() {
     await NvidiaGpu.ResetGpuClock();
     await NvidiaGpu.ResetMemoryClock();
     if (GPUData.value) {
-      GPUData.value.GpuClock = 120;
-      GPUData.value.MemoryClock = 500;
-      GPUData.value.PowerLimit = 100;
+      GPUData.value.GpuClock = coreClockRange.value.Max
+      GPUData.value.MemoryClock = memClockRange.value.Max
+      GPUData.value.PowerLimit = powerLimitRange.value.Max
     }
+    gpuClockOffset.value = 0
+    memClockOffset.value = 0
     gpuVoltageOffset.value = 0;
     Message.info('显卡参数已恢复至默认设置');
   } catch (error) {
@@ -137,7 +188,7 @@ async function handleResetAll() {
 </script>
 
 <template>
-  <div class="h-full overflow-y-auto text-white p-6 no-scrollbar" v-if="GPUData && gpuStats">
+  <div class="h-full overflow-y-auto text-white p-6 no-scrollbar" v-if="GPUData && gpuName">
     <div class="max-w-[1300px] mx-auto flex flex-col lg:flex-row gap-6">
 
       <!-- ==================== 左/中：显卡主要设置区 ==================== -->
@@ -155,7 +206,7 @@ async function handleResetAll() {
             <span class="text-[11px] text-gray-500 font-semibold block uppercase">当前 GPU</span>
             <span class="flex items-center gap-2">
                   <span class="w-1.5 h-1.5 rounded-full bg-[#76B900] font-bold"></span>
-                  {{ gpuStats.GpuName }}
+                  {{ gpuName }}
                 </span>
           </div>
 
@@ -163,43 +214,77 @@ async function handleResetAll() {
               class="grid grid-cols-2 gap-x-6 gap-y-3 text-[11px] text-gray-400 md:w-1/2 md:border-l md:border-white/[0.05] md:pl-6 pt-1">
             <div>
               <span class="text-gray-600 block mb-0.5">驱动版本</span>
-              <span class="text-white font-medium font-mono">{{ gpuStats.DriverVersion }}</span>
+              <span class="text-white font-medium font-mono">{{ gpuDriverVersion }}</span>
             </div>
             <div>
               <span class="text-gray-600 block mb-0.5">显存容量</span>
-              <span class="text-white font-medium font-mono">{{ gpuStats.MemoryTotal }} MiB</span>
+              <span class="text-white font-medium font-mono">{{ gpuMemoryTotal }}</span>
             </div>
             <div>
               <span class="text-gray-600 block mb-0.5">驱动日期</span>
-              <span class="text-white font-medium font-mono">{{ gpuStats.DriverDate }}</span>
+              <span class="text-white font-medium font-mono">N/A</span>
             </div>
             <div>
               <span class="text-gray-600 block mb-0.5">总线宽度</span>
-              <span class="text-white font-medium font-mono">x{{ gpuStats.BusWidth }}</span>
+              <span class="text-white font-medium font-mono">{{ gpuBusWidth }}</span>
             </div>
           </div>
         </div>
-        <!-- 3. 核心设置（偏移与限制调节） -->
+        <!-- 3. 常规设置 -->
         <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-5">
-          <h2 class="text-[13px] font-semibold text-gray-300">核心设置</h2>
+          <h2 class="text-[13px] font-semibold text-gray-300">常规设置</h2>
+
+          <div class="space-y-5">
+            <div class="space-y-2">
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-gray-300 flex items-center gap-1">GPU 频率 <span
+                    class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span>
+                <span class="text-purple-400 font-medium font-mono">{{ GPUData.GpuClock }} MHz</span>
+              </div>
+              <a-slider v-model="GPUData.GpuClock" :min="coreClockRange.Min" :max="coreClockRange.Max" class="w-full"/>
+            </div>
+
+            <div class="space-y-2">
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-gray-300 flex items-center gap-1">显存频率 <span
+                    class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span>
+                <span class="text-purple-400 font-medium font-mono">{{ GPUData.MemoryClock }} MHz</span>
+              </div>
+              <a-slider v-model="GPUData.MemoryClock" :min="memClockRange.Min" :max="memClockRange.Max" class="w-full"/>
+            </div>
+
+            <div class="space-y-2">
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-gray-300 flex items-center gap-1">功耗限制 <span
+                    class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span>
+                <span class="text-purple-400 font-medium font-mono">{{ GPUData.PowerLimit }} W</span>
+              </div>
+              <a-slider v-model="GPUData.PowerLimit" :min="powerLimitRange.Min" :max="powerLimitRange.Max" class="w-full"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. 高级超频 -->
+        <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-5">
+          <h2 class="text-[13px] font-semibold text-gray-300">高级超频</h2>
 
           <div class="space-y-5">
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1">核心频率偏移 <span
                     class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span>
-                <span class="text-purple-400 font-medium font-mono">+{{ GPUData.GpuClock }} MHz</span>
+                <span class="text-purple-400 font-medium font-mono">+{{ gpuClockOffset }} MHz</span>
               </div>
-              <a-slider v-model="GPUData.GpuClock" :min="0" :max="500" class="w-full"/>
+              <a-slider v-model="gpuClockOffset" :min="0" :max="500" class="w-full"/>
             </div>
 
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1">显存频率偏移 <span
                     class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span>
-                <span class="text-purple-400 font-medium font-mono">+{{ GPUData.MemoryClock }} MHz</span>
+                <span class="text-purple-400 font-medium font-mono">+{{ memClockOffset }} MHz</span>
               </div>
-              <a-slider v-model="GPUData.MemoryClock" :min="0" :max="1500" class="w-full"/>
+              <a-slider v-model="memClockOffset" :min="0" :max="1500" class="w-full"/>
             </div>
 
             <div class="space-y-2">
@@ -209,15 +294,6 @@ async function handleResetAll() {
                 <span class="text-purple-400 font-medium font-mono">{{ gpuVoltageOffset }} mV</span>
               </div>
               <a-slider v-model="gpuVoltageOffset" :min="-100" :max="100" class="w-full"/>
-            </div>
-
-            <div class="space-y-2">
-              <div class="flex justify-between items-center text-xs">
-                <span class="text-gray-300 flex items-center gap-1">功耗限制 <span
-                    class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span>
-                <span class="text-purple-400 font-medium font-mono">{{ GPUData.PowerLimit }} W</span>
-              </div>
-              <a-slider v-model="GPUData.PowerLimit" :min="50" :max="140" class="w-full"/>
             </div>
           </div>
         </div>
@@ -255,7 +331,7 @@ async function handleResetAll() {
             <div class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between">
               <div>
                 <span class="text-[10px] text-gray-500 block">GPU 使用率</span>
-                <span class="text-base font-bold text-white font-mono">{{ gpuStats.GpuUtilization }} <span
+                <span class="text-base font-bold text-white font-mono">{{ gpuUtilization }} <span
                     class="text-[10px] text-gray-500 font-bold">%</span></span>
               </div>
               <svg class="w-full h-8 opacity-70 mt-1" viewBox="0 0 160 40" preserveAspectRatio="none">
@@ -274,7 +350,7 @@ async function handleResetAll() {
             <div class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between">
               <div>
                 <span class="text-[10px] text-gray-500 block">显存使用率</span>
-                <span class="text-base font-bold text-white font-mono">{{ gpuStats.MemoryUtilization }} <span
+                <span class="text-base font-bold text-white font-mono">{{ gpuMemoryUtilization }} <span
                     class="text-[10px] text-gray-500 font-bold">%</span></span>
               </div>
               <svg class="w-full h-8 opacity-70 mt-1" viewBox="0 0 160 40" preserveAspectRatio="none">
@@ -293,7 +369,7 @@ async function handleResetAll() {
             <div class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between">
               <div>
                 <span class="text-[10px] text-gray-500 block">核心频率</span>
-                <span class="text-base font-bold text-white font-mono">{{ gpuStats.CoreClock }} <span
+                <span class="text-base font-bold text-white font-mono">{{ gpuCoreClock }} <span
                     class="text-[9px] text-gray-500 font-bold">MHz</span></span>
               </div>
               <svg class="w-full h-8 opacity-70 mt-1" viewBox="0 0 160 40" preserveAspectRatio="none">
@@ -306,7 +382,7 @@ async function handleResetAll() {
             <div class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between">
               <div>
                 <span class="text-[10px] text-gray-500 block">显存频率</span>
-                <span class="text-base font-bold text-white font-mono">{{ gpuStats.MemoryClock }} <span
+                <span class="text-base font-bold text-white font-mono">{{ gpuMemoryClock }} <span
                     class="text-[9px] text-gray-500 font-bold">MHz</span></span>
               </div>
               <svg class="w-full h-8 opacity-70 mt-1" viewBox="0 0 160 40" preserveAspectRatio="none">
@@ -319,7 +395,7 @@ async function handleResetAll() {
             <div class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between">
               <div>
                 <span class="text-[10px] text-gray-500 block">GPU 温度</span>
-                <span class="text-base font-bold text-white font-mono">{{ gpuStats.GpuTemperature }} <span
+                <span class="text-base font-bold text-white font-mono">{{ gpuTemp }} <span
                     class="text-[10px] text-gray-500 font-bold">°C</span></span>
               </div>
               <svg class="w-full h-8 opacity-70 mt-1" viewBox="0 0 160 40" preserveAspectRatio="none">
@@ -338,7 +414,7 @@ async function handleResetAll() {
             <div class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between">
               <div>
                 <span class="text-[10px] text-gray-500 block">风扇转速</span>
-                <span class="text-base font-bold text-white font-mono">{{ gpuStats.FanSpeed }} <span
+                <span class="text-base font-bold text-white font-mono">{{ gpuFanSpeed }} <span
                     class="text-[9px] text-gray-500 font-bold">RPM</span></span>
               </div>
               <svg class="w-full h-8 opacity-70 mt-1" viewBox="0 0 160 40" preserveAspectRatio="none">
