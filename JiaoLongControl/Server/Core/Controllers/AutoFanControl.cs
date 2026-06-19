@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
@@ -55,7 +55,7 @@ public class AutoFanControl : IDisposable
     public CommandResult Start()
     {
         if (_isRunning)
-            return new CommandResult(_isRunning, "自动风扇控制已经运行中");
+            return new CommandResult(true, "自动风扇控制已经运行中");
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
         _controlTask = Task.Factory.StartNew(
@@ -64,7 +64,9 @@ public class AutoFanControl : IDisposable
             TaskCreationOptions.LongRunning,
             TaskScheduler.Default
         );
-        return new CommandResult(_isRunning, "自动风扇控制启动");
+        // Give the loop a moment to set _isRunning = true
+        Thread.Sleep(50);
+        return new CommandResult(true, "自动风扇控制启动");
     }
 
     public CommandResult Stop()
@@ -107,8 +109,12 @@ public class AutoFanControl : IDisposable
                 try
                 {
                     float rawCpuTemp = Convert.ToSingle(Bridge.Instance.CPU.GetCPUThermometer().Data);
-                    float rawGpuTemp = Convert.ToSingle(Bridge.Instance.NvidiaGpu.GetGpuTemperature().Message);
                     float smoothedCpuTemp = UpdateSmoothedTemp(FanType.CPU, rawCpuTemp);
+
+                    var gpuTempResult = Bridge.Instance.NvidiaGpu.GetGpuTemperature();
+                    float rawGpuTemp = gpuTempResult.Success
+                        ? Convert.ToSingle(gpuTempResult.Data)
+                        : smoothedCpuTemp; // fallback: use CPU temp if GPU unavailable
                     float smoothedGpuTemp = UpdateSmoothedTemp(FanType.GPU, rawGpuTemp);
                     int targetCpuByte = CalculateFanSpeed(smoothedCpuTemp, FanType.CPU);
                     int targetGpuByte = CalculateFanSpeed(smoothedGpuTemp, FanType.GPU);

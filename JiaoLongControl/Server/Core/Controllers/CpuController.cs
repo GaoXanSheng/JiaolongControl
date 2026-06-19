@@ -203,6 +203,25 @@ namespace JiaoLongControl.Server.Core.Controllers
             return new CommandResult(res, res ? "设置成功" : "设置失败");
         }
 
+        public CommandResult GetPhysicalCoreCount()
+        {
+            try
+            {
+                // NumberOfCores = physical cores (no hyperthreading)
+                // NumberOfLogicalProcessors = logical cores (with HT/SMT)
+                using var searcher = new ManagementObjectSearcher(
+                    "SELECT NumberOfCores FROM Win32_Processor");
+                int total = 0;
+                foreach (var obj in searcher.Get())
+                    total += Convert.ToInt32(obj["NumberOfCores"]);
+                return new CommandResult(true, "获取成功", total);
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, ex.Message);
+            }
+        }
+
         public void Dispose()
         {
             _cpuCounter.Dispose();

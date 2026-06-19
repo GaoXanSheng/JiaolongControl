@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Drivers;
 using JiaoLongControl.Server.Core.Native;
 using JiaoLongControl.Server.Core.Utils;
@@ -84,4 +84,157 @@ public class RyzenSmuController : PawnIO
     public CommandResult SetCurveOptimizerPerCore(uint coreIdx, int value)
         => Send(0x06, (coreIdx << 8) | (uint)(value & 0xFF), false, $"Curve Optimizer Core {coreIdx}");
     #endregion
-}
+
+    #region (Power Telemetry)
+
+    // Lazy-initialized LHM computer instance — shared across calls to avoid re-init cost
+    private static LibreHardwareMonitor.Hardware.Computer? _lhmComputer;
+    private static readonly object _lhmLock = new();
+
+    private static LibreHardwareMonitor.Hardware.Computer GetOrCreateLhm()
+    {
+        if (_lhmComputer != null) return _lhmComputer;
+        lock (_lhmLock)
+        {
+            if (_lhmComputer != null) return _lhmComputer;
+            var computer = new LibreHardwareMonitor.Hardware.Computer
+            {
+                IsCpuEnabled = true,
+            };
+            computer.Open();
+            _lhmComputer = computer;
+            return computer;
+        }
+    }
+
+    public CommandResult GetSmuTelemetry()
+    {
+        try
+        {
+            double ppt = 0;
+            double tdc = 0;
+            double edc = 0;
+            double temp = 0;
+            double freq = 0;
+            int usage = 0;
+
+            // --- Use LibreHardwareMonitor for accurate AMD Ryzen sensor readings ---
+            try
+            {
+                var computer = GetOrCreateLhm();
+
+                foreach (var hardware in computer.Hardware)
+                {
+                    if (hardware.HardwareType != LibreHardwareMonitor.Hardware.HardwareType.Cpu)
+                        continue;
+
+                    hardware.Update();
+
+                    foreach (var sensor in hardware.Sensors)
+                    {
+                        if (sensor.Value == null) continue;
+                        float val = sensor.Value.Value;
+
+                        switch (sensor.SensorType)
+                        {
+                            case LibreHardwareMonitor.Hardware.SensorType.Power:
+                                // "Package" = total CPU package power (PPT equivalent)
+                                if (sensor.Name.Contains("Package") && ppt == 0)
+                                    ppt = Math.Round(val, 1);
+                                // "Core" power for TDC estimation
+                                if (sensor.Name.Contains("Core") && tdc == 0)
+                                    tdc = Math.Round(val, 1);
+                                break;
+
+                            case LibreHardwareMonitor.Hardware.SensorType.Temperature:
+                                // "Core Max" or "Tctl/Tdie" is the canonical Ryzen temp
+                                if ((sensor.Name.Contains("Core") && sensor.Name.Contains("Max")) ||
+                                     sensor.Name.Contains("Tctl") || sensor.Name.Contains("Tdie"))
+                                {
+                                    if (val > temp) temp = Math.Round(val, 1);
+                                }
+                                break;
+
+                            case LibreHardwareMonitor.Hardware.SensorType.Frequency:
+                                if (sensor.Name.Contains("Core #1") || sensor.Name.Contains("Bus Speed"))
+                                    freq = Math.Round(val, 0);
+                                break;
+
+                            case LibreHardwareMonitor.Hardware.SensorType.Load:
+                                if (sensor.Name.Contains("Total"))
+                                    usage = (int)Math.Round(val);
+                                break;
+                        }
+                    }
+
+                    // EDC ~ TDC × 1.3 (AMD Ryzen peak current headroom)
+                    if (tdc > 0)
+                        edc = Math.Round(tdc * 1.3, 1);
+
+                    break; // Only process first CPU
+                }
+            }
+            catch (Exception lhmEx)
+            {
+                // LHM failed — fallback to WMI for temp/freq/usage
+                try
+                {
+                    using var searcher = new System.Management.ManagementObjectSearcher(
+                        @"root\WMI", "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
+                    double maxTemp = 0;
+                    foreach (System.Management.ManagementObject obj in searcher.Get())
+                    {
+                        uint raw = Convert.ToUInt32(obj["CurrentTemperature"]);
+                        double t = (raw - 2732) / 10.0;
+                        if (t > maxTemp) maxTemp = t;
+                    }
+                    temp = Math.Round(maxTemp, 1);
+                }
+                catch { }
+
+                try
+                {
+                    using var freqCounter = new System.Diagnostics.PerformanceCounter(
+                        "Processor Information", "% Processor Performance", "_Total");
+                    freqCounter.NextValue();
+                    System.Threading.Thread.Sleep(100);
+                    float perfPct = freqCounter.NextValue();
+                    using var wmi = new System.Management.ManagementObjectSearcher(
+                        "SELECT MaxClockSpeed FROM Win32_Processor");
+                    foreach (System.Management.ManagementObject obj in wmi.Get())
+                    {
+                        freq = Math.Round(perfPct / 100.0 * Convert.ToUInt32(obj["MaxClockSpeed"]), 0);
+                        break;
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    using var usageCounter = new System.Diagnostics.PerformanceCounter(
+                        "Processor", "% Processor Time", "_Total");
+                    usageCounter.NextValue();
+                    System.Threading.Thread.Sleep(100);
+                    usage = (int)Math.Round(usageCounter.NextValue());
+                }
+                catch { }
+            }
+
+            return new CommandResult(true, "获取成功", new
+            {
+                Ppt = ppt,
+                Tdc = tdc,
+                Edc = edc,
+                Temp = temp,
+                FreqMhz = (int)freq,
+                Usage = usage,
+            });
+        }
+        catch (Exception ex)
+        {
+            return new CommandResult(false, $"遥测读取失败: {ex.Message}");
+        }
+    }
+
+    #endregion
+}

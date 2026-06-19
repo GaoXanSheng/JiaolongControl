@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { reactive, ref, watch, computed } from 'vue';
+import { reactive, ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { Message } from "@arco-design/web-vue";
-import { RyzenSmu } from "@/utils/bridge";
+import { CPU, RyzenSmu } from "@/utils/bridge";
 import { useConfigStore } from '@/stores/config';
 
 const CONFIG_GROUPS = [
@@ -49,12 +49,16 @@ if (!configStore.smu) {
 }
 const smuData = computed(() => configStore.smu);
 
-const coreCount = ref(8);
+// Physical core count fetched from backend (excludes hyperthreading)
+const coreCount = ref(0);
+const cpuName = ref('AMD Ryzen');
+const cpuCoreInfo = ref('');
+
 const perCoreCurve = reactive<number[]>([]);
 const perCoreOcClk = reactive<number[]>([]);
 
 watch(coreCount, (newCount) => {
-  if (newCount < 0) return;
+  if (newCount <= 0) return;
   const currentLen = perCoreCurve.length;
   if (newCount > currentLen) {
     for (let i = currentLen; i < newCount; i++) {
@@ -86,6 +90,88 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
     loadingMap[methodName] = false;
   }
 };
+
+// ====== Real-time SMU Telemetry ======
+const HISTORY_LEN = 24;
+const telemetry = ref({ Ppt: 0, Tdc: 0, Edc: 0, Temp: 0, FreqMhz: 0, Usage: 0 });
+const pptHistory = ref<number[]>(Array(HISTORY_LEN).fill(0));
+const tdcHistory = ref<number[]>(Array(HISTORY_LEN).fill(0));
+const edcHistory = ref<number[]>(Array(HISTORY_LEN).fill(0));
+const tempHistory = ref<number[]>(Array(HISTORY_LEN).fill(0));
+
+function pushHistory(arr: number[], value: number) {
+  arr.push(value);
+  if (arr.length > HISTORY_LEN) arr.shift();
+}
+
+function sparkline(history: number[], yMax: number): { line: string; area: string } {
+  if (history.length < 2) return { line: 'M 0 40', area: 'M 0 40 L 160 40 L 0 40 Z' };
+  const W = 160, H = 40;
+  const points = history.map((v, i) => ({
+    x: (i / (HISTORY_LEN - 1)) * W,
+    y: H - (Math.max(0, Math.min(v, yMax)) / yMax) * H,
+  }));
+  const line = points.map((p, i) => {
+    if (i === 0) return `M ${p.x},${p.y}`;
+    const prev = points[i - 1];
+    const cpx = (prev.x + p.x) / 2;
+    return `C ${cpx},${prev.y} ${cpx},${p.y} ${p.x},${p.y}`;
+  }).join(' ');
+  const area = `${line} L ${W},${H} L 0,${H} Z`;
+  return { line, area };
+}
+
+const pptChart = computed(() => sparkline(pptHistory.value, 150));
+const tdcChart = computed(() => sparkline(tdcHistory.value, 300));
+const edcChart = computed(() => sparkline(edcHistory.value, 400));
+const tempChart = computed(() => sparkline(tempHistory.value, 110));
+
+let pollingTimer: ReturnType<typeof setInterval> | null = null;
+
+async function fetchTelemetry() {
+  try {
+    const res = await RyzenSmu.GetSmuTelemetry();
+    if (res.Success && res.Data) {
+      telemetry.value = res.Data;
+      pushHistory(pptHistory.value, res.Data.Ppt);
+      pushHistory(tdcHistory.value, res.Data.Tdc);
+      pushHistory(edcHistory.value, res.Data.Edc);
+      pushHistory(tempHistory.value, res.Data.Temp);
+    }
+  } catch (e) {
+    // silent fail — telemetry is best-effort
+  }
+}
+
+onMounted(async () => {
+  // Fetch real physical core count (no hyperthreading)
+  try {
+    const coreRes = await CPU.GetPhysicalCoreCount();
+    if (coreRes.Success && coreRes.Data > 0) {
+      coreCount.value = coreRes.Data;
+    } else {
+      coreCount.value = 8; // safe fallback
+    }
+  } catch {
+    coreCount.value = 8;
+  }
+
+  // Fetch CPU name for display
+  try {
+    const infoRes = await CPU.GetCpuInfo();
+    if (infoRes.Success && infoRes.Data) {
+      cpuName.value = infoRes.Data.Name || 'AMD Ryzen';
+      cpuCoreInfo.value = `${infoRes.Data.Cores} 核心 / ${infoRes.Data.Threads} 线程`;
+    }
+  } catch { /* ignore */ }
+
+  fetchTelemetry();
+  pollingTimer = setInterval(fetchTelemetry, 3000);
+});
+
+onUnmounted(() => {
+  if (pollingTimer) clearInterval(pollingTimer);
+});
 </script>
 
 <template>
@@ -269,10 +355,16 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
             </div>
 
             <div class="space-y-1 text-[11px] text-gray-400">
-              <div class="text-[13px] font-bold text-white">AMD Ryzen 7 7800X3D</div>
-              <div>Zen 4 架构 / AM5 接口</div>
-              <div>8 核心 / 16 线程</div>
-              <div>3D V-Cache 缓存技术</div>
+              <div class="text-[13px] font-bold text-white">
+                <span v-if="cpuName">{{ cpuName }}</span>
+                <span v-else class="text-gray-600 animate-pulse">检测中...</span>
+              </div>
+              <div>AMD Ryzen 架构 / AM5 接口</div>
+              <div>
+                <span v-if="cpuCoreInfo">{{ cpuCoreInfo }}</span>
+                <span v-else class="text-gray-600 animate-pulse">{{ coreCount > 0 ? `${coreCount} 物理核心` : '检测中...' }}</span>
+              </div>
+              <div>Curve Optimizer 已加载 {{ coreCount }} 核</div>
               <div>支持 PBO2 曲线优化</div>
             </div>
           </div>
@@ -280,21 +372,24 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
 
         <!-- 2. 电源实时监视器（遥测 PPT / TDC / EDC 波形图） -->
         <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-4">
-          <h2 class="text-[13px] font-semibold text-gray-300">SMU 电源遥测</h2>
+          <div class="flex items-center justify-between">
+            <h2 class="text-[13px] font-semibold text-gray-300">SMU 电源遥测</h2>
+            <span class="text-[10px] text-gray-600 bg-white/[0.03] border border-white/[0.05] px-2 py-0.5 rounded-full">{{ telemetry.FreqMhz }} MHz · {{ telemetry.Usage }}% 负载</span>
+          </div>
 
           <div class="grid grid-cols-2 gap-3">
             <!-- PPT 功耗 -->
             <div class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between">
               <div>
                 <span class="text-[10px] text-gray-500 block">PPT 封装功耗</span>
-                <span class="text-base font-bold text-white font-mono">85.4 <span class="text-[10px] text-gray-500 font-bold">W</span></span>
+                <span class="text-base font-bold text-white font-mono">{{ telemetry.Ppt.toFixed(1) }} <span class="text-[10px] text-gray-500 font-bold">W</span></span>
               </div>
-              <svg class="w-full h-8 opacity-70 mt-1" viewBox="0 0 160 40" preserveAspectRatio="none">
+              <svg class="w-full h-8 opacity-80 mt-1" viewBox="0 0 160 40" preserveAspectRatio="none">
                 <defs>
-                  <linearGradient id="smu-g-purple" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8A2BE2" stop-opacity="0.3" /><stop offset="100%" stop-color="#8A2BE2" stop-opacity="0" /></linearGradient>
+                  <linearGradient id="smu-g-purple" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8A2BE2" stop-opacity="0.35" /><stop offset="100%" stop-color="#8A2BE2" stop-opacity="0" /></linearGradient>
                 </defs>
-                <path d="M0,32 C20,30 30,10 45,20 C60,30 75,5 90,25 C105,40 120,12 135,10 C150,8 160,22 160,22" fill="none" stroke="#8A2BE2" stroke-width="1.2" />
-                <path d="M0,32 C20,30 30,10 45,20 C60,30 75,5 90,25 C105,40 120,12 135,10 C150,8 160,22 160,22 L160,40 L0,40 Z" fill="url(#smu-g-purple)" />
+                <path :d="pptChart.line" fill="none" stroke="#8A2BE2" stroke-width="1.5" stroke-linecap="round"/>
+                <path :d="pptChart.area" fill="url(#smu-g-purple)" />
               </svg>
             </div>
 
@@ -302,14 +397,14 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
             <div class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between">
               <div>
                 <span class="text-[10px] text-gray-500 block">TDC 供电电流</span>
-                <span class="text-base font-bold text-white font-mono">62.8 <span class="text-[10px] text-gray-500 font-bold">A</span></span>
+                <span class="text-base font-bold text-white font-mono">{{ telemetry.Tdc.toFixed(1) }} <span class="text-[10px] text-gray-500 font-bold">A</span></span>
               </div>
-              <svg class="w-full h-8 opacity-70 mt-1" viewBox="0 0 160 40" preserveAspectRatio="none">
+              <svg class="w-full h-8 opacity-80 mt-1" viewBox="0 0 160 40" preserveAspectRatio="none">
                 <defs>
-                  <linearGradient id="smu-g-blue" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3B82F6" stop-opacity="0.3" /><stop offset="100%" stop-color="#3B82F6" stop-opacity="0" /></linearGradient>
+                  <linearGradient id="smu-g-blue" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3B82F6" stop-opacity="0.35" /><stop offset="100%" stop-color="#3B82F6" stop-opacity="0" /></linearGradient>
                 </defs>
-                <path d="M0,28 C15,35 30,15 45,25 C60,35 75,12 90,20 C105,28 120,10 135,18 C150,25 160,15 160,15" fill="none" stroke="#3B82F6" stroke-width="1.2" />
-                <path d="M0,28 C15,35 30,15 45,25 C60,35 75,12 90,20 C105,28 120,10 135,18 C150,25 160,15 160,15 L160,40 L0,40 Z" fill="url(#smu-g-blue)" />
+                <path :d="tdcChart.line" fill="none" stroke="#3B82F6" stroke-width="1.5" stroke-linecap="round"/>
+                <path :d="tdcChart.area" fill="url(#smu-g-blue)" />
               </svg>
             </div>
 
@@ -317,33 +412,34 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: any[]) =
             <div class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between">
               <div>
                 <span class="text-[10px] text-gray-500 block">EDC 峰值电流</span>
-                <span class="text-base font-bold text-white font-mono">115.2 <span class="text-[10px] text-gray-500 font-bold">A</span></span>
+                <span class="text-base font-bold text-white font-mono">{{ telemetry.Edc.toFixed(1) }} <span class="text-[10px] text-gray-500 font-bold">A</span></span>
               </div>
-              <svg class="w-full h-8 opacity-70 mt-1" viewBox="0 0 160 40" preserveAspectRatio="none">
+              <svg class="w-full h-8 opacity-80 mt-1" viewBox="0 0 160 40" preserveAspectRatio="none">
                 <defs>
-                  <linearGradient id="smu-g-orange" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FF7D00" stop-opacity="0.3" /><stop offset="100%" stop-color="#FF7D00" stop-opacity="0" /></linearGradient>
+                  <linearGradient id="smu-g-orange" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FF7D00" stop-opacity="0.35" /><stop offset="100%" stop-color="#FF7D00" stop-opacity="0" /></linearGradient>
                 </defs>
-                <path d="M0,35 Q15,10 30,30 T60,10 T90,25 T120,5 T150,20 L160,20" fill="none" stroke="#FF7D00" stroke-width="1.2" />
-                <path d="M0,35 Q15,10 30,30 T60,10 T90,25 T120,5 T150,20 L160,20 L160,40 L0,40 Z" fill="url(#smu-g-orange)" />
+                <path :d="edcChart.line" fill="none" stroke="#FF7D00" stroke-width="1.5" stroke-linecap="round"/>
+                <path :d="edcChart.area" fill="url(#smu-g-orange)" />
               </svg>
             </div>
 
-            <!-- 温度检测 -->
+            <!-- 核心温度 -->
             <div class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between">
               <div>
                 <span class="text-[10px] text-gray-500 block">核心温度</span>
-                <span class="text-base font-bold text-white font-mono">72.4 <span class="text-[10px] text-gray-500 font-bold">°C</span></span>
+                <span class="text-base font-bold font-mono" :class="telemetry.Temp > 90 ? 'text-red-400' : telemetry.Temp > 75 ? 'text-orange-400' : 'text-white'">{{ telemetry.Temp.toFixed(1) }} <span class="text-[10px] text-gray-500 font-bold">°C</span></span>
               </div>
-              <svg class="w-full h-8 opacity-70 mt-1" viewBox="0 0 160 40" preserveAspectRatio="none">
+              <svg class="w-full h-8 opacity-80 mt-1" viewBox="0 0 160 40" preserveAspectRatio="none">
                 <defs>
-                  <linearGradient id="smu-g-red" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EF4444" stop-opacity="0.3" /><stop offset="100%" stop-color="#EF4444" stop-opacity="0" /></linearGradient>
+                  <linearGradient id="smu-g-red" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EF4444" stop-opacity="0.35" /><stop offset="100%" stop-color="#EF4444" stop-opacity="0" /></linearGradient>
                 </defs>
-                <path d="M0,32 C20,30 40,22 60,35 C80,20 100,32 120,22 C140,25 160,20 160,20" fill="none" stroke="#EF4444" stroke-width="1.2" />
-                <path d="M0,32 C20,30 40,22 60,35 C80,20 100,32 120,22 C140,25 160,20 160,20 L160,40 L0,40 Z" fill="url(#smu-g-red)" />
+                <path :d="tempChart.line" fill="none" stroke="#EF4444" stroke-width="1.5" stroke-linecap="round"/>
+                <path :d="tempChart.area" fill="url(#smu-g-red)" />
               </svg>
             </div>
           </div>
         </div>
+
 
         <!-- 3. 技术名释说明 -->
         <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-2.5">
