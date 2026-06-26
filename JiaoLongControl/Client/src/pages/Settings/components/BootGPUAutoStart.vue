@@ -2,7 +2,7 @@
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
 
 import {onMounted, ref} from "vue";
-import {Config} from "@/utils/bridge.ts";
+import {Config} from '@/utils/bridge.config.gen';
 
 const loading = ref(false)
 const BootStartAdvancedGPUSystem = ref(false)
@@ -23,7 +23,7 @@ async function SetBootStartAdvancedGPUSystem(value: string | number | boolean) {
 </script>
 
 <template>
-  <setting-card-component title="GPU 参数自动应用" description="在软件启动时，自动载入并应用【GPU】设置页面中保存的核心与显存超频、电压曲线、功耗目标等参数。">
+  <setting-card-component title="GPU 参数自动应用" description="在软件启动时，自动载入并应用【GPU】设置页面中保存的核心与显存超频、电压曲线、功耗目标等参数">
     <template #extra>
       <a-switch
           :model-value="BootStartAdvancedGPUSystem"

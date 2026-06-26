@@ -2,7 +2,7 @@
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
 
 import {onMounted, ref} from "vue";
-import {Config} from "@/utils/bridge.ts";
+import {Config} from '@/utils/bridge.config.gen';
 
 const loading = ref(false)
 const BootStartAdvancedCPUSystem = ref(false)
@@ -23,7 +23,7 @@ async function SetBootStartAdvancedCPUSystem(value: string | number | boolean) {
 </script>
 
 <template>
-  <setting-card-component title="CPU 参数自动应用" description="在软件启动时，自动载入并应用【CPU】设置页面中保存的功耗、频率、温度墙等高级参数。">
+  <setting-card-component title="CPU 参数自动应用" description="在软件启动时，自动载入并应用【CPU】设置页面中保存的功耗、频率、温度墙等高级参数">
     <template #extra>
       <a-switch
           :model-value="BootStartAdvancedCPUSystem"

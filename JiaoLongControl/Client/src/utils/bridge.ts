@@ -64,73 +64,6 @@ export interface GpuStats {
     DriverDate: string;
 }
 
-export interface AppConfigType {
-    BootMinimized: boolean;
-    BootAdvancedFanControlSystem: boolean;
-    BootAdvancedCPUSystem: boolean;
-    BootAdvancedGPUSystem: boolean;
-    BootSetRyzenSumCurveOptimizerAll: boolean;
-}
-
-export interface CpuProfilePreset {
-    CpuLongPower: number;
-    CpuShortPower: number;
-    CpuTempWall: number;
-    CpuMaxFrequency: number;
-    CpuTurbo: boolean;
-}
-
-export interface CpuConfigType {
-    CpuLongPower: number;
-    CpuShortPower: number;
-    CpuTempWall: number;
-    CpuMaxFrequency: number;
-    CpuTurbo: boolean;
-    DefaultProfile: CpuProfilePreset;
-    PerformanceProfile: CpuProfilePreset;
-    SavingProfile: CpuProfilePreset;
-    CustomProfile: CpuProfilePreset;
-}
-
-export interface GpuConfigType {
-    GpuClock: number;
-    MemoryClock: number;
-    PowerLimit: number;
-}
-
-export interface FanPoint {
-    temp: number;
-    speed: number;
-}
-
-export interface FanConfigType {
-    FanCurveMerge: boolean;
-    ManualFanSpeed: number;
-    CpuFanCurve: FanPoint[];
-    GpuFanCurve: FanPoint[];
-}
-
-export interface SmuConfigType {
-    StapmLimit: number;
-    StapmTime: number;
-    FastLimit: number;
-    SlowLimit: number;
-    SlowTime: number;
-    PptLimitRsmu: number;
-    VrmCurrentMp1: number;
-    VrmCurrentRsmu: number;
-    TdcLimitMp1: number;
-    TdcLimitRsmu: number;
-    EdcLimitMp1: number;
-    EdcLimitRsmu: number;
-    TempLimitMp1: number;
-    TempLimitRsmu: number;
-    PboScalar: number;
-    OcClk: number;
-    OcVolt: number;
-    CurveOptimizerAll: number;
-}
-
 declare global {
     interface Window {
         chrome?: {
@@ -271,9 +204,9 @@ declare global {
     }
 }
 
-const raw = window.chrome!.webview!.hostObjects.bridge;
+export const raw = window.chrome!.webview!.hostObjects.bridge;
 
-async function call<T>(promise: Promise<any>): Promise<CommandResult<T>> {
+export async function call<T>(promise: Promise<any>): Promise<CommandResult<T>> {
     // @ts-ignore
     return JSON.parse(await promise.toJson());
 }
@@ -395,22 +328,10 @@ export const PerformanceMode = {
     Set: (mode: SystemPerMode) => call(raw.PerformanceMode.Set(mode)),
 };
 
-export const Config = {
-    GetAppConfig: () => call<AppConfigType>(raw.Config.GetAppConfig()),
-    SetAppConfig: (config: AppConfigType) => call(raw.Config.SetAppConfig(config)),
-    GetCpuConfig: () => call<CpuConfigType>(raw.Config.GetCpuConfig()),
-    SetCpuConfig: (config: CpuConfigType) => call(raw.Config.SetCpuConfig(config)),
-    GetGpuConfig: () => call<GpuConfigType>(raw.Config.GetGpuConfig()),
-    SetGpuConfig: (config: GpuConfigType) => call(raw.Config.SetGpuConfig(config)),
-    GetFanConfig: () => call<FanConfigType>(raw.Config.GetFanConfig()),
-    SetFanConfig: (config: FanConfigType) => call(raw.Config.SetFanConfig(config)),
-    GetSmuConfig: () => call<SmuConfigType>(raw.Config.GetSmuConfig()),
-    SetSmuConfig: (config: SmuConfigType) => call(raw.Config.SetSmuConfig(config)),
-    Boot: {
-        Enable: () => call(raw.AutoStart.Enable()),
-        Disable: () => call(raw.AutoStart.Disable()),
-        IsEnabled: () => call(raw.AutoStart.IsEnabled()),
-    },
+export const Boot = {
+    Enable: () => call(raw.AutoStart.Enable()),
+    Disable: () => call(raw.AutoStart.Disable()),
+    IsEnabled: () => call(raw.AutoStart.IsEnabled()),
 };
 
 export const AutoFanControl = {
