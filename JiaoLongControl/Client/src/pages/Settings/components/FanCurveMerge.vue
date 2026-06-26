@@ -7,7 +7,7 @@ const config = (await Config.GetFanConfig()).Data
 const FanCurveMerge = ref(config.FanCurveMerge)
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
 
-import {Config} from "@/utils/bridge.ts";
+import {Config} from '@/utils/bridge.config.gen';
 async function setFanCurveMerge(value: string | number | boolean) {
   if (typeof value !== 'boolean') return
   loading.value = true
@@ -20,7 +20,7 @@ async function setFanCurveMerge(value: string | number | boolean) {
 </script>
 
 <template>
-  <setting-card-component title="切换为合并风扇曲线模式" description="使风扇转速同步">
+  <setting-card-component title="风扇曲线合并" description="启用后，软件将在【风扇曲线】页面中将所有风扇的曲线合并为一条曲线，方便用户统一调整风扇转速">
     <template #extra>
       <a-switch
           :model-value="FanCurveMerge"

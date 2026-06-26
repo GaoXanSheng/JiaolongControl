@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { Config, type CpuConfigType, type GpuConfigType, type FanConfigType, type AppConfigType, type SmuConfigType } from '@/utils/bridge'
+import { Config, type CpuConfigType, type GpuConfigType, type FanConfigType, type AppConfigType, type SmuConfigType } from '@/utils/bridge.config.gen'
 
 function debounce(fn: Function, delay: number) {
   let timer: any = null

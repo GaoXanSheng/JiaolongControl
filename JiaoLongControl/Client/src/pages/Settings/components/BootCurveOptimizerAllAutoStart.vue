@@ -2,7 +2,7 @@
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
 
 import {ref} from "vue";
-import {Config} from "@/utils/bridge.ts";
+import {Config} from '@/utils/bridge.config.gen';
 
 const loading = ref(false)
 
@@ -20,7 +20,7 @@ async function SetBootStart(value: string | number | boolean) {
 </script>
 
 <template>
-  <setting-card-component title="RyzenSMU 全核降压自动应用" description="在软件启动时，自动应用【Ryzen SMU】页面中保存的 Curve Optimizer 全核心负压（降压超频）设定。">
+  <setting-card-component title="RyzenSMU 全核降压自动应用" description="在软件启动时，自动应用【Ryzen SMU】页面中保存�?Curve Optimizer 全核心负压（降压超频）设定">
     <template #extra>
       <a-switch
           :model-value="BootStart"
