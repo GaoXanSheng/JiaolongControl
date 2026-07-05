@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cyber-purple: #8A2BE2;
+  --color-cyber-blue: #3B82F6;
+  --color-cyber-green: #00FF7F;
+  --color-cyber-bg: #090A0F;
+  --color-cyber-card: #12141D;
+  --radius-cyber: 32px;
+}
+
+@layer base {
+  body {
+    @apply text-white antialiased overflow-hidden;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    background:
+        /* 左上蓝光 */
+        radial-gradient(
+            circle at 15% 10%,
+            rgba(40, 90, 255, 0.28) 0%,
+            rgba(40, 90, 255, 0.12) 20%,
+            transparent 50%
+        ),
+
+        /* 右上紫光 */
+        radial-gradient(
+            circle at 85% 15%,
+            rgba(180, 60, 255, 0.25) 0%,
+            rgba(180, 60, 255, 0.10) 25%,
+            transparent 55%
+        ),
+
+        /* 中央蓝光 */
+        radial-gradient(
+            circle at 50% 0%,
+            rgba(0, 80, 255, 0.15) 0%,
+            transparent 60%
+        ),
+
+        /* 主背景 */
+        linear-gradient(
+            180deg,
+            #0d1025 0%,
+            #070b1c 100%
+        );
+  }
+}
+
+@layer components {
+  /* 严格对标图中 32px 圆角的卡片 */
+  .glass-card {
+    @apply bg-cyber-card/60 backdrop-blur-3xl border border-white/[0.04] rounded-[32px];
+    box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  }
+
+  /* 霓虹发光文字 */
+  .neon-text-purple {
+    text-shadow: 0 0 15px rgba(138, 43, 226, 0.5);
+  }
+  
+  /* 霓虹边框发光 */
+  .neon-border-purple {
+    @apply border-cyber-purple/50 shadow-[0_0_20px_rgba(138,43,226,0.2)];
+  }
+
+  /* 侧边栏激活项 */
+  .nav-item-active {
+    @apply bg-cyber-purple/10 text-white relative;
+  }
+  .nav-item-active::before {
+    content: "";
+    @apply absolute left-0 inset-y-4 w-1 bg-cyber-purple rounded-r-full shadow-[2px_0_10px_#8A2BE2];
+  }
+}
+
+/* 隐藏滚动条 */
+.no-scrollbar::-webkit-scrollbar { display: none; }

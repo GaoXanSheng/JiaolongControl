@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using JiaoLongControl.Server.Core.Controllers;
@@ -10,7 +10,7 @@ namespace JiaoLongControl.Server.Core.Utils;
 [ClassInterface(ClassInterfaceType.AutoDual)]
 public class CommandResult
 {
-    private readonly ILog Logger= LogManager.GetLogger(typeof(AutoFanControl));
+    private readonly ILog Logger= LogManager.GetLogger(typeof(CommandResult));
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,

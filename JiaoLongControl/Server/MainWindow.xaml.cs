@@ -1,8 +1,7 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using JiaoLongControl.Server.Core.Controllers;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
 using Microsoft.Web.WebView2.Core;
@@ -27,11 +26,10 @@ namespace JiaoLongControl.Server
 
         public MainWindow()
         {
-            ConfigController.Load();
             InitializeComponent();
             _startInTray =
                 IsBootStart &&
-                ConfigController.Config.BootMinimized;
+                Bridge.Instance.Config.App.BootMinimized;
             InitializePaths();
             InitializeTray();
             CreateWebView();
@@ -101,6 +99,8 @@ namespace JiaoLongControl.Server
 
             ConfigureWebView(view);
 
+            Bridge.Instance.InitWebView(view.CoreWebView2);
+
             view.Source = Directory.Exists(_webRoot)
                 ? new Uri("https://app.local/index.html")
                 : new Uri("http://localhost:5173");
@@ -148,6 +148,11 @@ namespace JiaoLongControl.Server
 
             try
             {
+                // 注销事件
+                if (_webView != null && _webView.CoreWebView2 != null)
+                {
+                    _webView.CoreWebView2.WebMessageReceived -= OnWebMessageReceived;
+                }
                 _webView?.CoreWebView2?.Stop();
                 _webView?.Dispose();
             }
@@ -163,6 +168,12 @@ namespace JiaoLongControl.Server
 
         private void ConfigureWebView(WebView2 view)
         {
+            // 【新增】允许网页使用 CSS 的 app-region 属性实现无边框下的拖动
+            view.CoreWebView2.Settings.IsNonClientRegionSupportEnabled = true;
+
+            // 【新增】注册消息事件，处理前端传来的窗口操作请求
+            view.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
+
             view.CoreWebView2.AddHostObjectToScript("bridge", Bridge.Instance);
 
             if (Directory.Exists(_webRoot))
@@ -172,6 +183,39 @@ namespace JiaoLongControl.Server
                     _webRoot,
                     CoreWebView2HostResourceAccessKind.Allow
                 );
+            }
+        }
+
+        // 【新增】响应前端窗口控制请求的方法
+        private void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            try
+            {
+                string message = e.TryGetWebMessageAsString();
+
+                if (message == "window-minimize")
+                {
+                    WindowState = WindowState.Minimized;
+                }
+                else if (message == "window-maximize")
+                {
+                    WindowState = WindowState == WindowState.Maximized 
+                        ? WindowState.Normal 
+                        : WindowState.Maximized;
+                }
+                else if (message == "window-drag")
+                {
+                    DragMove();
+                }
+                else if (message == "window-close")
+                {
+                    // 此处调用 Close 将触发 MainWindow 的 OnClosing 周期，从而正常调用 DestroyWebView() 和 Hide()
+                    Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"处理前端窗口控制消息时发生错误: {ex.Message}");
             }
         }
 

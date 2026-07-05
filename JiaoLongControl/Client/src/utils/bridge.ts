@@ -14,9 +14,10 @@ export type CommandResult<T = void> = {
 } & (T extends void ? {} : { Data: T });
 
 export enum SystemPerMode {
-    BalanceMode = 0,
-    PerformanceMode = 1,
-    QuietMode = 2,
+    PerformanceMode = 0,
+    QuietMode = 1,
+    BalanceMode = 2,
+    CustomMode = 3
 }
 
 export enum RGBKeyboardMode {
@@ -42,10 +43,32 @@ export interface ColorInfo {
     blue: number;
 }
 
+export interface SystemOverview {
+    CpuName: string;
+    GpuName: string;
+    OsVersion: string;
+    MemoryInfo: string;
+}
+
+export interface GpuStats {
+    GpuName: string;
+    DriverVersion: string;
+    MemoryTotal: string;
+    BusWidth: string;
+    GpuUtilization: string;
+    MemoryUtilization: string;
+    CoreClock: string;
+    MemoryClock: string;
+    GpuTemperature: string;
+    FanSpeed: string;
+    DriverDate: string;
+}
+
 declare global {
     interface Window {
         chrome?: {
             webview?: {
+                postMessage: (message: any) => any;
                 hostObjects: {
                     bridge: {
                         CPU: {
@@ -54,6 +77,11 @@ declare global {
                             SetCustomMode(open: boolean): Promise<any>;
                             GetCustomMode(): Promise<any>;
                             GetCPUThermometer(): Promise<any>;
+                            GetCpuUsage(): Promise<any>;
+                            GetCpuInfo(): Promise<any>;
+                            GetCpuFrequency(): Promise<any>;
+                            GetCpuVoltage(): Promise<any>;
+                            GetPhysicalCoreCount(): Promise<any>;
                             SetCPUTempWall(tw: number): Promise<any>;
                         };
                         Fan: {
@@ -83,9 +111,9 @@ declare global {
                             Get(): Promise<any>;
                             Set(mode: SystemPerMode): Promise<any>;
                         };
-                        Config: {
+                        ConfigCtrl: {
                             GetConfig(): Promise<any>;
-                            SetConfig(config: string): Promise<any>;
+                            SetConfig(configJson: string): Promise<any>;
                         };
                         AutoStart: {
                             Enable(): Promise<any>;
@@ -98,6 +126,19 @@ declare global {
                             IsRunning(): Promise<any>;
                         };
                         NvidiaGpu: {
+                            GetGpuName(gpuIndex?: number): Promise<any>;
+                            GetGpuDriverVersion(gpuIndex?: number): Promise<any>;
+                            GetGpuMemoryTotal(gpuIndex?: number): Promise<any>;
+                            GetGpuBusWidth(gpuIndex?: number): Promise<any>;
+                            GetGpuUtilization(gpuIndex?: number): Promise<any>;
+                            GetGpuMemoryUtilization(gpuIndex?: number): Promise<any>;
+                            GetGpuCoreClock(gpuIndex?: number): Promise<any>;
+                            GetGpuMemoryClock(gpuIndex?: number): Promise<any>;
+                            GetGpuTemperature(gpuIndex?: number): Promise<any>;
+                            GetGpuFanSpeed(gpuIndex?: number): Promise<any>;
+                            GetGpuCoreClockRange(gpuIndex?: number): Promise<any>;
+                            GetGpuMemoryClockRange(gpuIndex?: number): Promise<any>;
+                            GetGpuPowerLimitRange(gpuIndex?: number): Promise<any>;
                             LockGpuClock(freq: number, gpuIndex?: number): Promise<any>;
                             LockGpuClockRange(minFreq: number, maxFreq: number, gpuIndex?: number): Promise<any>;
                             ResetGpuClock(gpuIndex?: number): Promise<any>;
@@ -105,6 +146,9 @@ declare global {
                             ResetMemoryClock(gpuIndex?: number): Promise<any>;
                             SetPowerLimit(watts: number, gpuIndex?: number): Promise<any>;
                             GetGpuTemperature(): Promise<any>;
+                            GetGpuCoreClockRange(gpuIndex?: number): Promise<any>;
+                            GetGpuMemoryClockRange(gpuIndex?: number): Promise<any>;
+                            GetGpuPowerLimitRange(gpuIndex?: number): Promise<any>;
                             UnlockDB(): Promise<any>;
                         };
                         Power: {
@@ -116,6 +160,9 @@ declare global {
                             GetCPUMaxFrequency(): Promise<any>;
                             GetCPUMaxState(): Promise<any>;
                             GetTurboEnabled(): Promise<any>;
+                        };
+                        SystemInfo: {
+                            GetSystemOverview(): Promise<any>;
                         };
                         RyzenSmu: {
                             SetStapmLimit(watts: number): Promise<any>;
@@ -140,6 +187,7 @@ declare global {
                             DisableOc(): Promise<any>;
                             SetCurveOptimizerAll(value: number): Promise<any>;
                             SetCurveOptimizerPerCore(coreIdx: number, value: number): Promise<any>;
+                            GetSmuTelemetry(): Promise<any>;
                         }
                     };
                 };
@@ -148,9 +196,9 @@ declare global {
     }
 }
 
-const raw = window.chrome!.webview!.hostObjects.bridge;
+export const raw = window.chrome!.webview!.hostObjects.bridge;
 
-async function call<T>(promise: Promise<any>): Promise<CommandResult<T>> {
+export async function call<T>(promise: Promise<any>): Promise<CommandResult<T>> {
     // @ts-ignore
     return JSON.parse(await promise.toJson());
 }
@@ -162,55 +210,19 @@ function toByte(value: number): number {
     return value;
 }
 
-export interface ConfigInterface {
-    BootMinimized: boolean;
-    BootAdvancedFanControlSystem: boolean;
-    BootSetRyzenSumCurveOptimizerAll:boolean;
-    FanCurveMerge:boolean;
-    AdvancedFanControlSystemConfig:{
-        GpuFan:{ temp: number; speed: number }[],
-        CpuFan:{ temp: number; speed: number }[]
-    };
-    BootAdvancedCPUSystem: boolean;
-    BootAdvancedGPUSystem: boolean;
-    FanPageStore: {
-        FanSpeed: number;
-    }
-    AdvancedCPUSystemConfig: {
-        CpuTurbo: boolean
-        CpuMaxFrequency: number;
-        CpuShortPower: number;
-        CpuLongPower: number;
-        CpuTempWall: number;
-    };
-    NvidiaGpuConfig: {
-        GpuClock: number
-        MemoryClock: number
-        PowerLimit: number
-    };
-    RyzenSumConfig: {
-        StapmLimit: number,
-        StapmTime: number,
-        FastLimit: number,
-        SlowLimit: number,
-        SlowTime: number,
-        PptLimitRsmu: number,
+export interface CpuStatsInfo {
+    Temperature: number;
+    Usage: number;
+    FrequencyMhz: number;
+    Voltage: number;
+    PowerWatts: number;
+}
 
-        VrmCurrentMp1: number,
-        VrmCurrentRsmu: number,
-        TdcLimitMp1: number,
-        TdcLimitRsmu: number,
-        EdcLimitMp1: number,
-        EdcLimitRsmu: number,
-
-        TempLimitMp1: number,
-        TempLimitRsmu: number,
-
-        PboScalar: number,
-        OcClk: number,
-        OcVolt: number,
-        CurveOptimizerAll: number
-    }
+export interface CpuInfo {
+    Name: string;
+    Cores: number;
+    Threads: number;
+    BaseFreqMhz: number;
 }
 
 export const CPU = {
@@ -220,6 +232,11 @@ export const CPU = {
     GetCustomMode: () => call(raw.CPU.GetCustomMode()),
     SetCPUTempWall: (tw: number) => call(raw.CPU.SetCPUTempWall(toByte(tw))),
     GetCPUThermometer: () => call<number>(raw.CPU.GetCPUThermometer()),
+    GetCpuUsage: () => call<number>(raw.CPU.GetCpuUsage()),
+    GetCpuInfo: () => call<{Name: string, Cores: number, Threads: number, BaseFreqMhz: number}>(raw.CPU.GetCpuInfo()),
+    GetCpuFrequency: () => call<number>(raw.CPU.GetCpuFrequency()),
+    GetCpuVoltage: () => call<number>(raw.CPU.GetCpuVoltage()),
+    GetPhysicalCoreCount: () => call<number>(raw.CPU.GetPhysicalCoreCount()),
 };
 
 export const Fan = {
@@ -252,16 +269,10 @@ export const PerformanceMode = {
     Set: (mode: SystemPerMode) => call(raw.PerformanceMode.Set(mode)),
 };
 
-export const Config = {
-    GetConfig: async () => {
-        return await call<ConfigInterface>(raw.Config.GetConfig());
-    },
-    SetConfig: (config: ConfigInterface) => call(raw.Config.SetConfig(JSON.stringify(config))),
-    Boot: {
-        Enable: () => call(raw.AutoStart.Enable()),
-        Disable: () => call(raw.AutoStart.Disable()),
-        IsEnabled: () => call(raw.AutoStart.IsEnabled()),
-    },
+export const Boot = {
+    Enable: () => call(raw.AutoStart.Enable()),
+    Disable: () => call(raw.AutoStart.Disable()),
+    IsEnabled: () => call(raw.AutoStart.IsEnabled()),
 };
 
 export const AutoFanControl = {
@@ -271,6 +282,19 @@ export const AutoFanControl = {
 };
 
 export const NvidiaGpu = {
+    GetGpuName: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuName(gpuIndex)),
+    GetGpuDriverVersion: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuDriverVersion(gpuIndex)),
+    GetGpuMemoryTotal: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuMemoryTotal(gpuIndex)),
+    GetGpuBusWidth: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuBusWidth(gpuIndex)),
+    GetGpuUtilization: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuUtilization(gpuIndex)),
+    GetGpuMemoryUtilization: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuMemoryUtilization(gpuIndex)),
+    GetGpuCoreClock: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuCoreClock(gpuIndex)),
+    GetGpuMemoryClock: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuMemoryClock(gpuIndex)),
+    GetGpuTemperature: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuTemperature(gpuIndex)),
+    GetGpuFanSpeed: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuFanSpeed(gpuIndex)),
+    GetGpuCoreClockRange: (gpuIndex?: number) => call<{Min: number, Max: number}>(raw.NvidiaGpu.GetGpuCoreClockRange(gpuIndex)),
+    GetGpuMemoryClockRange: (gpuIndex?: number) => call<{Min: number, Max: number}>(raw.NvidiaGpu.GetGpuMemoryClockRange(gpuIndex)),
+    GetGpuPowerLimitRange: (gpuIndex?: number) => call<{Min: number, Max: number}>(raw.NvidiaGpu.GetGpuPowerLimitRange(gpuIndex)),
     LockGpuClock: (freq: number, gpuIndex?: number) => call(raw.NvidiaGpu.LockGpuClock(freq, gpuIndex)),
     LockGpuClockRange: (minFreq: number, maxFreq: number, gpuIndex?: number) =>
         call(raw.NvidiaGpu.LockGpuClockRange(minFreq, maxFreq, gpuIndex)),
@@ -278,8 +302,11 @@ export const NvidiaGpu = {
     LockMemoryClock: (freq: number, gpuIndex?: number) => call(raw.NvidiaGpu.LockMemoryClock(freq, gpuIndex)),
     ResetMemoryClock: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetMemoryClock(gpuIndex)),
     SetPowerLimit: (watts: number, gpuIndex?: number) => call(raw.NvidiaGpu.SetPowerLimit(watts, gpuIndex)),
-    GetGpuTemperature: () => call(raw.NvidiaGpu.GetGpuTemperature()),
     UnlockDB: () => call(raw.NvidiaGpu.UnlockDB())
+};
+
+export const SystemInfo = {
+    GetSystemOverview: () => call<SystemOverview>(raw.SystemInfo.GetSystemOverview()),
 };
 
 export const RyzenSmu = {
@@ -303,6 +330,7 @@ export const RyzenSmu = {
     DisableOc: () => call(raw.RyzenSmu.DisableOc()),
     SetCurveOptimizerAll: (value: number) => call(raw.RyzenSmu.SetCurveOptimizerAll(value)),
     SetCurveOptimizerPerCore: (coreIdx: number, value: number) => call(raw.RyzenSmu.SetCurveOptimizerPerCore(coreIdx, value)),
+    GetSmuTelemetry: () => call<{ Ppt: number; Tdc: number; Edc: number; Temp: number; FreqMhz: number; Usage: number }>(raw.RyzenSmu.GetSmuTelemetry()),
 };
 export const Power = {
     SetCPUMaxFrequency: (mhz: number) => call(raw.Power.SetCPUMaxFrequency(mhz)),
@@ -311,4 +339,17 @@ export const Power = {
     EnableTurbo: () => call(raw.Power.EnableTurbo()),
     GetCPUMaxFrequency: () => call<{ ac: number; dc: number }>(raw.Power.GetCPUMaxFrequency()),
     GetTurboEnabled: () => call<{ ac: boolean; dc: boolean }>(raw.Power.GetTurboEnabled()),
+};
+
+export const Config = {
+    GetConfig: () => call<import('@/types/config').JiaoLongConfigType>(raw.ConfigCtrl.GetConfig()),
+    SetConfig: (config: import('@/types/config').JiaoLongConfigType) => call(raw.ConfigCtrl.SetConfig(JSON.stringify(config))),
+};
+const postMessage = window.chrome!.webview!.postMessage;
+
+export const Window = {
+    Minimize: () => postMessage('window-minimize'),
+    Maximize: () => postMessage('window-maximize'),
+    Drag: () => postMessage('window-drag'),
+    Close: () => postMessage('window-close'),
 };
