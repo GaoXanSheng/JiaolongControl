@@ -1,4 +1,4 @@
-<script async setup lang="ts">
+<script setup lang="ts">
 import {ref, watch} from 'vue'
 import {Message} from '@arco-design/web-vue'
 import {Keyboard} from "@/utils/bridge.ts";

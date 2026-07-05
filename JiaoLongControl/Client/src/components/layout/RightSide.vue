@@ -26,7 +26,7 @@ function leave(_el: Element, done: () => void) {
 
 <template>
   <div class="rightSide relative">
-    <transition class="magictime" @enter="enter" @leave="leave" mode="out-in">
+    <transition @enter="enter" @leave="leave" mode="out-in">
       <Suspense>
         <template #default>
           <component :is="currentComponent" :key="store.$state.SwitchPages"/>
