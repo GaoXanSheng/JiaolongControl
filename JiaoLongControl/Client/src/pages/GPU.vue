@@ -15,8 +15,8 @@ const {
 } = storeToRefs(systemInfoStore)
 const loading = ref(false)
 
-if (!configStore.gpu) {
-  await configStore.reloadGpuConfig()
+if (!configStore.config) {
+  await configStore.fetchConfig()
 }
 
 // --- Sparkline Chart History ---
@@ -100,7 +100,7 @@ const tempChart = computed(() => generateSvgPath(tempHistory.value, 100));
 const fanChart = computed(() => generateSvgPath(fanSpeedHistory.value, 40)); // Corresponds to 4000 RPM
 
 // --- Settings and Presets Logic ---
-const GPUData = computed(() => configStore.gpu)
+const GPUData = computed(() => configStore.config?.Gpu)
 const gpuVoltageOffset = ref(0)
 const gpuClockOffset = ref(120)
 const memClockOffset = ref(500)

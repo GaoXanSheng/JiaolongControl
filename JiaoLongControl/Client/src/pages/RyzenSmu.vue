@@ -44,10 +44,10 @@ const CONFIG_GROUPS = [
 
 const loadingMap = reactive<Record<string, boolean>>({});
 const configStore = useConfigStore();
-if (!configStore.smu) {
-  await configStore.reloadSmuConfig();
+if (!configStore.config) {
+  await configStore.fetchConfig();
 }
-const smuData = computed(() => configStore.smu);
+const smuData = computed(() => configStore.config?.Smu);
 
 // Physical core count fetched from backend (excludes hyperthreading)
 const coreCount = ref(0);
@@ -114,8 +114,8 @@ function sparkline(history: number[], yMax: number): { line: string; area: strin
   const line = points.map((p, i) => {
     if (i === 0) return `M ${p.x},${p.y}`;
     const prev = points[i - 1];
-    const cpx = (prev.x + p.x) / 2;
-    return `C ${cpx},${prev.y} ${cpx},${p.y} ${p.x},${p.y}`;
+    const cpx = (prev!.x + p.x) / 2;
+    return `C ${cpx},${prev!.y} ${cpx},${p.y} ${p.x},${p.y}`;
   }).join(' ');
   const area = `${line} L ${W},${H} L 0,${H} Z`;
   return { line, area };

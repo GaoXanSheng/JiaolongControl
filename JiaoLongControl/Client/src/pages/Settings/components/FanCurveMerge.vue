@@ -3,17 +3,18 @@ import {ref} from "vue";
 
 const loading = ref(false)
 
-const config = (await Config.GetFanConfig()).Data
-const FanCurveMerge = ref(config.FanCurveMerge)
+const fullResult = await Config.GetConfig()
+const FanCurveMerge = ref(fullResult.Data.Fan.FanCurveMerge)
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
 
-import {Config} from '@/utils/bridge.config.gen';
+import {Config} from '@/utils/bridge';
 async function setFanCurveMerge(value: string | number | boolean) {
   if (typeof value !== 'boolean') return
   loading.value = true
-  const config = (await Config.GetFanConfig()).Data
-  config.FanCurveMerge = value;
-  await Config.SetFanConfig(config)
+  const fullResult = await Config.GetConfig()
+  const config = fullResult.Data
+  config.Fan.FanCurveMerge = value;
+  await Config.SetConfig(config)
   FanCurveMerge.value = value
   loading.value = false
 }

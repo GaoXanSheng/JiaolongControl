@@ -2,8 +2,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using JiaoLongControl.Server.Core.Controllers;
-using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
 using Microsoft.Web.WebView2.Core;
@@ -31,7 +29,7 @@ namespace JiaoLongControl.Server
             InitializeComponent();
             _startInTray =
                 IsBootStart &&
-                Bridge.Instance.AppConfig.BootMinimized;
+                Bridge.Instance.Config.App.BootMinimized;
             InitializePaths();
             InitializeTray();
             CreateWebView();
@@ -100,6 +98,8 @@ namespace JiaoLongControl.Server
             await view.EnsureCoreWebView2Async(env);
 
             ConfigureWebView(view);
+
+            Bridge.Instance.InitWebView(view.CoreWebView2);
 
             view.Source = Directory.Exists(_webRoot)
                 ? new Uri("https://app.local/index.html")

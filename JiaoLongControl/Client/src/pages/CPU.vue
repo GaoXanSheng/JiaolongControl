@@ -9,8 +9,8 @@ const loading = ref(false)
 const configStore = useConfigStore()
 const systemInfoStore = useSystemInfoStore()
 
-if (!configStore.cpu) {
-  await configStore.reloadCpuConfig()
+if (!configStore.config) {
+  await configStore.fetchConfig()
 }
 
 const cpuInfo = ref<any>(null)
@@ -20,12 +20,17 @@ if (infoResult.Success) {
 }
 
 // 使用 computed 来简化对配置项的访问，并确保响应性
-const CPUData = computed(() => configStore.cpu)
+const CPUData = computed(() => configStore.config?.Cpu)
 const cpuStats = computed(() => systemInfoStore.cpuStats)
 
 // 页面内部交互状态
 const selectedProfile = ref('default')
-const cpuVoltageOffset = ref(-50)
+const cpuVoltageOffset = ref(-10)
+
+// 从配置恢复上次选中的档位（不覆盖已保存的值）
+if (CPUData.value?.CpuProfile) {
+  selectedProfile.value = CPUData.value.CpuProfile
+}
 
 // 配置文件切换预设值（点击卡片时自动调整滑块，增强交互感）
 function selectProfile(profile: string) {
@@ -48,6 +53,7 @@ function selectProfile(profile: string) {
     CPUData.value.CpuMaxFrequency = 3200
     CPUData.value.CpuTempWall = 75
   }
+  CPUData.value.CpuProfile = profile
 }
 
 // 统一应用逻辑
@@ -88,7 +94,7 @@ function handleReset() {
 
 // 取消修改
 function handleCancel() {
-  configStore.reloadCpuConfig() // 重新加载 store 原始配置
+  configStore.fetchConfig() // 重新加载 store 原始配置
   Message.info('已取消修改')
 }
 </script>

@@ -2,18 +2,19 @@
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
 
 import {ref} from "vue";
-import {Config} from '@/utils/bridge.config.gen';
+import {Config} from '@/utils/bridge';
 
 const loading = ref(false)
 
-const config = (await Config.GetAppConfig()).Data
-const BootStart = ref(config.BootSetRyzenSumCurveOptimizerAll)
+const fullResult = await Config.GetConfig()
+const BootStart = ref(fullResult.Data.App.BootSetRyzenSumCurveOptimizerAll)
 async function SetBootStart(value: string | number | boolean) {
   if (typeof value !== 'boolean') return
   loading.value = true
-  const config = (await Config.GetAppConfig()).Data
-  config.BootSetRyzenSumCurveOptimizerAll = value;
-  await Config.SetAppConfig(config)
+  const fullResult = await Config.GetConfig()
+  const config = fullResult.Data
+  config.App.BootSetRyzenSumCurveOptimizerAll = value;
+  await Config.SetConfig(config)
   BootStart.value = value
   loading.value = false
 }

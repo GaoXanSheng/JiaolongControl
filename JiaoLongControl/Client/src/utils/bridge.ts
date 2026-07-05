@@ -111,17 +111,9 @@ declare global {
                             Get(): Promise<any>;
                             Set(mode: SystemPerMode): Promise<any>;
                         };
-                        Config: {
-                            GetAppConfig(): Promise<any>;
-                            SetAppConfig(config: any): Promise<any>;
-                            GetCpuConfig(): Promise<any>;
-                            SetCpuConfig(config: any): Promise<any>;
-                            GetGpuConfig(): Promise<any>;
-                            SetGpuConfig(config: any): Promise<any>;
-                            GetFanConfig(): Promise<any>;
-                            SetFanConfig(config: any): Promise<any>;
-                            GetSmuConfig(): Promise<any>;
-                            SetSmuConfig(config: any): Promise<any>;
+                        ConfigCtrl: {
+                            GetConfig(): Promise<any>;
+                            SetConfig(configJson: string): Promise<any>;
                         };
                         AutoStart: {
                             Enable(): Promise<any>;
@@ -216,57 +208,6 @@ function toByte(value: number): number {
         throw new Error('必须是整数');
     }
     return value;
-}
-
-export interface ConfigInterface {
-    BootMinimized: boolean;
-    BootAdvancedFanControlSystem: boolean;
-    BootSetRyzenSumCurveOptimizerAll: boolean;
-    FanCurveMerge: boolean;
-    AdvancedFanControlSystemConfig: {
-        GpuFan: { temp: number; speed: number }[],
-        CpuFan: { temp: number; speed: number }[]
-    };
-    BootAdvancedCPUSystem: boolean;
-    BootAdvancedGPUSystem: boolean;
-    FanPageStore: {
-        FanSpeed: number;
-    }
-    AdvancedCPUSystemConfig: {
-        CpuTurbo: boolean
-        CpuMaxFrequency: number;
-        CpuShortPower: number;
-        CpuLongPower: number;
-        CpuTempWall: number;
-    };
-    NvidiaGpuConfig: {
-        GpuClock: number
-        MemoryClock: number
-        PowerLimit: number
-    };
-    RyzenSumConfig: {
-        StapmLimit: number,
-        StapmTime: number,
-        FastLimit: number,
-        SlowLimit: number,
-        SlowTime: number,
-        PptLimitRsmu: number,
-
-        VrmCurrentMp1: number,
-        VrmCurrentRsmu: number,
-        TdcLimitMp1: number,
-        TdcLimitRsmu: number,
-        EdcLimitMp1: number,
-        EdcLimitRsmu: number,
-
-        TempLimitMp1: number,
-        TempLimitRsmu: number,
-
-        PboScalar: number,
-        OcClk: number,
-        OcVolt: number,
-        CurveOptimizerAll: number
-    }
 }
 
 export interface CpuStatsInfo {
@@ -398,6 +339,11 @@ export const Power = {
     EnableTurbo: () => call(raw.Power.EnableTurbo()),
     GetCPUMaxFrequency: () => call<{ ac: number; dc: number }>(raw.Power.GetCPUMaxFrequency()),
     GetTurboEnabled: () => call<{ ac: boolean; dc: boolean }>(raw.Power.GetTurboEnabled()),
+};
+
+export const Config = {
+    GetConfig: () => call<import('@/types/config').JiaoLongConfigType>(raw.ConfigCtrl.GetConfig()),
+    SetConfig: (config: import('@/types/config').JiaoLongConfigType) => call(raw.ConfigCtrl.SetConfig(JSON.stringify(config))),
 };
 const postMessage = window.chrome!.webview!.postMessage;
 

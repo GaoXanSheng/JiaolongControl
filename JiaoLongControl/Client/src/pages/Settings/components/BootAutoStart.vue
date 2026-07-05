@@ -2,7 +2,7 @@
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
 import { onMounted, ref } from 'vue'
 import { Boot } from '@/utils/bridge'
-import { Config } from '@/utils/bridge.config.gen'
+import { Config } from '@/utils/bridge'
 
 const loading = ref(false)
 const BootAutoStart = ref(false)
@@ -10,8 +10,8 @@ const MinimizedAfterBooting = ref(false)
 
 onMounted(async () => {
   BootAutoStart.value = (await Boot.IsEnabled()).Success
-  const appResult = await Config.GetAppConfig()
-  if (appResult.Success) MinimizedAfterBooting.value = appResult.Data.BootMinimized
+  const appResult = await Config.GetConfig()
+  if (appResult.Success) MinimizedAfterBooting.value = appResult.Data.App.BootMinimized
 })
 
 async function BootAutoStartHandleChange<T>(value: T) {
@@ -32,11 +32,11 @@ async function BootAutoStartHandleChange<T>(value: T) {
 async function MinimizedAfterBootingChange<T>(value: T) {
   if (typeof value != "boolean") return
   loading.value = true
-  const appResult = await Config.GetAppConfig()
-  if (!appResult.Success) { loading.value = false; return }
-  const config = appResult.Data
-  config.BootMinimized = value
-  await Config.SetAppConfig(config)
+  const fullResult = await Config.GetConfig()
+  if (!fullResult.Success) { loading.value = false; return }
+  const config = fullResult.Data
+  config.App.BootMinimized = value
+  await Config.SetConfig(config)
   MinimizedAfterBooting.value = value
   loading.value = false
 }

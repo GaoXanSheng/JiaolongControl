@@ -18,7 +18,7 @@ const emit = defineEmits<{
 <template>
   <div class="col-span-5 glass-card p-6 flex flex-col">
     <h2 class="text-[15px] font-medium text-white/90 mb-6">性能模式</h2>
-    <div class="flex-1 grid grid-cols-4 gap-4 items-center">
+    <div class="flex-1 grid grid-cols-3 gap-3 items-center">
       <button
         v-for="mode in modes" :key="mode.id"
         @click="emit('change-mode', mode.id)"
