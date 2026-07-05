@@ -34,3 +34,4 @@ coverage
 
 *.tsbuildinfo
 JiaoLongControl.sln.DotSettings.user
+.qwen

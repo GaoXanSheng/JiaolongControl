@@ -1,4 +1,21 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue'
+import { useConfigStore } from '@/stores/config'
+import { useSystemInfoStore } from '@/stores/systemInfo'
+
+const systemInfoStore = useSystemInfoStore()
+
+let stopPolling: () => void;
+
+onMounted(() => {
+  stopPolling = systemInfoStore.startPolling()
+})
+
+onUnmounted(() => {
+  if (stopPolling) {
+    stopPolling();
+  }
+})
 </script>
 
 <template>
@@ -13,11 +30,11 @@
   </Suspense>
 </template>
 
-<style lang="scss">
+<style>
 body {
   margin: 0;
-  overflow: hidden; // 禁止 WebView 出现滚动条
-  font-family: 'Segoe UI', sans-serif;
+  overflow: hidden;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
 }
 
 .app-view {
@@ -32,6 +49,6 @@ body {
   align-items: center;
   height: 100vh;
   color: #fff;
-  background-color: #202020;
+  background-color: #0D0E15;
 }
 </style>
