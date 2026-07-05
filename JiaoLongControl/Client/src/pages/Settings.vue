@@ -8,7 +8,7 @@ import BootCurveOptimizerAllAutoStart from "./Settings/components/BootCurveOptim
 import FanCurveMerge from "./Settings/components/FanCurveMerge.vue";
 import GPUDirectConnection from "./Settings/components/GPUDirectConnection.vue";
 import GPUUnlockDB from "./Settings/components/GPUUnlockDB.vue";
-</script>
+</script>   
 
 <template>
   <div class="p-6 h-full overflow-y-auto space-y-5 text-white no-scrollbar pb-20">
