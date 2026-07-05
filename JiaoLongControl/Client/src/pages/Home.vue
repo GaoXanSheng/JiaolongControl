@@ -28,7 +28,7 @@ const performanceModes = ref([
   { id: SystemPerMode.BalanceMode, name: '静音', icon: iconQuiet, active: false },
   { id: SystemPerMode.PerformanceMode, name: '平衡', icon: iconBalanced, active: false },
   { id: SystemPerMode.QuietMode, name: '高性能', icon: iconPerformance, active: false },
-  { id: SystemPerMode.CustomMode, name: '自定义', icon: iconCustom, active: false }
+  // { id: SystemPerMode.CustomMode, name: '自定义', icon: iconCustom, active: false }
 ])
 
 const activeMode = computed(() => performanceModes.value.find(m => m.active) || { name: '高性能', icon: iconPerformance })

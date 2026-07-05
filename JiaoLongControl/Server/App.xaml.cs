@@ -24,7 +24,7 @@ namespace JiaoLongControl.Server
                 return;
             }
 
-            PageConfigBase.InitializeConfigs();
+            ConfigSerializer.Initialize();
 
             AppDomain.CurrentDomain.ProcessExit += (_, __) => Cleanup();
             AppDomain.CurrentDomain.UnhandledException += (_, __) => Cleanup();

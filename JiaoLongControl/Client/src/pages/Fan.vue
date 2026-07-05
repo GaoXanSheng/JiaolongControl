@@ -8,11 +8,11 @@ import FanSpeed from "@/components/common/FanSpeed.vue";
 const loading = ref(false)
 const visible = ref(false)
 const configStore = useConfigStore()
-if (!configStore.fan) {
-  await configStore.reloadFanConfig()
+if (!configStore.config) {
+  await configStore.fetchConfig()
 }
 
-const FanPageStore = computed(() => configStore.fan)
+const FanPageStore = computed(() => configStore.config?.Fan)
 
 const handleClick = () => {
   if (!FanPageStore.value) return

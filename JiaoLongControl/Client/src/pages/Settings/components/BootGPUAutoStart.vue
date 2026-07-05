@@ -2,21 +2,22 @@
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
 
 import {onMounted, ref} from "vue";
-import {Config} from '@/utils/bridge.config.gen';
+import {Config} from '@/utils/bridge';
 
 const loading = ref(false)
 const BootStartAdvancedGPUSystem = ref(false)
 onMounted(async () => {
-  const config = (await Config.GetAppConfig()).Data
-  BootStartAdvancedGPUSystem.value = config.BootAdvancedGPUSystem
+  const fullResult = await Config.GetConfig()
+  BootStartAdvancedGPUSystem.value = fullResult.Data.App.BootAdvancedGPUSystem
 })
 
 async function SetBootStartAdvancedGPUSystem(value: string | number | boolean) {
   if (typeof value !== 'boolean') return
   loading.value = true
-  const config = (await Config.GetAppConfig()).Data
-  config.BootAdvancedGPUSystem = value;
-  await Config.SetAppConfig(config)
+  const fullResult = await Config.GetConfig()
+  const config = fullResult.Data
+  config.App.BootAdvancedGPUSystem = value;
+  await Config.SetConfig(config)
   BootStartAdvancedGPUSystem.value = value
   loading.value = false
 }

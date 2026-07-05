@@ -2,21 +2,22 @@
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
 
 import {onMounted, ref} from "vue";
-import {Config} from '@/utils/bridge.config.gen';
+import {Config} from '@/utils/bridge';
 
 const loading = ref(false)
 const BootStartAdvancedFanControlSystem = ref(false)
 onMounted(async () => {
-  const config = (await Config.GetAppConfig()).Data
-  BootStartAdvancedFanControlSystem.value = config.BootAdvancedFanControlSystem
+  const fullResult = await Config.GetConfig()
+  BootStartAdvancedFanControlSystem.value = fullResult.Data.App.BootAdvancedFanControlSystem
 })
 
 async function SetBootStartAdvancedFanControlSystem(value: string | number | boolean) {
   if (typeof value !== 'boolean') return
   loading.value = true
-  const config = (await Config.GetAppConfig()).Data
-  config.BootAdvancedFanControlSystem = value;
-  await Config.SetAppConfig(config)
+  const fullResult = await Config.GetConfig()
+  const config = fullResult.Data
+  config.App.BootAdvancedFanControlSystem = value;
+  await Config.SetConfig(config)
   BootStartAdvancedFanControlSystem.value = value
   loading.value = false
 }

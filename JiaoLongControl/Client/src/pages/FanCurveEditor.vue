@@ -1,19 +1,13 @@
 <template>
   <div class="h-full overflow-y-auto text-white p-6 no-scrollbar">
     <div class="max-w-[1300px] mx-auto space-y-6">
-
-      <!-- 页面标题 -->
       <div>
-        <h1 class="text-2xl font-bold tracking-wide">风扇曲线编辑�?/h1>
-        <p class="text-[13px] text-gray-500 mt-1">可视化拖动调整不同核心温度下的风扇转速，支持 CPU/GPU 独立配置�?/p>
+        <h1 class="text-2xl font-bold tracking-wide">风扇曲线编辑器</h1>
+        <p class="text-[13px] text-gray-500 mt-1">可视化拖动调整不同核心温度下的风扇转速，支持 CPU/GPU 独立配置。</p>
       </div>
-
-      <!-- 主编辑器卡片 -->
       <a-card class="fan-curve-card" :bordered="false" @click="closeMenu">
-
-        <!-- 头部控制�?-->
         <div class="header-info">
-          <!-- 左侧：CPU/GPU 切换及移除设�?-->
+          <!-- 左侧：CPU/GPU 切换及移除设�?-->
           <div class="info-section">
             <a-space size="medium">
               <a-radio-group
@@ -29,19 +23,17 @@
                   @click="handleRemoveFanClick"
                   class="text-xs font-semibold text-rose-400 border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500 hover:text-white px-4 py-1.5 rounded-lg transition-all"
               >
-                移除转速设�?
+                移除转速设置
               </button>
             </a-space>
           </div>
-
-          <!-- 中间：后台自动风扇控制服务开�?-->
           <div class="control-section">
             <a-space size="medium">
               <a-tag :color="isServiceRunning ? 'green' : 'gray'" bordered class="status-tag">
                 <template #icon>
                   <div :class="['status-dot', { active: isServiceRunning }]"></div>
                 </template>
-                {{ isServiceRunning ? '运行�? : '已停�? }}
+                {{ isServiceRunning ? '运行中' : '已停止' }}
               </a-tag>
 
               <a-switch
@@ -52,14 +44,10 @@
               />
             </a-space>
           </div>
-
-          <!-- 右侧：操作提�?-->
           <div class="help-section sub-info">
             拖拽节点调整 / 右键管理节点
           </div>
         </div>
-
-        <!-- 曲线网格主画�?-->
         <div class="svg-container" ref="containerRef">
           <svg
               v-if="isValidRender"
@@ -69,24 +57,20 @@
               @mouseup="onDragEnd"
               @mouseleave="onDragEnd"
           >
-            <!-- 图表发光及投影滤�?-->
             <defs>
               <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
                 <feDropShadow dx="0" dy="0" stdDeviation="3" :flood-color="activeTab === 'CPU' ? '#8A2BE2' : '#10B981'" flood-opacity="0.8"/>
               </filter>
-              <!-- CPU 渐变�?-->
               <linearGradient id="cpu-glow" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stop-color="#8A2BE2" stop-opacity="0.25" />
                 <stop offset="100%" stop-color="#8A2BE2" stop-opacity="0.0" />
               </linearGradient>
-              <!-- GPU 渐变�?-->
               <linearGradient id="gpu-glow" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stop-color="#10B981" stop-opacity="0.25" />
                 <stop offset="100%" stop-color="#10B981" stop-opacity="0.0" />
               </linearGradient>
             </defs>
-
-            <!-- 1. 背景虚线网格�?-->
+            
             <g class="grid">
               <line
                   v-for="i in 11"
@@ -109,8 +93,7 @@
                   stroke-dasharray="3"
               />
             </g>
-
-            <!-- 2. 轴坐标文字轴�?-->
+            
             <g class="labels" style="user-select: none; pointer-events: none;">
               <text
                   v-for="i in 6"
@@ -137,14 +120,10 @@
                 {{ Math.round(speedRange[0]! + (i - 1) * (speedRange[1]! - speedRange[0]!) / 5) }}
               </text>
             </g>
-
-            <!-- 3. 曲线底部高光渐变面积填充 -->
             <polygon
                 :points="polygonPoints"
                 :fill="activeTab === 'CPU' ? 'url(#cpu-glow)' : 'url(#gpu-glow)'"
             />
-
-            <!-- 4. 主骨架曲�?-->
             <polyline
                 :points="polylinePoints"
                 fill="none"
@@ -153,10 +132,7 @@
                 stroke-linejoin="round"
                 stroke-linecap="round"
             />
-
-            <!-- 5. 交互控制锚点 -->
             <g v-for="(p, index) in currentPoints" :key="index">
-              <!-- 用于加大鼠标捕捉面积的隐形圆�?-->
               <circle
                   :cx="safeMapX(p.temp)"
                   :cy="safeMapY(p.speed)"
@@ -166,7 +142,6 @@
                   @mousedown.stop="onDragStart(index, $event)"
                   @contextmenu.prevent.stop="openContextMenu(index, $event)"
               />
-              <!-- 真实渲染的微发光圆点 -->
               <circle
                   :cx="safeMapX(p.temp)"
                   :cy="safeMapY(p.speed)"
@@ -176,7 +151,6 @@
                   stroke-width="1.5"
                   style="filter: url(#shadow); pointer-events: none;"
               />
-              <!-- 拖动时的实时高亮数值气�?-->
               <text
                   v-if="draggingIndex === index"
                   :x="safeMapX(p.temp)"
@@ -198,8 +172,6 @@
             <span class="ml-2 text-xs text-gray-500">{{ width === 0 ? '初始化编辑器视图...' : '数据失效' }}</span>
           </div>
         </div>
-
-        <!-- 节点右键操作菜单 -->
         <div
             v-if="menuVisible"
             class="context-menu"
@@ -207,26 +179,22 @@
             @click.stop
             @contextmenu.prevent
         >
-          <div class="menu-item" @click="onAddNode">在此处右侧添加节�?/div>
+          <div class="menu-item" @click="onAddNode">在此处右侧添加节点</div>
           <div class="menu-item border-t border-white/[0.03]" :class="{ disabled: !canDelete }" @click="onRemoveNode">删除当前节点</div>
-          <div class="menu-item border-t border-white/[0.03]" @click="openEditModal">编辑精确数�?/div>
+          <div class="menu-item border-t border-white/[0.03]" @click="openEditModal">编辑精确数值</div>
         </div>
-
-        <!-- 手动精确编辑弹窗 -->
-        <a-modal v-model:visible="showEdit" title="编辑转速节�? :mask-closable="false" @ok="onEditConfirm">
+        <a-modal v-model:visible="showEdit" title="编辑转速节点" :mask-closable="false" @ok="onEditConfirm">
           <a-space v-if="selectedIndex !== null" direction="vertical" size="large" style="width: 100%">
             <a-input-number v-model="editForm.temp" :min="getMinTemp(selectedIndex)" :max="getMaxTemp(selectedIndex)"
                             style="width: 100%">
               <template #prepend>温度 (°C)</template>
             </a-input-number>
             <a-input-number v-model="editForm.speed" :min="speedRange[0]" :max="speedRange[1]" style="width: 100%">
-              <template #prepend>转�?(RPM)</template>
+              <template #prepend>转�?(RPM)</template>
             </a-input-number>
           </a-space>
         </a-modal>
       </a-card>
-
-      <!-- 实时风扇统计反馈小组�?-->
       <FanSpeed></FanSpeed>
     </div>
   </div>
@@ -235,7 +203,7 @@
 <script lang="ts" setup>
 import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {Message} from '@arco-design/web-vue'
-import {AutoFanControl, Config, Fan} from '@/utils/bridge.config.gen'
+import {AutoFanControl, Config, Fan} from '@/utils/bridge'
 import {useConfigStore} from '@/stores/config'
 import FanSpeed from "@/components/common/FanSpeed.vue";
 
@@ -244,8 +212,8 @@ interface Point {
   speed: number
 }
 const configStore = useConfigStore()
-if (!configStore.fan) {
-  await configStore.reloadFanConfig()
+if (!configStore.config) {
+  await configStore.fetchConfig()
 }
 const activeTab = ref<'CPU' | 'GPU'>('CPU')
 const cpuPoints = ref<Point[]>([
@@ -306,15 +274,15 @@ const handleServiceToggle = async (newValue: any): Promise<boolean> => {
   try {
     if (newValue) {
       await AutoFanControl.Start()
-      Message.success('自动风扇控制已启�?)
+      Message.success('自动风扇控制已启用')
     } else {
       await AutoFanControl.Stop()
-      Message.info('自动风扇控制已停�?)
+      Message.info('自动风扇控制已停止')
     }
     isServiceRunning.value = (await AutoFanControl.IsRunning()).Success
     return true
   } catch (e) {
-    Message.error('操作失败，请检查日�?)
+    Message.error('操作失败，请检查日志')
     isServiceRunning.value = (await AutoFanControl.IsRunning()).Success
     return false
   } finally {
@@ -323,9 +291,9 @@ const handleServiceToggle = async (newValue: any): Promise<boolean> => {
 }
 const autoSave = async () => {
   try {
-    if (configStore.fan) {
-      configStore.fan.CpuFanCurve = cpuPoints.value
-      configStore.fan.GpuFanCurve = gpuPoints.value
+    if (configStore.config) {
+      configStore.config.Fan.CpuFanCurve = cpuPoints.value
+      configStore.config.Fan.GpuFanCurve = gpuPoints.value
       configStore.debouncedSave()
     }
   } catch (e) {
@@ -383,7 +351,7 @@ const polylinePoints = computed(() => {
   return currentPoints.value.map(p => `${safeMapX(p.temp)},${safeMapY(p.speed)}`).join(' ')
 })
 
-// 计算面积渐变闭合多边形的坐标�?
+// 计算面积渐变闭合多边形的坐标�?
 const polygonPoints = computed(() => {
   if (currentPoints.value.length === 0) return ''
   const pts = currentPoints.value.map(p => `${safeMapX(p.temp)},${safeMapY(p.speed)}`)
@@ -420,7 +388,7 @@ onMounted(async () => {
 
   await checkServiceStatus()
   try {
-    const advancedConfig = configStore.fan
+    const advancedConfig = configStore.config?.Fan
     const parsedCpu = parseConfigPoints(advancedConfig?.CpuFanCurve)
     if (parsedCpu) cpuPoints.value = parsedCpu
     const parsedGpu = parseConfigPoints(advancedConfig?.GpuFanCurve)
@@ -546,7 +514,6 @@ async function handleRemoveFanClick() {
 </script>
 
 <style lang="scss" scoped>
-/* 隐藏滚动�?*/
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -691,8 +658,6 @@ async function handleRemoveFanClick() {
     }
   }
 }
-
-/* 覆盖 Arco 选项卡为暗色玻璃样式 */
 :deep(.radio-group-dark.arco-radio-group-button) {
   background-color: rgba(255, 255, 255, 0.03) !important;
   border: 1px solid rgba(255, 255, 255, 0.05) !important;
@@ -730,13 +695,10 @@ async function handleRemoveFanClick() {
     box-shadow: 0 0 10px rgba(16, 185, 129, 0.3) !important;
   }
 }
-
-/* 覆盖 Switch 默认背景�?*/
 :deep(.switch-purple.arco-switch-checked) {
   background-color: #8A2BE2 !important;
 }
 
-/* 覆盖 Arco Modal 的暗色磨砂样�?*/
 :deep(.arco-modal) {
   background-color: #121320 !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;

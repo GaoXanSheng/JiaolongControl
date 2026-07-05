@@ -2,21 +2,22 @@
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
 
 import {onMounted, ref} from "vue";
-import {Config} from '@/utils/bridge.config.gen';
+import {Config} from '@/utils/bridge';
 
 const loading = ref(false)
 const BootStartAdvancedCPUSystem = ref(false)
 onMounted(async () => {
-  const config = (await Config.GetAppConfig()).Data
-  BootStartAdvancedCPUSystem.value = config.BootAdvancedCPUSystem
+  const fullResult = await Config.GetConfig()
+  BootStartAdvancedCPUSystem.value = fullResult.Data.App.BootAdvancedCPUSystem
 })
 
 async function SetBootStartAdvancedCPUSystem(value: string | number | boolean) {
   if (typeof value !== 'boolean') return
   loading.value = true
-  const config = (await Config.GetAppConfig()).Data
-  config.BootAdvancedCPUSystem = value;
-  await Config.SetAppConfig(config)
+  const fullResult = await Config.GetConfig()
+  const config = fullResult.Data
+  config.App.BootAdvancedCPUSystem = value;
+  await Config.SetConfig(config)
   BootStartAdvancedCPUSystem.value = value
   loading.value = false
 }

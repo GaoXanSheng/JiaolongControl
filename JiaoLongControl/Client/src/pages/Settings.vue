@@ -25,7 +25,6 @@ import GPUUnlockDB from "./Settings/components/GPUUnlockDB.vue";
       <!-- 通用设置 -->
       <BootAutoStart />
       <LogoLight />
-      <PowerMode />
       
       <!-- 高级硬件控制 -->
       <GPUDirectConnection />

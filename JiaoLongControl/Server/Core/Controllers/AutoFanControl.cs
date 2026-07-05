@@ -119,7 +119,7 @@ public class AutoFanControl : IDisposable
                     int targetCpuByte = CalculateFanSpeed(smoothedCpuTemp, FanType.CPU);
                     int targetGpuByte = CalculateFanSpeed(smoothedGpuTemp, FanType.GPU);
                   
-                    if (FanPageConfig.Load<FanPageConfig>("fan.json").FanCurveMerge)
+                    if (Bridge.Instance.Config.Fan.FanCurveMerge)
                     {
                         int targetByte = Math.Max(targetCpuByte, targetGpuByte);
                         ProcessAndApplyFanSpeed(FanType.CPU, targetByte);
@@ -209,7 +209,7 @@ public class AutoFanControl : IDisposable
     }
     private int CalculateFanSpeed(float currentTemp, FanType type)
     {
-        var config = FanPageConfig.Load<FanPageConfig>("fan.json");
+        var config = Bridge.Instance.Config.Fan;
         if (config == null) return 25; 
         
         List<FanPoint> configPoints = type == FanType.CPU ? config.CpuFanCurve : config.GpuFanCurve;
