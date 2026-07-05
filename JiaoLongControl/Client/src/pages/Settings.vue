@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import LogoLight from './Settings/components/LogoLight.vue'
 import BootAutoStart from "./Settings/components/BootAutoStart.vue";
-import PowerMode from "./Settings/components/PowerMode.vue";
 import AdvancedFanControlSystem from "./Settings/components/AdvancedFanControlSystem.vue";
 import BootCPUAutoStart from "./Settings/components/BootCPUAutoStart.vue";
 import BootGPUAutoStart from "./Settings/components/BootGPUAutoStart.vue";
