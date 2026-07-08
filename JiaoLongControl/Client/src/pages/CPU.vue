@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Message } from '@arco-design/web-vue'
-import { CPU, Power } from '@/utils/bridge.ts'
+import { CPU, Power, RyzenSmu } from '@/utils/bridge.ts'
 import { useConfigStore } from '@/stores/config'
 import { useSystemInfoStore } from '@/stores/systemInfo'
 
@@ -25,7 +25,6 @@ const cpuStats = computed(() => systemInfoStore.cpuStats)
 
 // 页面内部交互状态
 const selectedProfile = ref('default')
-const cpuVoltageOffset = ref(-10)
 
 // 从配置恢复上次选中的档位（不覆盖已保存的值）
 if (CPUData.value?.CpuProfile) {
@@ -74,6 +73,10 @@ async function handleApplyAll() {
       await Power.EnableTurbo()
     } else {
       await Power.DisableTurbo()
+    }
+    // 6. 设置核心电压偏移 (Curve Optimizer All)
+    if (configStore.config?.Smu) {
+      await RyzenSmu.SetCurveOptimizerAll(configStore.config.Smu.CurveOptimizerAll)
     }
 
     // 保存并提示
@@ -199,13 +202,13 @@ function handleCancel() {
               <a-slider v-model="CPUData.CpuShortPower" :min="30" :max="255" class="w-full" />
             </div>
 
-            <!-- 核心电压偏移 (电压微调演示) -->
+            <!-- 核心电压偏移 (Curve Optimizer) -->
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
-                <span class="text-gray-300 flex items-center gap-1">核心电压偏移 <span class="text-gray-500 cursor-pointer text-[10px] hover:text-gray-300">ⓘ</span></span>
-                <span class="text-purple-400 font-medium font-mono">{{ cpuVoltageOffset }} mV</span>
+                <span class="text-gray-300 flex items-center gap-1">核心电压偏移 (CO) <span class="text-gray-500 cursor-pointer text-[10px] hover:text-gray-300">ⓘ</span></span>
+                <span class="text-purple-400 font-medium font-mono">{{ configStore.config?.Smu?.CurveOptimizerAll ?? 0 }}</span>
               </div>
-              <a-slider v-model="cpuVoltageOffset" :min="-150" :max="0" class="w-full" />
+              <a-slider v-model="configStore.config.Smu.CurveOptimizerAll" :min="-50" :max="50" class="w-full" />
             </div>
 
             <!-- 最大睿频频率 -->
@@ -250,12 +253,12 @@ function handleCancel() {
       </div>
 
       <!-- ==================== 右侧：信息与说明栏 ==================== -->
-      <div class="w-full lg:w-[360px] shrink-0 space-y-6">
+      <div class="w-full lg:w-[360px] shrink-0 space-y-6 lg:pt-[115px]">
 
         <!-- 1. CPU 信息卡片 -->
         <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg">
           <h2 class="text-[13px] font-semibold text-gray-300 mb-4">CPU 信息</h2>
-          <div class="flex items-center gap-4">
+          <div class="flex items-center gap-4 h-[96px]">
             <!-- 高保真 3D 芯片矢量线稿 -->
             <div class="w-16 h-16 bg-white/[0.02] border border-white/[0.05] rounded-xl flex items-center justify-center relative">
               <svg class="w-12 h-12 text-purple-500/80 opacity-80" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">

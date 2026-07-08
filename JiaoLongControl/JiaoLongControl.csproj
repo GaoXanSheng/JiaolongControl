@@ -11,6 +11,7 @@
         <Configurations>Debug;Release</Configurations>
         <Platforms>x64</Platforms>
         <SatelliteResourceLanguages>zh-CN</SatelliteResourceLanguages>
+        <AppVersion>10.12.16.B</AppVersion>
     </PropertyGroup>
 
     <ItemGroup>
@@ -95,5 +96,12 @@
     </ItemGroup>
     <ItemGroup>
       <Folder Include="low\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+            <_Parameter1>AppVersion</_Parameter1>
+            <_Parameter2>$(AppVersion)</_Parameter2>
+        </AssemblyAttribute>
     </ItemGroup>
 </Project>
