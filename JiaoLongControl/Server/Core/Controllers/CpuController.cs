@@ -125,6 +125,12 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             try
             {
+                // 优先使用 LibreHardwareMonitor 读取实时电压
+                var voltage = ReadCpuVoltageFromLhm();
+                if (voltage.HasValue)
+                    return new CommandResult(true, "获取成功", Math.Round(voltage.Value, 3));
+
+                // 回退到 WMI Win32_Processor.CurrentVoltage
                 using var searcher = new ManagementObjectSearcher("SELECT CurrentVoltage FROM Win32_Processor");
                 foreach (var obj in searcher.Get())
                 {
@@ -140,6 +146,65 @@ namespace JiaoLongControl.Server.Core.Controllers
             catch (Exception ex)
             {
                 return new CommandResult(false, ex.Message);
+            }
+        }
+
+        private static LibreHardwareMonitor.Hardware.Computer? _lhmComputer;
+        private static readonly object _lhmLock = new();
+
+        private static double? ReadCpuVoltageFromLhm()
+        {
+            try
+            {
+                if (_lhmComputer == null)
+                {
+                    lock (_lhmLock)
+                    {
+                        if (_lhmComputer == null)
+                        {
+                            var computer = new LibreHardwareMonitor.Hardware.Computer
+                            {
+                                IsCpuEnabled = true,
+                            };
+                            computer.Open();
+                            _lhmComputer = computer;
+                        }
+                    }
+                }
+
+                foreach (var hardware in _lhmComputer.Hardware)
+                {
+                    if (hardware.HardwareType != LibreHardwareMonitor.Hardware.HardwareType.Cpu)
+                        continue;
+
+                    hardware.Update();
+
+                    foreach (var sensor in hardware.Sensors)
+                    {
+                        if (sensor.SensorType == LibreHardwareMonitor.Hardware.SensorType.Voltage &&
+                            sensor.Value.HasValue &&
+                            (sensor.Name.Contains("Vcore") || sensor.Name.Contains("Core") && sensor.Name.Contains("VID")))
+                        {
+                            return sensor.Value.Value;
+                        }
+                    }
+
+                    // 如果没找到 Vcore，取第一个电压传感器
+                    foreach (var sensor in hardware.Sensors)
+                    {
+                        if (sensor.SensorType == LibreHardwareMonitor.Hardware.SensorType.Voltage &&
+                            sensor.Value.HasValue)
+                        {
+                            return sensor.Value.Value;
+                        }
+                    }
+                }
+
+                return null;
+            }
+            catch
+            {
+                return null;
             }
         }
 
@@ -174,14 +239,22 @@ namespace JiaoLongControl.Server.Core.Controllers
                 stats.FrequencyMhz = (int)(perfPercent / 100 * GetBaseFrequency());
                 
                 // Voltage
-                using var searcher = new ManagementObjectSearcher("SELECT CurrentVoltage FROM Win32_Processor");
-                foreach (var obj in searcher.Get())
+                var voltage = ReadCpuVoltageFromLhm();
+                if (voltage.HasValue)
                 {
-                    ushort raw = Convert.ToUInt16(obj["CurrentVoltage"]);
-                    if (raw > 0)
+                    stats.Voltage = Math.Round(voltage.Value, 3);
+                }
+                else
+                {
+                    using var searcher2 = new ManagementObjectSearcher("SELECT CurrentVoltage FROM Win32_Processor");
+                    foreach (var obj2 in searcher2.Get())
                     {
-                        stats.Voltage = Math.Round((raw & 0xFF) / 10.0, 3);
-                        break;
+                        ushort raw2 = Convert.ToUInt16(obj2["CurrentVoltage"]);
+                        if (raw2 > 0)
+                        {
+                            stats.Voltage = Math.Round((raw2 & 0xFF) / 10.0, 3);
+                            break;
+                        }
                     }
                 }
                 

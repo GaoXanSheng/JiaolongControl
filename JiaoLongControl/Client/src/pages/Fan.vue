@@ -64,7 +64,7 @@ async function handleRemoveFanClick() {
         </div>
 
         <!-- 转速调节磨砂卡片 -->
-        <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-6 shadow-lg">
+        <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-6 shadow-lg ">
           <div class="flex flex-col gap-6">
             <div class="flex justify-between items-end">
               <div>
@@ -84,10 +84,11 @@ async function handleRemoveFanClick() {
                 :max="8000"
                 :step="100"
                 class="w-full"
+                
             />
 
             <!-- 动作按钮组 -->
-            <div class="grid grid-cols-2 gap-4 mt-2">
+            <div class="grid grid-cols-2 gap-4 mt-2 ">
               <button
                   @click="handleClick"
                   :disabled="loading"
@@ -107,7 +108,7 @@ async function handleRemoveFanClick() {
       </div>
 
       <!-- ==================== 右侧：实时监控与安全提醒栏 ==================== -->
-      <div class="w-full lg:w-[360px] shrink-0 space-y-6">
+      <div class="w-full lg:w-[360px] shrink-0 space-y-6 lg:pt-[115px]">
         <!-- 1. 实时状态监控（原先直接跟在下方的监控改到右侧排版） -->
         <FanSpeed />
 
