@@ -23,12 +23,6 @@
         public const ushort EC_Version = 0xC411;
     }
 
-    public class FanCurvePoint
-    {
-        public int Temp { get; set; }
-        public int Speed { get; set; }
-    }
-
     public enum GpuMode : byte
     {
         HybridMode = 0,

@@ -1,3 +1,8 @@
+using System;
+using System.IO;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using JiaoLongControl.Server.Interop;
 using JiaoLongControl.Server.Core.Models;
@@ -30,8 +35,24 @@ namespace JiaoLongControl.Server
             AppDomain.CurrentDomain.UnhandledException += (_, __) => Cleanup();
 
             base.OnStartup(e);
-        }
 
+            Task.Run(async () =>
+            {
+                var version = "0.0.0";
+                foreach (var attr in Assembly.GetExecutingAssembly()
+                             .GetCustomAttributes<AssemblyMetadataAttribute>())
+                {
+                    if (attr.Key == "AppVersion")
+                    {
+                        version = attr.Value ?? "0.0.0";
+                        break;
+                    }
+                }
+
+                var updater = new InnoUpdater(version);
+                await updater.CheckForUpdatesAsync();
+            });
+        }
         protected override void OnExit(ExitEventArgs e)
         {
             Cleanup();

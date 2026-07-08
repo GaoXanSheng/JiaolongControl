@@ -336,7 +336,7 @@ onUnmounted(() => {
       </div>
 
       <!-- ==================== 右侧：处理器信息与电源遥测栏 ==================== -->
-      <div class="w-full lg:w-[360px] shrink-0 space-y-6">
+      <div class="w-full lg:w-[360px] shrink-0 space-y-6 lg:pt-[115px]">
 
         <!-- 1. AMD Ryzen 处理器芯片详情 -->
         <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg">
