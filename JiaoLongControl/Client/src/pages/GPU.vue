@@ -156,7 +156,7 @@ async function handleApplyAll() {
     await NvidiaGpu.LockGpuClock(GPUData.value.GpuClock);
     await NvidiaGpu.LockMemoryClock(GPUData.value.MemoryClock);
     await NvidiaGpu.SetPowerLimit(GPUData.value.PowerLimit);
-    await configStore.saveGpuConfig()
+    await configStore.saveConfig()
     Message.success('显卡设置已成功应用并保存');
   } catch (error) {
     Message.error('应用设置失败，请检查显卡驱动及桥接服务');
@@ -320,7 +320,7 @@ async function handleResetAll() {
       </div>
 
       <!-- ==================== 右侧：显卡信息与实时监控栏 ==================== -->
-      <div class="w-full lg:w-[360px] shrink-0 space-y-6 ">
+      <div class="w-full lg:w-[360px] shrink-0 space-y-6 lg:pt-[115px]">
         <!-- 2. 实时监控面板 -->
         <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-4">
           <div class="flex justify-between items-center"><h2 class="text-[13px] font-semibold text-gray-300">
