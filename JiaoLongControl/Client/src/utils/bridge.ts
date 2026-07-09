@@ -1,6 +1,6 @@
 export enum GPUMode {
-    HybridMode = 0,
-    DiscreteMode = 1,
+    HybridMode = "HybridMode",
+    DiscreteMode = "DiscreteMode",
 }
 
 export enum ResultState {

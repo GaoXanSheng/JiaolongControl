@@ -29,7 +29,18 @@ namespace JiaoLongControl.Server
                 return;
             }
 
-            ConfigSerializer.Initialize();
+            var version = "0.0.0";
+            foreach (var attr in Assembly.GetExecutingAssembly()
+                         .GetCustomAttributes<AssemblyMetadataAttribute>())
+            {
+                if (attr.Key == "AppVersion")
+                {
+                    version = attr.Value ?? "0.0.0";
+                    break;
+                }
+            }
+
+            ConfigSerializer.Initialize(version);
 
             AppDomain.CurrentDomain.ProcessExit += (_, __) => Cleanup();
             AppDomain.CurrentDomain.UnhandledException += (_, __) => Cleanup();
@@ -38,21 +49,11 @@ namespace JiaoLongControl.Server
 
             Task.Run(async () =>
             {
-                var version = "0.0.0";
-                foreach (var attr in Assembly.GetExecutingAssembly()
-                             .GetCustomAttributes<AssemblyMetadataAttribute>())
-                {
-                    if (attr.Key == "AppVersion")
-                    {
-                        version = attr.Value ?? "0.0.0";
-                        break;
-                    }
-                }
-
                 var updater = new InnoUpdater(version);
                 await updater.CheckForUpdatesAsync();
             });
         }
+
         protected override void OnExit(ExitEventArgs e)
         {
             Cleanup();
