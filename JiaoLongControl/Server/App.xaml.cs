@@ -1,11 +1,7 @@
-using System;
-using System.IO;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using JiaoLongControl.Server.Interop;
-using JiaoLongControl.Server.Core.Models;
+using JiaoLongControl.Server.Core.Utils;
 using log4net;
 using log4net.Config;
 
@@ -67,8 +63,9 @@ namespace JiaoLongControl.Server
                 Bridge.Instance?.Fan?.RemoveFanSpeed();
                 Bridge.Instance?.Dispose();
             }
-            catch
+            catch (Exception ex)
             {
+                Logger.Error("Cleanup failed: " + ex.Message, ex);
             }
         }
     }

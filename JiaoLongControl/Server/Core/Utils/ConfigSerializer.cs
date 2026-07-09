@@ -1,10 +1,11 @@
 using System.IO;
+using JiaoLongControl.Server.Core.Models;
 using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.ObjectGraphVisitors;
 
-namespace JiaoLongControl.Server.Core.Models;
+namespace JiaoLongControl.Server.Core.Utils;
 
 public static class ConfigSerializer
 {
