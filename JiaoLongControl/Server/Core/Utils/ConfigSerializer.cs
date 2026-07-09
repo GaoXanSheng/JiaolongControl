@@ -77,21 +77,29 @@ public static class ConfigSerializer
         }
 
         var existing = Load();
+        // 如果配置文件版本字段不存在 删除重建
+        if (string.IsNullOrWhiteSpace(existing.Version))
+        {
+            if (File.Exists(ConfigPath))
+            {
+                File.Delete(ConfigPath);
+            }
+            Save(new JiaoLongConfig { Version = version });
+        }
         // 如果配置文件存在但版本不一致
-        if (existing.Version != version)
+        if (existing.Version != version )
         {
             Update(existing, version);
         }
+
+
     }
 
     public static void Update(JiaoLongConfig LowConfig, string version)
     {
-        if (LowConfig.Version == "1")
-        {
-            File.Delete(ConfigPath);
-            var NewConfig = new JiaoLongConfig { Version = version };
-            Save(NewConfig);
-        }
+        // 默认无损迁移
+        LowConfig.Version = version;
+        Save(LowConfig);
     }
 
     private class CommentsObjectGraphVisitor : ChainedObjectGraphVisitor
