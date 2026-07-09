@@ -1,5 +1,4 @@
-﻿using System;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Native;
 
@@ -84,14 +83,8 @@ public class DriverLoader
                     }
                     if (err == 1058)
                     {
-                        throw new Exception(
-                            "Driver service is disabled (Error 1058). This is typically caused by Windows 'Core Isolation / Memory Integrity' " +
-                            "or third-party anti-cheat software (like FACEIT, Vanguard) blocking the driver.\n\n" +
-                            "Please try the following:\n" +
-                            "1. Temporarily disable 'Memory Integrity' in Windows Windows Security.\n" +
-                            "2. Close or disable any aggressive third-party anti-cheat programs.\n" +
-                            "3. Run 'sc delete PawnIO' in an Administrator Command Prompt, restart your PC, and try running this application again."
-                        );
+                        // 服务是禁止状态
+
                     }
                     throw new Win32Exception(err);
                 }
@@ -110,7 +103,8 @@ public class DriverLoader
     public static void UnloadDriver(string serviceName)
     {
         IntPtr scmHandle = Advapi32.OpenSCManager(null, null, SC_MANAGER_ALL_ACCESS);
-        if (scmHandle == IntPtr.Zero) return;
+        if (scmHandle == IntPtr.Zero)
+            throw new Win32Exception(Marshal.GetLastWin32Error());
 
         try
         {

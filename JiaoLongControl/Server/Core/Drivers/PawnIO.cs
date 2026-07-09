@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Native;
@@ -94,12 +95,42 @@ public class PawnIO : IDisposable
 
     public void Dispose()
     {
-        pawnio_close(_executorHandle);
-        Kernel32.FreeLibrary(_dllHandle);
-        DriverLoader.UnloadDriver(ServiceName);
+        if (_executorHandle != IntPtr.Zero)
+        {
+            try
+            {
+                pawnio_close(_executorHandle);
+            }
+            catch
+            {
+            }
+
+            _executorHandle = IntPtr.Zero;
+        }
+        if (_dllHandle != IntPtr.Zero)
+        {
+            Kernel32.FreeLibrary(_dllHandle);
+            _dllHandle = IntPtr.Zero;
+        }
+        try
+        {
+            DriverLoader.UnloadDriver(ServiceName);
+        }
+        catch
+        {
+        }
+        // Why the fuck can't UnloadDriver unload the driver
+        // kernel to delete the driver
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = "sc.exe",
+            Arguments = "delete "+ServiceName,
+            UseShellExecute = true,
+            Verb = "runas"
+        });
         IsInitialized = false;
         GC.SuppressFinalize(this);
     }
-
     ~PawnIO() => Dispose();
+
 }
