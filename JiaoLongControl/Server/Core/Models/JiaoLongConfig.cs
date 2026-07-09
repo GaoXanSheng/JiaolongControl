@@ -2,7 +2,7 @@ namespace JiaoLongControl.Server.Core.Models;
 
 public class JiaoLongConfig
 {
-    public int Version { get; set; } = 1;
+    public string Version { get; set; } = "";
     public AppSection App { get; set; } = new();
     public CpuSection Cpu { get; set; } = new();
     public GpuSection Gpu { get; set; } = new();

@@ -58,7 +58,7 @@ export interface SmuSectionType {
 }
 
 export interface JiaoLongConfigType {
-    Version: number;
+    Version: string;
     App: AppSectionType;
     Cpu: CpuSectionType;
     Gpu: GpuSectionType;
