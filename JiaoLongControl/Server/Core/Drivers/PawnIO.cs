@@ -94,33 +94,9 @@ public class PawnIO : IDisposable
 
     public void Dispose()
     {
-        if (_executorHandle != IntPtr.Zero)
-        {
-            try
-            {
-                pawnio_close(_executorHandle);
-            }
-            catch
-            {
-            }
-
-            _executorHandle = IntPtr.Zero;
-        }
-
-        if (_dllHandle != IntPtr.Zero)
-        {
-            Kernel32.FreeLibrary(_dllHandle);
-            _dllHandle = IntPtr.Zero;
-        }
-
-        try
-        {
-            DriverLoader.UnloadDriver(ServiceName);
-        }
-        catch
-        {
-        }
-
+        pawnio_close(_executorHandle);
+        Kernel32.FreeLibrary(_dllHandle);
+        DriverLoader.UnloadDriver(ServiceName);
         IsInitialized = false;
         GC.SuppressFinalize(this);
     }

@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Native;
 
@@ -12,6 +13,21 @@ public class DriverLoader
     const uint SERVICE_DEMAND_START = 0x00000003;
     const uint SERVICE_ERROR_NORMAL = 0x00000001;
     const uint SERVICE_CONTROL_STOP = 0x00000001;
+    const uint SERVICE_NO_CHANGE = 0xFFFFFFFF; 
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ChangeServiceConfig(
+        IntPtr hService,
+        uint dwServiceType,
+        uint dwStartType,
+        uint dwErrorControl,
+        string lpBinaryPathName,
+        string lpLoadOrderGroup,
+        IntPtr lpdwTagId,
+        string lpDependencies,
+        string lpServiceStartName,
+        string lpPassword,
+        string lpDisplayName);
 
     public static void LoadDriver(string serviceName, string sysPath)
     {
@@ -21,7 +37,17 @@ public class DriverLoader
         try
         {
             IntPtr serviceHandle = Advapi32.OpenService(scmHandle, serviceName, SERVICE_ALL_ACCESS);
-            if (serviceHandle == IntPtr.Zero)
+            if (serviceHandle != IntPtr.Zero)
+            {
+                ChangeServiceConfig(
+                    serviceHandle,
+                    SERVICE_NO_CHANGE,
+                    SERVICE_DEMAND_START,
+                    SERVICE_NO_CHANGE,
+                    null, null, IntPtr.Zero, null, null, null, null
+                );
+            }
+            else
             {
                 serviceHandle = Advapi32.CreateService(
                     scmHandle,
@@ -54,7 +80,18 @@ public class DriverLoader
                     }
                     if (err == 1275)
                     {
-                        throw new Exception("Driver signature verification failed");
+                        throw new Exception("Driver signature verification failed. Please check if Windows 'Core Isolation / Memory Integrity' is blocking the driver.");
+                    }
+                    if (err == 1058)
+                    {
+                        throw new Exception(
+                            "Driver service is disabled (Error 1058). This is typically caused by Windows 'Core Isolation / Memory Integrity' " +
+                            "or third-party anti-cheat software (like FACEIT, Vanguard) blocking the driver.\n\n" +
+                            "Please try the following:\n" +
+                            "1. Temporarily disable 'Memory Integrity' in Windows Windows Security.\n" +
+                            "2. Close or disable any aggressive third-party anti-cheat programs.\n" +
+                            "3. Run 'sc delete PawnIO' in an Administrator Command Prompt, restart your PC, and try running this application again."
+                        );
                     }
                     throw new Win32Exception(err);
                 }
