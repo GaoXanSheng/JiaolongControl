@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace JiaoLongControl.Server.Core.Models;
+namespace JiaoLongControl.Server.Core.Utils;
 
 public class ConfigWatcher : IDisposable
 {

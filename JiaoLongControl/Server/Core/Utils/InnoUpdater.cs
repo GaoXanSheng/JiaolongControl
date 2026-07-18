@@ -2,11 +2,13 @@
 using System.Net.Http;
 using System.Text.Json;
 using System.Windows;
+using log4net;
 
 namespace JiaoLongControl.Server
 {
     public class InnoUpdater
     {
+        private readonly ILog Logger= LogManager.GetLogger(typeof(InnoUpdater));
         private readonly string _currentVersion;
         private const string RepoApiUrl = "https://api.github.com/repos/GaoXanSheng/JiaolongControl/releases/latest";
 
@@ -84,7 +86,7 @@ namespace JiaoLongControl.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"更新检查失败: {ex.Message}");
+                Logger.Info($"更新检查失败: {ex.Message}");
             }
         }
 

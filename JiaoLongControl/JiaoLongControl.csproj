@@ -11,7 +11,7 @@
         <Configurations>Debug;Release</Configurations>
         <Platforms>x64</Platforms>
         <SatelliteResourceLanguages>zh-CN</SatelliteResourceLanguages>
-        <AppVersion>10.12.16.B</AppVersion>
+        <AppVersion>10.12.19</AppVersion>
     </PropertyGroup>
 
     <ItemGroup>

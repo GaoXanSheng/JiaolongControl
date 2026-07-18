@@ -14,6 +14,7 @@ const {
   gpuTemp, gpuFanSpeed
 } = storeToRefs(systemInfoStore)
 const loading = ref(false)
+const showAdvanced = ref(false)
 
 if (!configStore.config) {
   await configStore.fetchConfig()
@@ -149,23 +150,23 @@ async function fetchGpuRanges() {
 
 await fetchGpuRanges();
 
-async function handleApplyAll() {
+async function handleApplyNormal() {
   if (!GPUData.value) return;
   loading.value = true;
   try {
     await NvidiaGpu.LockGpuClock(GPUData.value.GpuClock);
     await NvidiaGpu.LockMemoryClock(GPUData.value.MemoryClock);
-    await NvidiaGpu.SetPowerLimit(GPUData.value.PowerLimit);
+    // await NvidiaGpu.SetPowerLimit(GPUData.value.PowerLimit);
     await configStore.saveConfig()
-    Message.success('显卡设置已成功应用并保存');
+    Message.success('常规设置已应用并保存');
   } catch (error) {
-    Message.error('应用设置失败，请检查显卡驱动及桥接服务');
+    Message.error('应用失败，请检查显卡驱动及桥接服务');
   } finally {
     loading.value = false;
   }
 }
 
-async function handleResetAll() {
+async function handleResetNormal() {
   loading.value = true;
   try {
     await NvidiaGpu.ResetGpuClock();
@@ -175,15 +176,31 @@ async function handleResetAll() {
       GPUData.value.MemoryClock = memClockRange.value.Max
       GPUData.value.PowerLimit = powerLimitRange.value.Max
     }
-    gpuClockOffset.value = 0
-    memClockOffset.value = 0
-    gpuVoltageOffset.value = 0;
-    Message.info('显卡参数已恢复至默认设置');
+    Message.info('常规设置已恢复默认');
   } catch (error) {
     Message.error('重置失败');
   } finally {
     loading.value = false;
   }
+}
+
+async function handleApplyAdvanced() {
+  loading.value = true;
+  try {
+    await configStore.saveConfig()
+    Message.success('高级设置已保存');
+  } catch (error) {
+    Message.error('保存失败');
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function handleResetAdvanced() {
+  gpuClockOffset.value = 0
+  memClockOffset.value = 0
+  gpuVoltageOffset.value = 0;
+  Message.info('高级设置已恢复默认');
 }
 </script>
 
@@ -230,15 +247,36 @@ async function handleResetAll() {
             </div>
           </div>
         </div>
-        <!-- 3. 常规设置 -->
-        <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-5">
-          <h2 class="text-[13px] font-semibold text-gray-300">常规设置</h2>
+        <!-- 3. 模式切换按钮 -->
+        <div class="flex gap-2">
+          <button @click="showAdvanced = false"
+                  :class="[
+                    'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',
+                    !showAdvanced
+                      ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'
+                      : 'bg-white/[0.02] text-gray-400 border-white/10 hover:text-white hover:border-white/20'
+                  ]">
+            常规设置
+          </button>
+          <button @click="showAdvanced = true"
+                  :class="[
+                    'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',
+                    showAdvanced
+                      ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'
+                      : 'bg-white/[0.02] text-gray-400 border-white/10 hover:text-white hover:border-white/20'
+                  ]">
+            高级超频
+          </button>
+        </div>
 
+        <!-- 常规设置面板 -->
+        <div v-if="!showAdvanced" class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-5">
           <div class="space-y-5">
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
-                <span class="text-gray-300 flex items-center gap-1">GPU 频率 <span
-                    class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span>
+                <span class="text-gray-300 flex items-center gap-1">GPU 频率
+                   <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span>
+                </span>
                 <span class="text-purple-400 font-medium font-mono">{{ GPUData.GpuClock }} MHz</span>
               </div>
               <a-slider v-model="GPUData.GpuClock" :min="coreClockRange.Min" :max="coreClockRange.Max" class="w-full"/>
@@ -253,21 +291,30 @@ async function handleResetAll() {
               <a-slider v-model="GPUData.MemoryClock" :min="memClockRange.Min" :max="memClockRange.Max" class="w-full"/>
             </div>
 
-            <div class="space-y-2">
+            <!-- <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1">功耗限制 <span
                     class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span>
                 <span class="text-purple-400 font-medium font-mono">{{ GPUData.PowerLimit }} W</span>
               </div>
               <a-slider v-model="GPUData.PowerLimit" :min="powerLimitRange.Min" :max="powerLimitRange.Max" class="w-full"/>
-            </div>
+            </div> -->
+          </div>
+
+          <div class="flex justify-between items-center pt-2 border-t border-white/[0.04]">
+            <button @click="handleResetNormal"
+                    class="flex items-center gap-2 text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.05] px-4 py-2 rounded-lg transition-colors">
+              重置
+            </button>
+            <button @click="handleApplyNormal" :disabled="loading"
+                    class="text-xs font-medium text-white bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 disabled:opacity-50 px-6 py-2 rounded-lg transition-all shadow-[0_0_15px_rgba(138,43,226,0.3)]">
+              {{ loading ? '应用中...' : '应用' }}
+            </button>
           </div>
         </div>
 
-        <!-- 4. 高级超频 -->
-        <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-5">
-          <h2 class="text-[13px] font-semibold text-gray-300">高级超频</h2>
-
+        <!-- 高级超频面板 -->
+        <div v-if="showAdvanced" class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-5">
           <div class="space-y-5">
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
@@ -296,26 +343,19 @@ async function handleResetAll() {
               <a-slider v-model="gpuVoltageOffset" :min="-100" :max="100" class="w-full"/>
             </div>
           </div>
-        </div>
 
-        <!-- 5. 全局应用控制栏 -->
-        <div class="flex justify-between items-center pt-2">
-          <button @click="handleResetAll"
-                  class="flex items-center gap-2 text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.05] px-4 py-2 rounded-lg transition-colors">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3m-3-3v12"/>
-            </svg>
-            重置
-          </button>
-
-          <div class="flex gap-3">
-            <button @click="handleApplyAll" :disabled="loading"
+          <div class="flex justify-between items-center pt-2 border-t border-white/[0.04]">
+            <button @click="handleResetAdvanced"
+                    class="flex items-center gap-2 text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.05] px-4 py-2 rounded-lg transition-colors">
+              重置
+            </button>
+            <button @click="handleApplyAdvanced" :disabled="loading"
                     class="text-xs font-medium text-white bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 disabled:opacity-50 px-6 py-2 rounded-lg transition-all shadow-[0_0_15px_rgba(138,43,226,0.3)]">
               {{ loading ? '应用中...' : '应用' }}
             </button>
           </div>
         </div>
+
 
       </div>
 

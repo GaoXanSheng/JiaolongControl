@@ -1,11 +1,7 @@
-using System;
-using System.IO;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using JiaoLongControl.Server.Interop;
-using JiaoLongControl.Server.Core.Models;
+using JiaoLongControl.Server.Core.Utils;
 using log4net;
 using log4net.Config;
 
@@ -29,7 +25,18 @@ namespace JiaoLongControl.Server
                 return;
             }
 
-            ConfigSerializer.Initialize();
+            var version = "0.0.0";
+            foreach (var attr in Assembly.GetExecutingAssembly()
+                         .GetCustomAttributes<AssemblyMetadataAttribute>())
+            {
+                if (attr.Key == "AppVersion")
+                {
+                    version = attr.Value ?? "0.0.0";
+                    break;
+                }
+            }
+
+            ConfigSerializer.Initialize(version);
 
             AppDomain.CurrentDomain.ProcessExit += (_, __) => Cleanup();
             AppDomain.CurrentDomain.UnhandledException += (_, __) => Cleanup();
@@ -38,21 +45,21 @@ namespace JiaoLongControl.Server
 
             Task.Run(async () =>
             {
-                var version = "0.0.0";
-                foreach (var attr in Assembly.GetExecutingAssembly()
-                             .GetCustomAttributes<AssemblyMetadataAttribute>())
-                {
-                    if (attr.Key == "AppVersion")
-                    {
-                        version = attr.Value ?? "0.0.0";
-                        break;
-                    }
-                }
-
                 var updater = new InnoUpdater(version);
                 await updater.CheckForUpdatesAsync();
             });
+
+            var mainWindow = new MainWindow();
+            bool startInTray = Environment.GetCommandLineArgs()
+                .Any(arg => arg.Equals("--boot", StringComparison.OrdinalIgnoreCase)) &&
+                Bridge.Instance.Config.App.BootMinimized;
+
+            if (!startInTray)
+            {
+                mainWindow.Show();
+            }
         }
+
         protected override void OnExit(ExitEventArgs e)
         {
             Cleanup();
@@ -66,8 +73,9 @@ namespace JiaoLongControl.Server
                 Bridge.Instance?.Fan?.RemoveFanSpeed();
                 Bridge.Instance?.Dispose();
             }
-            catch
+            catch (Exception ex)
             {
+                Logger.Error("Cleanup failed: " + ex.Message, ex);
             }
         }
     }

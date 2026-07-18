@@ -59,6 +59,6 @@ public class FanController : Blding64
     public CommandResult GetMaxFanSpeedSwitch()
     {
         var res = MethodServices.GetValue<byte>(MethodName.MaxFanSpeedSwitch) == 1;
-        return new CommandResult(res, "获取成功");
+        return new CommandResult(res, "获取成功",res);
     }
 }
