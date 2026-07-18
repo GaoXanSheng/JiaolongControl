@@ -102,5 +102,5 @@ dotnet publish JiaoLongControl/JiaoLongControl.csproj -c Release
 ---
 
 <p align="center">
-  <sub>使用风险自负 · 非官方工具 · 与机械革命/同方无关联</sub>
+  <sub>使用风险自负 · 非官方工具 · 与机械革命/清华同方无关联</sub>
 </p>
