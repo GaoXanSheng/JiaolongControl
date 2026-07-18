@@ -48,6 +48,16 @@ namespace JiaoLongControl.Server
                 var updater = new InnoUpdater(version);
                 await updater.CheckForUpdatesAsync();
             });
+
+            var mainWindow = new MainWindow();
+            bool startInTray = Environment.GetCommandLineArgs()
+                .Any(arg => arg.Equals("--boot", StringComparison.OrdinalIgnoreCase)) &&
+                Bridge.Instance.Config.App.BootMinimized;
+
+            if (!startInTray)
+            {
+                mainWindow.Show();
+            }
         }
 
         protected override void OnExit(ExitEventArgs e)
