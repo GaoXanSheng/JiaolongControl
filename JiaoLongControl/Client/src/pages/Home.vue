@@ -109,11 +109,9 @@ async function fetchStaticInfo() {
 let ecgTimer: ReturnType<typeof setInterval> | null = null
 let historyTimer: ReturnType<typeof setInterval> | null = null
 
-onMounted(() => {
-  fetchStaticInfo()
-  fetchPerformanceMode()
+function startTimers() {
+  stopTimers()
   ecgTimer = setInterval(tickEcg, 100)
-  
   historyTimer = setInterval(() => {
     // todo fake usage data
     cpuUsage.value = Math.floor(Math.random() * 30) + 10
@@ -122,11 +120,37 @@ onMounted(() => {
     tempHistory.value.push({ cpu: cpuTemp.value, gpu: gpuTemp.value })
     if (tempHistory.value.length > 10) tempHistory.value.shift()
   }, 2000)
+}
+
+function stopTimers() {
+  if (ecgTimer) {
+    clearInterval(ecgTimer)
+    ecgTimer = null
+  }
+  if (historyTimer) {
+    clearInterval(historyTimer)
+    historyTimer = null
+  }
+}
+
+function handleVisibilityChange() {
+  if (document.hidden) {
+    stopTimers()
+  } else {
+    startTimers()
+  }
+}
+
+onMounted(() => {
+  fetchStaticInfo()
+  fetchPerformanceMode()
+  startTimers()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
-  if (ecgTimer) clearInterval(ecgTimer)
-  if (historyTimer) clearInterval(historyTimer)
+  stopTimers()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 
 // 2. 温度曲线 - 折线图
