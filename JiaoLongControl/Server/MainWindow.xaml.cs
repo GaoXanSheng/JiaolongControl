@@ -36,8 +36,11 @@ namespace JiaoLongControl.Server
 
             if (_startInTray)
             {
-                DestroyWebView();
-                Loaded += (_, _) => Hide();
+                Loaded += async (_, _) =>
+                {
+                    Hide();
+                    await SuspendWebViewAsync();
+                };
             }
 
             Closing += OnClosing;
@@ -219,6 +222,36 @@ namespace JiaoLongControl.Server
             }
         }
 
+        private async Task SuspendWebViewAsync()
+        {
+            try
+            {
+                if (_webView?.CoreWebView2 != null)
+                {
+                    await _webView.CoreWebView2.TrySuspendAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Suspend WebView2 异常: {ex.Message}");
+            }
+        }
+
+        private void ResumeWebView()
+        {
+            try
+            {
+                if (_webView?.CoreWebView2 != null)
+                {
+                    _webView.CoreWebView2.Resume();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Resume WebView2 异常: {ex.Message}");
+            }
+        }
+
         #endregion
 
         #region 窗口控制
@@ -229,6 +262,10 @@ namespace JiaoLongControl.Server
             {
                 CreateWebView();
             }
+            else
+            {
+                ResumeWebView();
+            }
 
             Show();
             WindowState = WindowState.Normal;
@@ -236,11 +273,11 @@ namespace JiaoLongControl.Server
             Activate();
         }
 
-        private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+        private async void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
             e.Cancel = true;
-            DestroyWebView();
             Hide();
+            await SuspendWebViewAsync();
         }
 
         #endregion
