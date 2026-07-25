@@ -1,17 +1,177 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8"/>
-    <title>Control Console</title>
+    <title>JiaoLong Control Console</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #070b1c;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
 
+        /* 初始 Loading 全屏遮罩 */
+        #app-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background:
+                radial-gradient(circle at 15% 10%, rgba(40, 90, 255, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 85% 15%, rgba(180, 60, 255, 0.25) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(13, 16, 37, 0.95) 0%, #070b1c 100%);
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+
+        #app-loader.fade-out {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* 光环动画 */
+        .loader-spinner {
+            position: relative;
+            width: 90px;
+            height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .spinner-outer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: #8A2BE2;
+            border-right-color: #3B82F6;
+            animation: spin 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+            filter: drop-shadow(0 0 10px rgba(138, 43, 226, 0.6));
+        }
+
+        .spinner-inner {
+            position: absolute;
+            width: 70%;
+            height: 70%;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-bottom-color: #00FF7F;
+            border-left-color: #3B82F6;
+            animation: spin-reverse 0.9s linear infinite;
+            filter: drop-shadow(0 0 8px rgba(0, 255, 127, 0.5));
+        }
+
+        .loader-logo-img {
+            width: 42px;
+            height: 42px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 10px rgba(138, 43, 226, 0.7));
+            animation: pulse 1.5s ease-in-out infinite alternate;
+        }
+
+        .loader-title {
+            margin-top: 24px;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            color: #ffffff;
+            text-shadow: 0 0 12px rgba(138, 43, 226, 0.6);
+            background: linear-gradient(90deg, #ffffff, #a78bfa, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .loader-sub {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #94a3b8;
+            letter-spacing: 1.5px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .loader-bar {
+            width: 140px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin-top: 16px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .loader-progress {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 40%;
+            background: linear-gradient(90deg, #8A2BE2, #3B82F6, #00FF7F);
+            border-radius: 3px;
+            animation: progress-move 1.5s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes spin-reverse {
+            0% { transform: rotate(360deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); filter: drop-shadow(0 0 10px rgba(138, 43, 226, 0.4)); }
+            100% { transform: scale(1.05); filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.8)); }
+        }
+
+        @keyframes progress-move {
+            0% { left: -40%; }
+            100% { left: 100%; }
+        }
+    </style>
 </head>
 
 <body>
 <div id="app"></div>
+
+<div id="app-loader">
+    <div class="loader-spinner">
+        <div class="spinner-outer"></div>
+        <div class="spinner-inner"></div>
+        <img src="/src/assets/icon/icon.png" class="loader-logo-img" alt="Logo" />
+    </div>
+    <div class="loader-title">JIAOLONG CONTROL</div>
+    <div class="loader-sub">SYSTEM INITIALIZING</div>
+    <div class="loader-bar">
+        <div class="loader-progress"></div>
+    </div>
+</div>
+
 <script type="module">
-    await window.chrome.webview.ready;
-    console.log("WebView2 ready");
-    var bridge = window.chrome.webview.hostObjects.bridge;
+    try {
+        if (window.chrome && window.chrome.webview) {
+            await window.chrome.webview.ready;
+            console.log("WebView2 ready");
+            var bridge = window.chrome.webview.hostObjects.bridge;
+        }
+    } catch(e) {
+        console.warn("WebView2 host object init warning", e);
+    }
 </script>
 <script type="module" src="src/main.ts"></script>
 </body>
