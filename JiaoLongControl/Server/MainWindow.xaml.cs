@@ -74,7 +74,10 @@ namespace JiaoLongControl.Server
             if (!_webViewDestroyed)
                 return;
 
-            _webView = new WebView2();
+            _webView = new WebView2
+            {
+                DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 7, 11, 28)
+            };
             WebViewHost.Children.Clear();
             WebViewHost.Children.Add(_webView);
 
@@ -171,10 +174,7 @@ namespace JiaoLongControl.Server
 
         private void ConfigureWebView(WebView2 view)
         {
-            // 【新增】允许网页使用 CSS 的 app-region 属性实现无边框下的拖动
             view.CoreWebView2.Settings.IsNonClientRegionSupportEnabled = true;
-
-            // 【新增】注册消息事件，处理前端传来的窗口操作请求
             view.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
 
             view.CoreWebView2.AddHostObjectToScript("bridge", Bridge.Instance);
@@ -212,7 +212,6 @@ namespace JiaoLongControl.Server
                 }
                 else if (message == "window-close")
                 {
-                    // 此处调用 Close 将触发 MainWindow 的 OnClosing 周期，从而正常调用 DestroyWebView() 和 Hide()
                     Close();
                 }
             }
