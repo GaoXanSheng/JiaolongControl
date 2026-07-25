@@ -7,8 +7,22 @@ const systemInfoStore = useSystemInfoStore()
 
 let stopPolling: () => void;
 
+function hideAppLoader() {
+  const loader = document.getElementById('app-loader')
+  if (loader) {
+    loader.classList.add('fade-out')
+    setTimeout(() => {
+      loader.remove()
+    }, 450)
+  }
+}
+
 onMounted(() => {
   stopPolling = systemInfoStore.startPolling()
+  // 在 DOM 挂载和数据初始化后平滑淡出遮罩
+  setTimeout(() => {
+    hideAppLoader()
+  }, 300)
 })
 
 onUnmounted(() => {
