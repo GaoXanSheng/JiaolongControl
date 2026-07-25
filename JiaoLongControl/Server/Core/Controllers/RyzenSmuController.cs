@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Microsoft.Win32;
 using JiaoLongControl.Server.Core.Drivers;
 using JiaoLongControl.Server.Core.Utils;
 
@@ -22,25 +23,42 @@ public class RyzenSmuController : PawnIO
     {
         try
         {
-            using var searcher = new System.Management.ManagementObjectSearcher("SELECT Name FROM Win32_Processor");
-            foreach (System.Management.ManagementObject obj in searcher.Get())
+            string cpuName = GetCpuNameFast();
+            if (string.IsNullOrWhiteSpace(cpuName))
             {
-                string cpuName = obj["Name"]?.ToString() ?? "";
-                
-                if (cpuName.Contains("7945") || cpuName.Contains("7845") || cpuName.Contains("7745"))
-                    CurrentFamily = RyzenSmuFamily.AM5_V1;
-                else if (cpuName.Contains("HX 370") || cpuName.Contains("AI 9") || cpuName.Contains("AI 7") || cpuName.Contains("365") || cpuName.Contains("370") || cpuName.Contains("Strix"))
-                    CurrentFamily = RyzenSmuFamily.FP7_FP8_Strix;
-                else if (cpuName.Contains("7735") || cpuName.Contains("6800") || cpuName.Contains("6900") || cpuName.Contains("7840") || cpuName.Contains("7940") || cpuName.Contains("8840") || cpuName.Contains("8845"))
-                    CurrentFamily = RyzenSmuFamily.FP7_FP8;
-                else if (cpuName.Contains("5800") || cpuName.Contains("5900") || cpuName.Contains("5600") || cpuName.Contains("4800") || cpuName.Contains("4600"))
-                    CurrentFamily = RyzenSmuFamily.FP6;
-                else
-                    CurrentFamily = RyzenSmuFamily.AM5_V1;
-                break;
+                using var searcher = new System.Management.ManagementObjectSearcher("SELECT Name FROM Win32_Processor");
+                foreach (System.Management.ManagementObject obj in searcher.Get())
+                {
+                    cpuName = obj["Name"]?.ToString() ?? "";
+                    break;
+                }
             }
+
+            if (cpuName.Contains("7945") || cpuName.Contains("7845") || cpuName.Contains("7745"))
+                CurrentFamily = RyzenSmuFamily.AM5_V1;
+            else if (cpuName.Contains("HX 370") || cpuName.Contains("AI 9") || cpuName.Contains("AI 7") || cpuName.Contains("365") || cpuName.Contains("370") || cpuName.Contains("Strix"))
+                CurrentFamily = RyzenSmuFamily.FP7_FP8_Strix;
+            else if (cpuName.Contains("7735") || cpuName.Contains("6800") || cpuName.Contains("6900") || cpuName.Contains("7840") || cpuName.Contains("7940") || cpuName.Contains("8840") || cpuName.Contains("8845"))
+                CurrentFamily = RyzenSmuFamily.FP7_FP8;
+            else if (cpuName.Contains("5800") || cpuName.Contains("5900") || cpuName.Contains("5600") || cpuName.Contains("4800") || cpuName.Contains("4600"))
+                CurrentFamily = RyzenSmuFamily.FP6;
+            else
+                CurrentFamily = RyzenSmuFamily.AM5_V1;
         }
         catch { }
+    }
+
+    private static string GetCpuNameFast()
+    {
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\CentralProcessor\0");
+            return key?.GetValue("ProcessorNameString")?.ToString() ?? "";
+        }
+        catch
+        {
+            return "";
+        }
     }
 
     private CommandResult Send(uint cmd, uint arg, bool isMp1, string name)
