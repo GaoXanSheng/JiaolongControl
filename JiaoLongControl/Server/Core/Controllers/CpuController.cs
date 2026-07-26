@@ -20,15 +20,25 @@ namespace JiaoLongControl.Server.Core.Controllers
     [ClassInterface(ClassInterfaceType.AutoDual)]
     public class CpuController : IDisposable
     {
-        private readonly PerformanceCounter _cpuCounter;
-        private readonly PerformanceCounter _cpuFreqCounter;
+        private PerformanceCounter? _cpuCounter;
+        private PerformanceCounter? _cpuFreqCounter;
 
         public CpuController()
         {
-            _cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-            _cpuCounter.NextValue();
-            _cpuFreqCounter = new PerformanceCounter("Processor Information", "% Processor Performance", "_Total");
-            _cpuFreqCounter.NextValue();
+            Task.Run(() =>
+            {
+                try
+                {
+                    var counter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+                    counter.NextValue();
+                    _cpuCounter = counter;
+
+                    var freqCounter = new PerformanceCounter("Processor Information", "% Processor Performance", "_Total");
+                    freqCounter.NextValue();
+                    _cpuFreqCounter = freqCounter;
+                }
+                catch { }
+            });
         }
 
         public CommandResult SetCpuShortPower(byte sp)
@@ -75,7 +85,8 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             try
             {
-                return new CommandResult(true, "获取成功", (int)_cpuCounter.NextValue());
+                int usage = _cpuCounter != null ? (int)_cpuCounter.NextValue() : 0;
+                return new CommandResult(true, "获取成功", usage);
             }
             catch (Exception ex)
             {
@@ -232,10 +243,10 @@ namespace JiaoLongControl.Server.Core.Controllers
                 stats.Temperature = MethodServices.GetValue<byte>(MethodName.CPUThermometer);
                 
                 // Usage
-                stats.Usage = (int)_cpuCounter.NextValue();
+                stats.Usage = _cpuCounter != null ? (int)_cpuCounter.NextValue() : 0;
                 
                 // Frequency
-                float perfPercent = _cpuFreqCounter.NextValue();
+                float perfPercent = _cpuFreqCounter != null ? _cpuFreqCounter.NextValue() : 100f;
                 stats.FrequencyMhz = (int)(perfPercent / 100 * GetBaseFrequency());
                 
                 // Voltage
@@ -297,8 +308,8 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         public void Dispose()
         {
-            _cpuCounter.Dispose();
-            _cpuFreqCounter.Dispose();
+            _cpuCounter?.Dispose();
+            _cpuFreqCounter?.Dispose();
             GC.SuppressFinalize(this);
         }
     }
