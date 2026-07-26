@@ -4,7 +4,7 @@ using System.Text.Json;
 using System.Windows;
 using log4net;
 
-namespace JiaoLongControl.Server
+namespace JiaoLongControl.Server.Core.Utils
 {
     public class InnoUpdater
     {
