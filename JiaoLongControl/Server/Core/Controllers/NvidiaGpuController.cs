@@ -112,13 +112,31 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         public CommandResult GetGpuCoreClock(int gpuIndex = -1)
         {
-            try { return new CommandResult(true, "获取成功", (int)(GetGPU(gpuIndex).CurrentClockFrequencies.GraphicsClock.Frequency / 1000)); }
+            try
+            {
+                var gpu = GetGPU(gpuIndex);
+                int clock = (int)(gpu.BoostClockFrequencies.GraphicsClock.Frequency / 1000);
+                if (clock == 0)
+                {
+                    clock = (int)(gpu.CurrentClockFrequencies.GraphicsClock.Frequency / 1000);
+                }
+                return new CommandResult(true, "获取成功", clock);
+            }
             catch (Exception ex) { return new CommandResult(false, ex.Message); }
         }
 
         public CommandResult GetGpuMemoryClock(int gpuIndex = -1)
         {
-            try { return new CommandResult(true, "获取成功", (int)(GetGPU(gpuIndex).CurrentClockFrequencies.MemoryClock.Frequency / 1000)); }
+            try
+            {
+                var gpu = GetGPU(gpuIndex);
+                int clock = (int)(gpu.BoostClockFrequencies.MemoryClock.Frequency / 1000);
+                if (clock == 0)
+                {
+                    clock = (int)(gpu.CurrentClockFrequencies.MemoryClock.Frequency / 1000);
+                }
+                return new CommandResult(true, "获取成功", clock);
+            }
             catch (Exception ex) { return new CommandResult(false, ex.Message); }
         }
 
@@ -160,10 +178,22 @@ namespace JiaoLongControl.Server.Core.Controllers
             try
             {
                 var gpu = GetGPU(gpuIndex);
-                int currentMhz = (int)(gpu.CurrentClockFrequencies.MemoryClock.Frequency / 1000);
-                if (currentMhz < 1000) throw new Exception("Invalid memory clock");
-                int minMhz = Math.Max(0, currentMhz - 2000);
-                int maxMhz = currentMhz + 3000;
+                int baseMem = (int)(gpu.BaseClockFrequencies.MemoryClock.Frequency / 1000);
+                int boostMem = (int)(gpu.BoostClockFrequencies.MemoryClock.Frequency / 1000);
+
+                if (boostMem == 0) boostMem = (int)(gpu.CurrentClockFrequencies.MemoryClock.Frequency / 1000);
+                if (baseMem == 0) baseMem = Math.Max(0, boostMem - 2000);
+
+                if (boostMem == 0) throw new Exception("Invalid memory clock");
+
+                int minMhz = Math.Min(baseMem, boostMem);
+                int maxMhz = Math.Max(baseMem, boostMem);
+
+                if (minMhz == maxMhz || minMhz == 0)
+                {
+                    minMhz = Math.Max(0, maxMhz - 2000);
+                }
+
                 return new CommandResult(true, "获取成功", new { Min = minMhz, Max = maxMhz });
             }
             catch { return new CommandResult(true, "获取成功 (Fallback)", new { Min = 0, Max = 10000 }); }
@@ -239,14 +269,32 @@ namespace JiaoLongControl.Server.Core.Controllers
                 return new CommandResult(false, $"驱动阶段失败: {installResult.Message}");
 
             const string deviceId = @"ACPI\NVDA0820\NPCF";
-            string enableArgs = $@"/enable-device ""{deviceId}""";
-            var enableRes = ExecuteSystemCommand("pnputil", enableArgs);
+
+            // 1. 尝试启用设备 (Win10 pnputil -> Win11 /deviceid -> Win11 PowerShell PnpDevice)
+            var enableRes = ExecuteSystemCommand("pnputil", $@"/enable-device ""{deviceId}""");
+            if (!enableRes.Success)
+            {
+                enableRes = ExecuteSystemCommand("pnputil", $@"/enable-device /deviceid ""{deviceId}""");
+            }
+            if (!enableRes.Success)
+            {
+                enableRes = ExecuteSystemCommand("powershell", $@"-NoProfile -Command ""Get-PnpDevice | Where-Object {{ $_.HardwareID -like '*NVDA0820*' }} | Enable-PnpDevice -Confirm:$false""");
+            }
             if (!enableRes.Success)
                 return new CommandResult(false, $"UnlockDB 失败 (启用设备阶段): {enableRes.Message}");
 
             Thread.Sleep(3000);
-            string disableArgs = $@"/disable-device ""{deviceId}""";
-            var disableRes = ExecuteSystemCommand("pnputil", disableArgs);
+
+            // 2. 尝试禁用设备 (Win10 pnputil -> Win11 /deviceid -> Win11 PowerShell PnpDevice)
+            var disableRes = ExecuteSystemCommand("pnputil", $@"/disable-device ""{deviceId}""");
+            if (!disableRes.Success)
+            {
+                disableRes = ExecuteSystemCommand("pnputil", $@"/disable-device /deviceid ""{deviceId}""");
+            }
+            if (!disableRes.Success)
+            {
+                disableRes = ExecuteSystemCommand("powershell", $@"-NoProfile -Command ""Get-PnpDevice | Where-Object {{ $_.HardwareID -like '*NVDA0820*' }} | Disable-PnpDevice -Confirm:$false""");
+            }
             if (!disableRes.Success)
                 return new CommandResult(false, $"UnlockDB 失败 (禁用设备阶段): {disableRes.Message}");
 

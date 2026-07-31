@@ -184,7 +184,7 @@ function handleCancel() {
           <h2 class="text-[13px] font-semibold text-gray-300">核心设置</h2>
 
           <div class="space-y-6">
-            <!-- 功耗限制 (PL1) -->
+            <!-- 短时功耗限制 (PL1) -->
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1">功耗限制 (PL1) <span class="text-gray-500 cursor-pointer text-[10px] hover:text-gray-300">ⓘ</span></span>
@@ -193,10 +193,10 @@ function handleCancel() {
               <a-slider v-model="CPUData.CpuLongPower" :min="30" :max="255" class="w-full" />
             </div>
 
-            <!-- 短时功耗限制 (PL2) -->
+            <!-- 长时功耗限制 (PL2) -->
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
-                <span class="text-gray-300 flex items-center gap-1">短时功耗限制 (PL2) <span class="text-gray-500 cursor-pointer text-[10px] hover:text-gray-300">ⓘ</span></span>
+                <span class="text-gray-300 flex items-center gap-1">长时功耗限制 (PL2) <span class="text-gray-500 cursor-pointer text-[10px] hover:text-gray-300">ⓘ</span></span>
                 <span class="text-purple-400 font-medium font-mono">{{ CPUData.CpuShortPower }} W</span>
               </div>
               <a-slider v-model="CPUData.CpuShortPower" :min="30" :max="255" class="w-full" />
@@ -209,6 +209,15 @@ function handleCancel() {
                 <span class="text-purple-400 font-medium font-mono">{{ configStore.config?.Smu?.CurveOptimizerAll ?? 0 }}</span>
               </div>
               <a-slider v-model="configStore.config.Smu.CurveOptimizerAll" :min="-50" :max="50" class="w-full" />
+            </div>
+
+            <!-- CPU 温度墙 -->
+            <div class="space-y-2">
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-gray-300 flex items-center gap-1">CPU 温度墙 <span class="text-gray-500 cursor-pointer text-[10px] hover:text-gray-300">ⓘ</span></span>
+                <span class="text-purple-400 font-medium font-mono">{{ CPUData.CpuTempWall }} °C</span>
+              </div>
+              <a-slider v-model="CPUData.CpuTempWall" :min="60" :max="105" class="w-full" />
             </div>
 
             <!-- 最大睿频频率 -->
