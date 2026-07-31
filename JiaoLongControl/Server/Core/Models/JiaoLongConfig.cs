@@ -55,10 +55,10 @@ public class CpuSection
 
 public class GpuSection
 {
-    [ConfigComment("GPU核心频率偏移 (MHz)")]
+    [ConfigComment("GPU核心频率 (MHz)")]
     public int GpuClock { get; set; }
 
-    [ConfigComment("GPU显存频率偏移 (MHz)")]
+    [ConfigComment("GPU显存频率 (MHz)")]
     public int MemoryClock { get; set; } = 100;
 
     [ConfigComment("GPU功率限制 (W)")]
