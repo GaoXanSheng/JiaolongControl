@@ -151,7 +151,6 @@ declare global {
                             GetGpuCoreClockRange(gpuIndex?: number): Promise<any>;
                             GetGpuMemoryClockRange(gpuIndex?: number): Promise<any>;
                             GetGpuPowerLimitRange(gpuIndex?: number): Promise<any>;
-                            UnlockDB(): Promise<any>;
                         };
                         Power: {
                             SetCPUMaxFrequency(mhz: number): Promise<any>;
@@ -324,7 +323,6 @@ export const NvidiaGpu = {
     LockMemoryClock: (freq: number, gpuIndex?: number) => call(raw.NvidiaGpu.LockMemoryClock(freq, gpuIndex)),
     ResetMemoryClock: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetMemoryClock(gpuIndex)),
     SetPowerLimit: (watts: number, gpuIndex?: number) => call(raw.NvidiaGpu.SetPowerLimit(watts, gpuIndex)),
-    UnlockDB: () => call(raw.NvidiaGpu.UnlockDB())
 };
 
 export const SystemInfo = {
