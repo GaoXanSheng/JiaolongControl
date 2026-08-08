@@ -1,32 +1,43 @@
-<script async setup lang="ts">
+<script setup lang="ts">
+import {computed, onMounted, ref} from "vue";
+import {Message} from '@arco-design/web-vue'
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
+import {useConfigStore} from '@/stores/config'
 
-import {ref} from "vue";
-import {Config} from '@/utils/bridge';
-
+const configStore = useConfigStore()
 const loading = ref(false)
+const value = computed(() => configStore.config?.App.BootSetRyzenSumCurveOptimizerAll ?? false)
 
-const fullResult = await Config.GetConfig()
-const BootStart = ref(fullResult.Data.App.BootSetRyzenSumCurveOptimizerAll)
-async function SetBootStart(value: string | number | boolean) {
-  if (typeof value !== 'boolean') return
+onMounted(() => configStore.fetchConfig())
+
+async function onChange(value: string | number | boolean) {
+  if (typeof value !== 'boolean' || !configStore.config) return
+  const prev = configStore.config.App.BootSetRyzenSumCurveOptimizerAll
   loading.value = true
-  const fullResult = await Config.GetConfig()
-  const config = fullResult.Data
-  config.App.BootSetRyzenSumCurveOptimizerAll = value;
-  await Config.SetConfig(config)
-  BootStart.value = value
-  loading.value = false
+  try {
+    configStore.config.App.BootSetRyzenSumCurveOptimizerAll = value
+    const res = await configStore.saveConfig()
+    if (!res?.Success) {
+      configStore.config.App.BootSetRyzenSumCurveOptimizerAll = prev
+      Message.error(res?.Message || '保存失败')
+    }
+  } catch (e) {
+    configStore.config.App.BootSetRyzenSumCurveOptimizerAll = prev
+    Message.error('保存失败')
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
 <template>
-  <setting-card-component title="RyzenSMU 全核降压自动应用" description="在软件启动时，自动应用【Ryzen SMU】页面中保存�?Curve Optimizer 全核心负压（降压超频）设定">
+  <setting-card-component title="RyzenSMU 全核降压自动应用" description="在软件启动时，自动应用【Ryzen SMU】页面中保存的 Curve Optimizer 全核心负压（降压超频）设定">
     <template #extra>
       <a-switch
-          :model-value="BootStart"
+          :model-value="value"
           :loading="loading"
-          @change="SetBootStart($event)"
+          @change="onChange($event)"
       >
         <template #checked-icon>
           <icon-check/>

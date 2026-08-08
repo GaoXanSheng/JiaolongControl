@@ -156,6 +156,7 @@ async function handleApplyNormal() {
   try {
     await NvidiaGpu.LockGpuClock(GPUData.value.GpuClock);
     await NvidiaGpu.LockMemoryClock(GPUData.value.MemoryClock);
+    // 功耗限制：笔记本 TGP 由固件/EC 管理，NvAPI 接口在笔记本上不可用，故不启用
     // await NvidiaGpu.SetPowerLimit(GPUData.value.PowerLimit);
     await configStore.saveConfig()
     Message.success('常规设置已应用并保存');
@@ -291,6 +292,7 @@ async function handleResetAdvanced() {
               <a-slider v-model="GPUData.MemoryClock" :min="memClockRange.Min" :max="memClockRange.Max" class="w-full"/>
             </div>
 
+            <!-- 功耗限制：笔记本 TGP 由固件/EC 管理，驱动接口不可用，暂不提供 -->
             <!-- <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1">功耗限制 <span

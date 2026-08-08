@@ -38,6 +38,9 @@ public class DriverLoader
             IntPtr serviceHandle = Advapi32.OpenService(scmHandle, serviceName, SERVICE_ALL_ACCESS);
             if (serviceHandle != IntPtr.Zero)
             {
+                // 服务已存在：尝试将启动类型改为「手动」并解除可能的禁用状态。
+                // 失败不阻塞后续 StartService（若服务本就在运行，StartService 会返回 1056 视为成功；
+                // 若服务被禁用，StartService 返回 1058，由下方分支给出明确提示）。
                 ChangeServiceConfig(
                     serviceHandle,
                     SERVICE_NO_CHANGE,
@@ -83,8 +86,10 @@ public class DriverLoader
                     }
                     if (err == 1058)
                     {
-                        // 服务是禁止状态
-
+                        // 服务被禁用：启动类型已在上方改为「手动」，重试一次
+                        if (Advapi32.StartService(serviceHandle, 0, null))
+                            return;
+                        throw new Exception($"驱动服务 {serviceName} 被系统禁用，请在「服务」管理器中将其启动类型改为“手动”并启动，或检查安全软件设置。");
                     }
                     throw new Win32Exception(err);
                 }

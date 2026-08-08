@@ -1,25 +1,33 @@
-<script async setup lang="ts">
+<script setup lang="ts">
+import {computed, onMounted, ref} from "vue";
+import {Message} from '@arco-design/web-vue'
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
+import {useConfigStore} from '@/stores/config'
 
-import {onMounted, ref} from "vue";
-import {Config} from '@/utils/bridge';
-
+const configStore = useConfigStore()
 const loading = ref(false)
-const BootStartAdvancedCPUSystem = ref(false)
-onMounted(async () => {
-  const fullResult = await Config.GetConfig()
-  BootStartAdvancedCPUSystem.value = fullResult.Data.App.BootAdvancedCPUSystem
-})
+const value = computed(() => configStore.config?.App.BootAdvancedCPUSystem ?? false)
 
-async function SetBootStartAdvancedCPUSystem(value: string | number | boolean) {
-  if (typeof value !== 'boolean') return
+onMounted(() => configStore.fetchConfig())
+
+async function onChange(value: string | number | boolean) {
+  if (typeof value !== 'boolean' || !configStore.config) return
+  const prev = configStore.config.App.BootAdvancedCPUSystem
   loading.value = true
-  const fullResult = await Config.GetConfig()
-  const config = fullResult.Data
-  config.App.BootAdvancedCPUSystem = value;
-  await Config.SetConfig(config)
-  BootStartAdvancedCPUSystem.value = value
-  loading.value = false
+  try {
+    configStore.config.App.BootAdvancedCPUSystem = value
+    const res = await configStore.saveConfig()
+    if (!res?.Success) {
+      configStore.config.App.BootAdvancedCPUSystem = prev
+      Message.error(res?.Message || '保存失败')
+    }
+  } catch (e) {
+    configStore.config.App.BootAdvancedCPUSystem = prev
+    Message.error('保存失败')
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -27,9 +35,9 @@ async function SetBootStartAdvancedCPUSystem(value: string | number | boolean) {
   <setting-card-component title="CPU 参数自动应用" description="在软件启动时，自动载入并应用【CPU】设置页面中保存的功耗、频率、温度墙等高级参数">
     <template #extra>
       <a-switch
-          :model-value="BootStartAdvancedCPUSystem"
+          :model-value="value"
           :loading="loading"
-          @change="SetBootStartAdvancedCPUSystem($event)"
+          @change="onChange($event)"
       >
         <template #checked-icon>
           <icon-check/>

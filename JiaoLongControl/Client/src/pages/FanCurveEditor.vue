@@ -190,7 +190,7 @@
               <template #prepend>温度 (°C)</template>
             </a-input-number>
             <a-input-number v-model="editForm.speed" :min="speedRange[0]" :max="speedRange[1]" style="width: 100%">
-              <template #prepend>转�?(RPM)</template>
+              <template #prepend>转速 (RPM)</template>
             </a-input-number>
           </a-space>
         </a-modal>

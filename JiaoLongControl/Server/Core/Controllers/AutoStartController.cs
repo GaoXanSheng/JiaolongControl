@@ -48,6 +48,7 @@ public class AutoStartController
     public CommandResult IsEnabled()
     {
         using var ts = new TaskService();
-        return new CommandResult(ts.GetTask(AppName) != null, ts.GetTask(AppName) != null ? "开机自启已启用" : "开机自启未启用");
+        var task = ts.GetTask(AppName);
+        return new CommandResult(task != null, task != null ? "开机自启已启用" : "开机自启未启用");
     }
 }
