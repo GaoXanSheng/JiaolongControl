@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
 using Microsoft.Web.WebView2.Core;
@@ -12,13 +13,26 @@ namespace JiaoLongControl.Server
 {
     public partial class MainWindow : Window
     {
+        private static readonly log4net.ILog Logger =
+            log4net.LogManager.GetLogger(typeof(MainWindow));
+
         private Hardcodet.Wpf.TaskbarNotification.TaskbarIcon _taskbarIcon = null!;
         private string _webRoot = string.Empty;
         private WebView2? _webView;
         private bool _webViewDestroyed = true;
         private bool _allowClose;
+        // 退出中：抑制退出阶段 ProcessFailed 等无意义日志/重建（浏览器进程被销毁时正常退出）
+        private bool _isShuttingDown;
         // WebView 重建代次：异步初始化完成后需校验代次，避免旧任务的错误覆盖层/导航落到新 WebView 或已销毁的 UI 树
         private int _webViewGeneration;
+        // 进程崩溃连续计数：渲染/GPU 进程崩溃先轻量 Reload，连续崩溃则整体重建
+        private int _processFailCount;
+        // 连续重建计数：自动重建超过上限则停止，避免进程反复崩溃时无限重建
+        private int _recreateCount;
+        private Grid? _loadingOverlay;
+        private Grid? _errorOverlay;
+        // ProcessFailed 处理器引用：ConfigureWebView 订阅、DestroyWebView 注销，保证重建后旧回调不再触发
+        private EventHandler<CoreWebView2ProcessFailedEventArgs>? _processFailedHandler;
 
         private static bool IsBootStart =>
             Environment.GetCommandLineArgs()
@@ -52,7 +66,7 @@ namespace JiaoLongControl.Server
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"SelfStart 执行异常: {ex.Message}");
+                    Logger.Error("SelfStart 执行异常", ex);
                 }
             };
 
@@ -73,13 +87,32 @@ namespace JiaoLongControl.Server
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"恢复后 SelfStart 执行异常: {ex.Message}");
+                        Logger.Error("恢复后 SelfStart 执行异常", ex);
                     }
                 });
             }
         }
 
         #region 初始化
+
+        /// <summary>
+        /// 安全获取 CoreWebView2。
+        /// 浏览器进程崩溃后，WebView2.CoreWebView2 属性 getter 会抛 InvalidOperationException
+        /// （VerifyBrowserNotCrashed）而非返回 null，所有访问都必须经此封装。
+        /// </summary>
+        private static CoreWebView2? SafeCore(WebView2? view)
+        {
+            if (view == null)
+                return null;
+            try
+            {
+                return view.CoreWebView2;
+            }
+            catch
+            {
+                return null;
+            }
+        }
 
         private void InitializePaths()
         {
@@ -96,6 +129,7 @@ namespace JiaoLongControl.Server
                 return;
 
             int generation = ++_webViewGeneration;
+            _processFailCount = 0;
 
             _webView = new WebView2
             {
@@ -103,6 +137,7 @@ namespace JiaoLongControl.Server
             };
             WebViewHost.Children.Clear();
             WebViewHost.Children.Add(_webView);
+            ShowLoadingOverlay();
 
             _webViewDestroyed = false;
 
@@ -112,48 +147,17 @@ namespace JiaoLongControl.Server
 
         /// <summary>
         /// 初始化 WebView2 并加载前端页面。
-        /// 环境创建失败（Runtime 缺失 / userDataFolder 被残留进程锁定等）或页面导航失败时自动重试，
-        /// 最终失败则显示错误提示而不是静默白屏。
+        /// 环境创建失败（Runtime 缺失 / userDataFolder 被残留进程锁定等）时按递增间隔重试，
+        /// 页面导航失败自动重试；最终失败显示带「重新加载」按钮的错误提示而不是静默白屏。
         /// 每步完成后校验 generation，若期间窗口被销毁或 WebView 被重建则立即放弃，防止操作旧实例。
         /// </summary>
         private async Task InitializeWebViewAsync(WebView2 view, int generation)
         {
-            try
+            // 阶段一：创建 WebView2 环境（重启后首次冷启动较慢，或 userDataFolder 被上次残留进程锁定，
+            // 递增重试给 WebView2 释放锁/完成初始化留出时间；加超时防止 CreateAsync 静默挂起导致死屏）
+            bool envReady = false;
+            for (int attempt = 1; attempt <= 3 && !envReady; attempt++)
             {
-                string userDataFolder = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "JiaoLongControl",
-                    "WebView2"
-                );
-
-                Directory.CreateDirectory(userDataFolder);
-
-                var env = await CoreWebView2Environment.CreateAsync(
-                    null,
-                    userDataFolder
-                );
-
-                if (generation != _webViewGeneration || _webViewDestroyed)
-                    return;
-
-                await view.EnsureCoreWebView2Async(env);
-
-                if (generation != _webViewGeneration || _webViewDestroyed)
-                    return;
-
-                ConfigureWebView(view);
-
-                Bridge.Instance.InitWebView(view.CoreWebView2);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"WebView2 初始化失败: {ex.Message}");
-                // 环境创建失败时短暂等待后重试（解决重启后首次启动偶发的 runtime 未就绪/目录锁冲突）
-                await Task.Delay(1500);
-
-                if (generation != _webViewGeneration || _webViewDestroyed)
-                    return;
-
                 try
                 {
                     string userDataFolder = Path.Combine(
@@ -161,51 +165,72 @@ namespace JiaoLongControl.Server
                         "JiaoLongControl",
                         "WebView2"
                     );
-                    var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
-                    await view.EnsureCoreWebView2Async(env);
+                    Directory.CreateDirectory(userDataFolder);
+
+                    // CoreWebView2Environment.CreateAsync 在 userDataFolder 被残留进程锁定时可能长时间挂起而非抛异常，
+                    // 必须用超时保护，否则初始化永远卡在第一步，界面停留在加载提示
+                    var envTask = CoreWebView2Environment.CreateAsync(null, userDataFolder);
+                    var envDone = await Task.WhenAny(envTask, Task.Delay(TimeSpan.FromSeconds(15)));
+                    if (envDone != envTask)
+                        throw new TimeoutException("WebView2 环境创建超时（userDataFolder 可能被残留进程锁定）");
+                    var env = await envTask;
 
                     if (generation != _webViewGeneration || _webViewDestroyed)
                         return;
 
-                    ConfigureWebView(view);
+                    var initTask = view.EnsureCoreWebView2Async(env);
+                    var initDone = await Task.WhenAny(initTask, Task.Delay(TimeSpan.FromSeconds(15)));
+                    if (initDone != initTask)
+                        throw new TimeoutException("WebView2 初始化超时");
+                    await initTask;
+
+                    if (generation != _webViewGeneration || _webViewDestroyed)
+                        return;
+
+                    ConfigureWebView(view, generation);
                     Bridge.Instance.InitWebView(view.CoreWebView2);
+                    envReady = true;
                 }
-                catch (Exception retryEx)
+                catch (Exception ex)
                 {
-                    Debug.WriteLine($"WebView2 初始化重试失败: {retryEx.Message}");
-                    if (generation == _webViewGeneration && !_webViewDestroyed)
-                        ShowWebViewError($"界面初始化失败：{retryEx.Message}\n请确认已安装 Microsoft Edge WebView2 Runtime 后重启应用。");
-                    return;
+                    Logger.Error($"WebView2 初始化失败（第 {attempt} 次）: {ex.Message}");
+                    if (attempt < 3)
+                    {
+                        await Task.Delay(1500 * attempt); // 1.5s / 3s / 5s
+                        if (generation != _webViewGeneration || _webViewDestroyed)
+                            return;
+                    }
+                    else
+                    {
+                        if (generation == _webViewGeneration && !_webViewDestroyed)
+                            ShowWebViewError($"界面初始化失败：{ex.Message}\n请确认已安装 Microsoft Edge WebView2 Runtime 后点击「重新加载」重试。");
+                        return;
+                    }
                 }
             }
 
-            // 页面导航 + 失败重试（最多 3 次）
-            for (int attempt = 1; attempt <= 3; attempt++)
-            {
-                bool ok = await NavigateWithTimeoutAsync(view, generation, TimeSpan.FromSeconds(20));
-                if (ok)
-                    return;
+            if (!envReady)
+                return;
 
-                Debug.WriteLine($"WebView 页面加载失败，第 {attempt} 次重试");
-                await Task.Delay(1000);
-
-                if (generation != _webViewGeneration || _webViewDestroyed)
-                    return;
-            }
-
-            if (generation == _webViewGeneration && !_webViewDestroyed)
-                ShowWebViewError("界面加载失败，请重启应用。");
+            // 阶段二：页面导航 + 失败重试（最多 3 次）
+            await RetryNavigationAsync(view, generation);
         }
 
         /// <summary>导航并等待 NavigationCompleted，返回是否成功</summary>
         private async Task<bool> NavigateWithTimeoutAsync(WebView2 view, int generation, TimeSpan timeout)
         {
+            var core = SafeCore(view);
+            if (core == null)
+                return false;
+
             var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            EventHandler<CoreWebView2NavigationCompletedEventArgs> handler = (_, e) =>
+            EventHandler<CoreWebView2NavigationCompletedEventArgs> handler = (sender, e) =>
             {
-                tcs.TrySetResult(e.IsSuccess && e.HttpStatusCode == 200);
+                // 只响应本实例自己的导航事件，避免旧导航的完成事件误触超时结果
+                if (ReferenceEquals(sender, core))
+                    tcs.TrySetResult(e.IsSuccess && e.HttpStatusCode == 200);
             };
-            view.CoreWebView2.NavigationCompleted += handler;
+            core.NavigationCompleted += handler;
             try
             {
                 view.Source = Directory.Exists(_webRoot)
@@ -222,11 +247,12 @@ namespace JiaoLongControl.Server
             }
             finally
             {
-                // 若期间 WebView 已被销毁/重建，CoreWebView2 可能为 null，需容错
+                // 若期间 WebView 已被销毁/浏览器进程崩溃，用 SafeCore 容错
                 try
                 {
-                    if (!_webViewDestroyed && view.CoreWebView2 != null)
-                        view.CoreWebView2.NavigationCompleted -= handler;
+                    var c = SafeCore(view);
+                    if (c != null)
+                        c.NavigationCompleted -= handler;
                 }
                 catch
                 {
@@ -234,32 +260,288 @@ namespace JiaoLongControl.Server
             }
         }
 
-        /// <summary>在 WebView 区域显示错误提示（兜底，避免白屏无反馈）</summary>
-        private void ShowWebViewError(string message)
+        /// <summary>页面导航失败重试（最多 3 次），成功后移除加载层；供初始化与 Resume 恢复共用</summary>
+        private async Task RetryNavigationAsync(WebView2 view, int generation)
+        {
+            for (int attempt = 1; attempt <= 3; attempt++)
+            {
+                bool ok = await NavigateWithTimeoutAsync(view, generation, TimeSpan.FromSeconds(20));
+                if (ok)
+                {
+                    // 校验代次，避免旧任务的加载层移除误伤新实例的加载层
+                    if (generation == _webViewGeneration && !_webViewDestroyed)
+                        RemoveLoadingOverlay();
+                    return;
+                }
+
+                Logger.Warn($"WebView 页面加载失败，第 {attempt} 次重试");
+                await Task.Delay(1000);
+
+                if (generation != _webViewGeneration || _webViewDestroyed)
+                    return;
+            }
+
+            if (generation == _webViewGeneration && !_webViewDestroyed)
+                ShowWebViewError("界面加载失败，请点击「重新加载」重试。");
+        }
+
+        private void ConfigureWebView(WebView2 view, int generation)
+        {
+            // 初始化正常阶段可安全访问（刚 EnsureCoreWebView2Async 成功）
+            var core = SafeCore(view);
+            if (core == null)
+                throw new InvalidOperationException("CoreWebView2 不可用");
+
+            core.Settings.IsNonClientRegionSupportEnabled = true;
+            core.WebMessageReceived += OnWebMessageReceived;
+
+            // 子进程崩溃恢复。注意：崩溃后 CoreWebView2 属性 getter 会抛异常，
+            // 因此回调内只用闭包捕获的 core/generation 判断，绝不访问 _webView.CoreWebView2
+            _processFailedHandler = (sender, e) =>
+            {
+                try
+                {
+                    Dispatcher.BeginInvoke(() => HandleProcessFailed(sender, e, core, generation));
+                }
+                catch (Exception ex)
+                {
+                    // 应用退出中 Dispatcher 可能已关闭
+                    Logger.Warn($"ProcessFailed 回调分发失败: {ex.Message}");
+                }
+            };
+            core.ProcessFailed += _processFailedHandler;
+
+            // 任何成功的导航都清掉错误覆盖层，并重置崩溃/重建计数
+            core.NavigationCompleted += (sender, e) =>
+            {
+                // 只响应当前实例，防止旧 WebView 的回调误伤新实例
+                if (generation != _webViewGeneration || _webViewDestroyed)
+                    return;
+                if (!ReferenceEquals(sender, core))
+                    return;
+                if (e.IsSuccess && e.HttpStatusCode == 200)
+                {
+                    _processFailCount = 0;
+                    _recreateCount = 0;
+                    RemoveErrorOverlay();
+                }
+            };
+
+            core.AddHostObjectToScript("bridge", Bridge.Instance);
+
+            if (Directory.Exists(_webRoot))
+            {
+                core.SetVirtualHostNameToFolderMapping(
+                    "app.local",
+                    _webRoot,
+                    CoreWebView2HostResourceAccessKind.Allow
+                );
+            }
+        }
+
+        /// <summary>
+        /// WebView2 子进程崩溃处理（经 Dispatcher 转到 UI 线程执行，入参均为闭包捕获的稳定引用）。
+        /// 浏览器进程退出必须整体重建；渲染/GPU 进程先轻量 Reload，连续崩溃再重建。
+        /// </summary>
+        private void HandleProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs e, CoreWebView2 core, int generation)
+        {
+            // 退出阶段浏览器进程被销毁属正常，直接忽略
+            if (_isShuttingDown)
+                return;
+            // 只处理当前实例的崩溃，忽略旧 WebView 排队的事件
+            if (generation != _webViewGeneration || _webViewDestroyed)
+                return;
+            if (!ReferenceEquals(sender, core))
+                return;
+
+            Logger.Warn($"WebView2 子进程异常退出: kind={e.ProcessFailedKind}, exitCode={e.ExitCode}");
+
+            if (e.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited)
+            {
+                _ = DelayedRecreateWebViewAsync(generation, "浏览器进程退出，重建界面");
+                return;
+            }
+
+            _processFailCount++;
+            if (_processFailCount >= 2)
+            {
+                _ = DelayedRecreateWebViewAsync(generation, $"子进程连续崩溃（{_processFailCount} 次），重建界面");
+                return;
+            }
+
+            // 渲染/GPU 进程崩溃：轻量恢复——重新加载当前页面（用闭包 core，避免触碰已崩溃的属性 getter）
+            try
+            {
+                Logger.Warn("尝试 Reload 恢复渲染");
+                core.Reload();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Reload 恢复失败", ex);
+                _ = DelayedRecreateWebViewAsync(generation, "Reload 恢复失败，重建界面");
+            }
+        }
+
+        /// <summary>
+        /// 延迟重建：浏览器进程崩溃瞬间重建新 WebView 可能引发原生资源竞争导致二次崩溃，
+        /// 等待 1s 让崩溃余波平息后再重建。
+        /// </summary>
+        private async Task DelayedRecreateWebViewAsync(int generation, string reason)
+        {
+            try
+            {
+                await Task.Delay(1000);
+                if (generation != _webViewGeneration || _webViewDestroyed)
+                    return;
+                RecreateWebView(reason);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("延迟重建失败", ex);
+            }
+        }
+
+        /// <summary>销毁并重建 WebView（含错误/加载覆盖层清理）；连续重建超上限则停止，避免无限循环</summary>
+        private void RecreateWebView(string reason)
+        {
+            try
+            {
+                _recreateCount++;
+                if (_recreateCount > 3)
+                {
+                    Logger.Error($"WebView 连续重建超过上限，停止自动重建: {reason}");
+                    RemoveErrorOverlay();
+                    ShowWebViewError("界面连续加载失败，请重启应用。");
+                    return;
+                }
+
+                Logger.Warn($"重建 WebView: {reason}");
+                DestroyWebView();
+                if (IsLoaded && Visibility == Visibility.Visible)
+                    CreateWebView();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("重建 WebView 失败", ex);
+            }
+        }
+
+        private void ShowLoadingOverlay()
         {
             try
             {
                 var overlay = new Grid
                 {
-                    Background = System.Windows.Media.Brushes.Black,
+                    Background = new SolidColorBrush(Color.FromRgb(7, 11, 28)),
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     VerticalAlignment = VerticalAlignment.Stretch
                 };
                 var text = new TextBlock
                 {
-                    Text = message,
-                    Foreground = System.Windows.Media.Brushes.White,
+                    Text = "正在加载界面…",
+                    Foreground = Brushes.White,
                     FontSize = 14,
-                    TextWrapping = TextWrapping.Wrap,
                     HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(40)
+                    VerticalAlignment = VerticalAlignment.Center
                 };
                 overlay.Children.Add(text);
-                WebViewHost.Children.Add(overlay);
+                WebViewHost.Children.Add(overlay); // 后添加，位于 WebView 上层
+                _loadingOverlay = overlay;
             }
             catch
             {
+            }
+        }
+
+        private void RemoveLoadingOverlay()
+        {
+            try
+            {
+                if (_loadingOverlay != null && WebViewHost.Children.Contains(_loadingOverlay))
+                    WebViewHost.Children.Remove(_loadingOverlay);
+                _loadingOverlay = null;
+            }
+            catch
+            {
+            }
+        }
+
+        private void RemoveErrorOverlay()
+        {
+            try
+            {
+                if (_errorOverlay != null && WebViewHost.Children.Contains(_errorOverlay))
+                    WebViewHost.Children.Remove(_errorOverlay);
+                _errorOverlay = null;
+            }
+            catch
+            {
+            }
+        }
+
+        /// <summary>在 WebView 区域显示错误提示 + 重新加载按钮（兜底，避免白屏无反馈）</summary>
+        private void ShowWebViewError(string message)
+        {
+            try
+            {
+                RemoveLoadingOverlay();
+
+                var overlay = new Grid
+                {
+                    Background = new SolidColorBrush(Color.FromRgb(7, 11, 28)),
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Stretch
+                };
+                var stack = new StackPanel
+                {
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                var text = new TextBlock
+                {
+                    Text = message,
+                    Foreground = Brushes.White,
+                    FontSize = 14,
+                    TextWrapping = TextWrapping.Wrap,
+                    TextAlignment = TextAlignment.Center,
+                    Margin = new Thickness(40, 0, 40, 20)
+                };
+                stack.Children.Add(text);
+
+                var retryBtn = new Button
+                {
+                    Content = "重新加载",
+                    Width = 140,
+                    Height = 38,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    FontSize = 13
+                };
+                retryBtn.Click += (_, _) =>
+                {
+                    try
+                    {
+                        WebViewHost.Children.Remove(overlay);
+                        _errorOverlay = null;
+                        // 用户手动重载不占用自动重建计数，重置后走标准重建流程
+                        _recreateCount = 0;
+                        DestroyWebView();
+                        if (IsLoaded && Visibility == Visibility.Visible)
+                            CreateWebView();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error("手动重新加载失败", ex);
+                    }
+                };
+                stack.Children.Add(retryBtn);
+
+                overlay.Children.Add(stack);
+                WebViewHost.Children.Add(overlay);
+                _errorOverlay = overlay;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("显示错误提示失败", ex);
             }
         }
 
@@ -285,6 +567,7 @@ namespace JiaoLongControl.Server
             {
                 // 标记允许真正关闭，否则 OnClosing 会拦截（隐藏到托盘）
                 _allowClose = true;
+                _isShuttingDown = true;
                 DestroyWebView();
                 _taskbarIcon.Dispose();
                 Application.Current.Shutdown();
@@ -307,12 +590,15 @@ namespace JiaoLongControl.Server
 
             try
             {
-                // 注销事件
-                if (_webView != null && _webView.CoreWebView2 != null)
+                var core = SafeCore(_webView);
+                if (core != null)
                 {
-                    _webView.CoreWebView2.WebMessageReceived -= OnWebMessageReceived;
+                    core.WebMessageReceived -= OnWebMessageReceived;
+                    if (_processFailedHandler != null)
+                        core.ProcessFailed -= _processFailedHandler;
+                    _processFailedHandler = null;
+                    core.Stop();
                 }
-                _webView?.CoreWebView2?.Stop();
                 _webView?.Dispose();
             }
             catch
@@ -322,24 +608,9 @@ namespace JiaoLongControl.Server
 
             WebViewHost.Children.Clear();
             _webView = null;
+            _loadingOverlay = null;
+            _errorOverlay = null;
             _webViewDestroyed = true;
-        }
-
-        private void ConfigureWebView(WebView2 view)
-        {
-            view.CoreWebView2.Settings.IsNonClientRegionSupportEnabled = true;
-            view.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
-
-            view.CoreWebView2.AddHostObjectToScript("bridge", Bridge.Instance);
-
-            if (Directory.Exists(_webRoot))
-            {
-                view.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                    "app.local",
-                    _webRoot,
-                    CoreWebView2HostResourceAccessKind.Allow
-                );
-            }
         }
 
         // 【新增】响应前端窗口控制请求的方法
@@ -355,8 +626,8 @@ namespace JiaoLongControl.Server
                 }
                 else if (message == "window-maximize")
                 {
-                    WindowState = WindowState == WindowState.Maximized 
-                        ? WindowState.Normal 
+                    WindowState = WindowState == WindowState.Maximized
+                        ? WindowState.Normal
                         : WindowState.Maximized;
                 }
                 else if (message == "window-drag")
@@ -378,9 +649,10 @@ namespace JiaoLongControl.Server
         {
             try
             {
-                if (_webView?.CoreWebView2 != null)
+                var core = SafeCore(_webView);
+                if (core != null)
                 {
-                    await _webView.CoreWebView2.TrySuspendAsync();
+                    await core.TrySuspendAsync();
                 }
             }
             catch (Exception ex)
@@ -393,9 +665,17 @@ namespace JiaoLongControl.Server
         {
             try
             {
-                if (_webView?.CoreWebView2 != null)
+                var core = SafeCore(_webView);
+                if (core != null)
                 {
-                    _webView.CoreWebView2.Resume();
+                    core.Resume();
+                    // 自启最小化场景：Suspend 时导航被挂起、必然超时并留下错误层；
+                    // 恢复后主动重新导航，错误层由导航成功自动移除
+                    if (_errorOverlay != null)
+                    {
+                        RemoveErrorOverlay();
+                        _ = RetryNavigationAsync(_webView!, _webViewGeneration);
+                    }
                 }
             }
             catch (Exception ex)

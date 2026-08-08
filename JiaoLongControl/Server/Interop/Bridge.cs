@@ -26,6 +26,8 @@ namespace JiaoLongControl.Server.Interop
         {
             _webView = webView;
 
+            // WebView 重建时旧 watcher 必须先释放，避免 FileSystemWatcher 泄漏（重复订阅）
+            _watcher?.Dispose();
             _watcher = new ConfigWatcher(ConfigSerializer.ConfigDir);
             _watcher.ConfigChanged += () =>
             {
