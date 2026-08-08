@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
-import { onMounted, ref } from 'vue'
-import { Boot } from '@/utils/bridge'
-import { Config } from '@/utils/bridge'
+import {computed, onMounted, ref} from 'vue'
+import {Message} from '@arco-design/web-vue'
+import {Boot} from '@/utils/bridge'
+import {useConfigStore} from '@/stores/config'
 
+const configStore = useConfigStore()
 const loading = ref(false)
 const BootAutoStart = ref(false)
-const MinimizedAfterBooting = ref(false)
+const MinimizedAfterBooting = computed(() => configStore.config?.App.BootMinimized ?? false)
 
 onMounted(async () => {
   BootAutoStart.value = (await Boot.IsEnabled()).Success
-  const appResult = await Config.GetConfig()
-  if (appResult.Success) MinimizedAfterBooting.value = appResult.Data.App.BootMinimized
+  await configStore.fetchConfig()
 })
 
 async function BootAutoStartHandleChange<T>(value: T) {
@@ -30,15 +31,23 @@ async function BootAutoStartHandleChange<T>(value: T) {
 }
 
 async function MinimizedAfterBootingChange<T>(value: T) {
-  if (typeof value != "boolean") return
+  if (typeof value != "boolean" || !configStore.config) return
+  const prev = configStore.config.App.BootMinimized
   loading.value = true
-  const fullResult = await Config.GetConfig()
-  if (!fullResult.Success) { loading.value = false; return }
-  const config = fullResult.Data
-  config.App.BootMinimized = value
-  await Config.SetConfig(config)
-  MinimizedAfterBooting.value = value
-  loading.value = false
+  try {
+    configStore.config.App.BootMinimized = value
+    const res = await configStore.saveConfig()
+    if (!res?.Success) {
+      configStore.config.App.BootMinimized = prev
+      Message.error(res?.Message || '保存失败')
+    }
+  } catch (e) {
+    configStore.config.App.BootMinimized = prev
+    Message.error('保存失败')
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

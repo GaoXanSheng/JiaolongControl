@@ -69,6 +69,8 @@ declare global {
         chrome?: {
             webview?: {
                 postMessage: (message: any) => any;
+                addEventListener: (type: string, listener: (e: MessageEvent) => void) => void;
+                removeEventListener: (type: string, listener: (e: MessageEvent) => void) => void;
                 hostObjects: {
                     bridge: {
                         CPU: {
@@ -163,6 +165,7 @@ declare global {
                         };
                         SystemInfo: {
                             GetSystemOverview(): Promise<any>;
+                            OpenUrl(url: string): Promise<any>;
                         };
                         RyzenSmu: {
                             SetStapmLimit(watts: number): Promise<any>;
@@ -196,7 +199,26 @@ declare global {
     }
 }
 
-export const raw = window.chrome!.webview!.hostObjects.bridge;
+/**
+ * 惰性获取 WebView2 bridge。
+ * 不能在模块顶层直接访问 window.chrome.webview.hostObjects.bridge：
+ * 一旦获取失败，整个模块会抛异常导致 main.ts 无法执行、页面白屏。
+ * 这里通过 Proxy 在真正调用时才解析，模块加载永不失败；成功获取后缓存引用。
+ */
+let cachedBridge: any = null;
+
+function getBridge(): any {
+    const bridge = cachedBridge ?? window.chrome?.webview?.hostObjects?.bridge;
+    if (!bridge) {
+        throw new Error('WebView2 bridge 不可用（请通过 JiaoLongControl 主窗口使用）');
+    }
+    cachedBridge = bridge;
+    return bridge;
+}
+
+export const raw: any = new Proxy({} as any, {
+    get: (_, prop: string | symbol) => getBridge()[prop],
+});
 
 export async function call<T>(promise: Promise<any>): Promise<CommandResult<T>> {
     // @ts-ignore
@@ -307,6 +329,7 @@ export const NvidiaGpu = {
 
 export const SystemInfo = {
     GetSystemOverview: () => call<SystemOverview>(raw.SystemInfo.GetSystemOverview()),
+    OpenUrl: (url: string) => call(raw.SystemInfo.OpenUrl(url)),
 };
 
 export const RyzenSmu = {
@@ -345,7 +368,12 @@ export const Config = {
     GetConfig: () => call<import('@/types/config').JiaoLongConfigType>(raw.ConfigCtrl.GetConfig()),
     SetConfig: (config: import('@/types/config').JiaoLongConfigType) => call(raw.ConfigCtrl.SetConfig(JSON.stringify(config))),
 };
-const postMessage = window.chrome!.webview!.postMessage;
+const postMessage = (message: any) => {
+    if (!window.chrome?.webview) {
+        throw new Error('WebView2 不可用');
+    }
+    return window.chrome.webview.postMessage(message);
+};
 
 export const Window = {
     Minimize: () => postMessage('window-minimize'),

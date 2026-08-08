@@ -6,7 +6,7 @@ import useStore, {HomeCardType} from '@/stores'
 const store = useStore()
 
 function onClickMenuItem(key: number) {
-  store.$state.SwitchPages = key
+  store.setPage(key)
 }
 
 // 过滤掉 eum 为 8 的“设置”选项，主导航菜单中仅渲染除“设置”之外的其他项
