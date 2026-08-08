@@ -108,15 +108,12 @@ public static class NvapiClockPower
             {
                 version = 0x20002,
                 flags = 0x5,
-                numClocks = 2,
+                numClocks = 1,
                 clockData = new byte[512]
             };
 
             BitConverter.GetBytes((uint)0).CopyTo(set.clockData, 0);
             BitConverter.GetBytes((uint)(freqMhz * 1000)).CopyTo(set.clockData, 4);
-
-            BitConverter.GetBytes((uint)4).CopyTo(set.clockData, 8);
-            BitConverter.GetBytes((uint)(freqMhz * 1000)).CopyTo(set.clockData, 12);
 
             return fn(handle, set) == 0;
         }

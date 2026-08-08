@@ -1,7 +1,5 @@
-using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
-using JiaoLongControl.Server.Core.Drivers;
 using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Native;
 using JiaoLongControl.Server.Core.Utils;
@@ -258,78 +256,9 @@ namespace JiaoLongControl.Server.Core.Controllers
             if (!NvapiClockPower.IsAvailable)
                 return new CommandResult(false, "nvapi64.dll 不可用");
             bool ok = NvapiClockPower.SetPowerLimit(watts, gpuIndex);
-            return new CommandResult(ok, ok ? $"功耗限制已设置为 {watts} W" : "功耗限制设置失败");
-        }
-
-        public CommandResult UnlockDB()
-        {
-            var driver = new NVPCF();
-            var installResult = driver.Install();
-            if (!installResult.Success)
-                return new CommandResult(false, $"驱动阶段失败: {installResult.Message}");
-
-            const string deviceId = @"ACPI\NVDA0820\NPCF";
-
-            // 1. 尝试启用设备 (Win10 pnputil -> Win11 /deviceid -> Win11 PowerShell PnpDevice)
-            var enableRes = ExecuteSystemCommand("pnputil", $@"/enable-device ""{deviceId}""");
-            if (!enableRes.Success)
-            {
-                enableRes = ExecuteSystemCommand("pnputil", $@"/enable-device /deviceid ""{deviceId}""");
-            }
-            if (!enableRes.Success)
-            {
-                enableRes = ExecuteSystemCommand("powershell", $@"-NoProfile -Command ""Get-PnpDevice | Where-Object {{ $_.HardwareID -like '*NVDA0820*' }} | Enable-PnpDevice -Confirm:$false""");
-            }
-            if (!enableRes.Success)
-                return new CommandResult(false, $"UnlockDB 失败 (启用设备阶段): {enableRes.Message}");
-
-            Thread.Sleep(3000);
-
-            // 2. 尝试禁用设备 (Win10 pnputil -> Win11 /deviceid -> Win11 PowerShell PnpDevice)
-            var disableRes = ExecuteSystemCommand("pnputil", $@"/disable-device ""{deviceId}""");
-            if (!disableRes.Success)
-            {
-                disableRes = ExecuteSystemCommand("pnputil", $@"/disable-device /deviceid ""{deviceId}""");
-            }
-            if (!disableRes.Success)
-            {
-                disableRes = ExecuteSystemCommand("powershell", $@"-NoProfile -Command ""Get-PnpDevice | Where-Object {{ $_.HardwareID -like '*NVDA0820*' }} | Disable-PnpDevice -Confirm:$false""");
-            }
-            if (!disableRes.Success)
-                return new CommandResult(false, $"UnlockDB 失败 (禁用设备阶段): {disableRes.Message}");
-
-            return new CommandResult(true, "UnlockDB 成功。");
-        }
-
-        private CommandResult ExecuteSystemCommand(string fileName, string arguments)
-        {
-            try
-            {
-                ProcessStartInfo psi = new ProcessStartInfo
-                {
-                    FileName = fileName,
-                    Arguments = arguments,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                using (Process? process = Process.Start(psi))
-                {
-                    if (process == null) return new CommandResult(false, $"无法启动 {fileName}");
-                    string output = process.StandardOutput.ReadToEnd();
-                    string error = process.StandardError.ReadToEnd();
-                    process.WaitForExit();
-                    if (process.ExitCode != 0)
-                        return new CommandResult(false, $"命令返回码 {process.ExitCode}: {error} {output}");
-                    return new CommandResult(true, output);
-                }
-            }
-            catch (Exception ex)
-            {
-                return new CommandResult(false, $"执行 {fileName} 时发生异常: {ex.Message}");
-            }
+            if (ok)
+                return new CommandResult(true, $"功耗限制已设置为 {watts} W");
+            return new CommandResult(false, "功耗限制设置失败：笔记本 GPU 通常不支持通过驱动接口调节功耗墙（TGP 由固件管理）");
         }
 
         public void Dispose()
