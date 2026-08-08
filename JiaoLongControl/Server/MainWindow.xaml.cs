@@ -188,7 +188,7 @@ namespace JiaoLongControl.Server
                         return;
 
                     ConfigureWebView(view, generation);
-                    Bridge.Instance.InitWebView(view.CoreWebView2);
+                    Bridge.Instance.InitWebView(SafeCore(view)!);
                     envReady = true;
                 }
                 catch (Exception ex)
@@ -345,40 +345,48 @@ namespace JiaoLongControl.Server
         /// </summary>
         private void HandleProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs e, CoreWebView2 core, int generation)
         {
-            // 退出阶段浏览器进程被销毁属正常，直接忽略
-            if (_isShuttingDown)
-                return;
-            // 只处理当前实例的崩溃，忽略旧 WebView 排队的事件
-            if (generation != _webViewGeneration || _webViewDestroyed)
-                return;
-            if (!ReferenceEquals(sender, core))
-                return;
-
-            Logger.Warn($"WebView2 子进程异常退出: kind={e.ProcessFailedKind}, exitCode={e.ExitCode}");
-
-            if (e.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited)
-            {
-                _ = DelayedRecreateWebViewAsync(generation, "浏览器进程退出，重建界面");
-                return;
-            }
-
-            _processFailCount++;
-            if (_processFailCount >= 2)
-            {
-                _ = DelayedRecreateWebViewAsync(generation, $"子进程连续崩溃（{_processFailCount} 次），重建界面");
-                return;
-            }
-
-            // 渲染/GPU 进程崩溃：轻量恢复——重新加载当前页面（用闭包 core，避免触碰已崩溃的属性 getter）
             try
             {
-                Logger.Warn("尝试 Reload 恢复渲染");
-                core.Reload();
+                // 退出阶段浏览器进程被销毁属正常，直接忽略
+                if (_isShuttingDown)
+                    return;
+                // 只处理当前实例的崩溃，忽略旧 WebView 排队的事件
+                if (generation != _webViewGeneration || _webViewDestroyed)
+                    return;
+                if (!ReferenceEquals(sender, core))
+                    return;
+
+                Logger.Warn($"WebView2 子进程异常退出: kind={e.ProcessFailedKind}, exitCode={e.ExitCode}");
+
+                if (e.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited)
+                {
+                    _ = DelayedRecreateWebViewAsync(generation, "浏览器进程退出，重建界面");
+                    return;
+                }
+
+                _processFailCount++;
+                if (_processFailCount >= 2)
+                {
+                    _ = DelayedRecreateWebViewAsync(generation, $"子进程连续崩溃（{_processFailCount} 次），重建界面");
+                    return;
+                }
+
+                // 渲染/GPU 进程崩溃：轻量恢复——重新加载当前页面（用闭包 core，避免触碰已崩溃的属性 getter）
+                try
+                {
+                    Logger.Warn("尝试 Reload 恢复渲染");
+                    core.Reload();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("Reload 恢复失败", ex);
+                    _ = DelayedRecreateWebViewAsync(generation, "Reload 恢复失败，重建界面");
+                }
             }
             catch (Exception ex)
             {
-                Logger.Error("Reload 恢复失败", ex);
-                _ = DelayedRecreateWebViewAsync(generation, "Reload 恢复失败，重建界面");
+                // 兜底：任何异常都不应从这里逃逸到 Dispatcher 导致闪退
+                Logger.Error("ProcessFailed 处理异常", ex);
             }
         }
 
