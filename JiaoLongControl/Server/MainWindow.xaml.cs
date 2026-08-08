@@ -19,6 +19,8 @@ namespace JiaoLongControl.Server
         private Hardcodet.Wpf.TaskbarNotification.TaskbarIcon _taskbarIcon = null!;
         private string _webRoot = string.Empty;
         private WebView2? _webView;
+        // 是否已销毁：仅表示 WebView 对象的有无，不能代表 CoreWebView2 已初始化完成。
+        // CoreWebView2 是异步初始化的，因此判断"能否使用"必须看 SafeCore(_webView) 是否为 null。
         private bool _webViewDestroyed = true;
         private bool _allowClose;
         // 退出中：抑制退出阶段 ProcessFailed 等无意义日志/重建（浏览器进程被销毁时正常退出）
@@ -34,44 +36,33 @@ namespace JiaoLongControl.Server
         // ProcessFailed 处理器引用：ConfigureWebView 订阅、DestroyWebView 注销，保证重建后旧回调不再触发
         private EventHandler<CoreWebView2ProcessFailedEventArgs>? _processFailedHandler;
 
-        private static bool IsBootStart =>
-            Environment.GetCommandLineArgs()
-                .Any(arg => arg.Equals("--boot", StringComparison.OrdinalIgnoreCase));
-
-        private readonly bool _startInTray;
-
-
         public MainWindow()
         {
             InitializeComponent();
-            _startInTray =
-                IsBootStart &&
-                Bridge.Instance.Config.App.BootMinimized;
             InitializePaths();
             InitializeTray();
             CreateWebView();
 
-            // 启动后的策略恢复放到后台线程，避免驱动加载/WMI 查询阻塞窗口显示
-            Loaded += async (_, _) =>
-            {
-                if (_startInTray)
-                {
-                    Hide();
-                    await SuspendWebViewAsync();
-                }
-
-                try
-                {
-                    await Task.Run(() => new SelfStart());
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error("SelfStart 执行异常", ex);
-                }
-            };
+            // 启动后立刻在后台恢复开机策略，不依赖窗口显示。
+            // 注意：--boot 隐藏启动时 App.OnStartup 不会 Show 本窗口，Loaded 事件永远不触发，
+            // 若把 SelfStart 放在 Loaded 里策略将永不应用。后台线程避免驱动加载/WMI 查询阻塞窗口显示。
+            _ = RunSelfStartAsync();
 
             Closing += OnClosing;
             SystemEvents.PowerModeChanged += OnPowerModeChanged;
+        }
+
+        /// <summary>在后台应用开机自启策略，异常不外泄。</summary>
+        private static async Task RunSelfStartAsync()
+        {
+            try
+            {
+                await Task.Run(() => new SelfStart());
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("SelfStart 执行异常", ex);
+            }
         }
 
         private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
@@ -99,6 +90,7 @@ namespace JiaoLongControl.Server
         /// 安全获取 CoreWebView2。
         /// 浏览器进程崩溃后，WebView2.CoreWebView2 属性 getter 会抛 InvalidOperationException
         /// （VerifyBrowserNotCrashed）而非返回 null，所有访问都必须经此封装。
+        /// 初始化为 null 也代表"当前不可用"，调用方应据此重建而不是尝试 Resume。
         /// </summary>
         private static CoreWebView2? SafeCore(WebView2? view)
         {
@@ -125,6 +117,8 @@ namespace JiaoLongControl.Server
 
         private void CreateWebView()
         {
+            // 存在未销毁的 WebView 时拒绝新建，避免重复创建。注意：_webViewDestroyed 为 false
+            // 不代表 CoreWebView2 已可用，重建路径需先 DestroyWebView 再调用本方法。
             if (!_webViewDestroyed)
                 return;
 
@@ -621,6 +615,26 @@ namespace JiaoLongControl.Server
             _webViewDestroyed = true;
         }
 
+        /// <summary>判断 WebView 是否处于「已就绪」状态，即对象存在且 CoreWebView2 已初始化可用。</summary>
+        private bool IsWebViewReady()
+        {
+            return !_webViewDestroyed && SafeCore(_webView) != null;
+        }
+
+        /// <summary>
+        /// 确保 WebView 就绪：已可用则直接返回 true；否则销毁未初始化成功的旧实例并触发重建，返回 false
+        /// （重建是异步的，调用方在本轮不应再假设 CoreWebView2 可用）。
+        /// </summary>
+        private bool EnsureWebViewReady()
+        {
+            if (IsWebViewReady())
+                return true;
+            if (!_webViewDestroyed)
+                DestroyWebView();
+            CreateWebView();
+            return false;
+        }
+
         // 【新增】响应前端窗口控制请求的方法
         private void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
@@ -698,19 +712,19 @@ namespace JiaoLongControl.Server
 
         private void ShowMainWindow()
         {
-            if (_webViewDestroyed)
-            {
-                CreateWebView();
-            }
-            else
-            {
-                ResumeWebView();
-            }
-
+            // 必须先显示窗口，再处理 WebView 的恢复/重建。
+            // --boot 隐藏启动时 App.OnStartup 不会 Show 本窗口；若在显示前调用 EnsureWebViewReady 触发重建，
+            // 隐藏状态下 WebView2 初始化会失败并返回 false，随后 Show 出来就是白屏。
             Show();
             WindowState = WindowState.Normal;
             ShowInTaskbar = true;
             Activate();
+
+            // 窗口已可见：CoreWebView2 可用则恢复（Suspend 后仍可用），不可用（隐藏期初始化未完成/失败）则销毁重建。
+            if (IsWebViewReady())
+                ResumeWebView();
+            else
+                EnsureWebViewReady();
         }
 
         private async void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
