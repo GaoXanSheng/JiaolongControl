@@ -15,11 +15,28 @@ import Settings_Page from '@/pages/Settings.vue'
 import GPU_Page from "@/pages/GPU.vue";
 import RyzenSmu_Page from "@/pages/RyzenSmu.vue";
 import FanCurveEditor from "@/pages/FanCurveEditor.vue";
+const PAGE_STORAGE_KEY = 'jl-ui-page';
 const useStore = defineStore('store', {
     state: () => {
+        // 页面状态持久化：记住上次停留的页面，重启后恢复
+        let initialPage = HomeCardType[0]!.eum
+        try {
+            const saved = Number(localStorage.getItem(PAGE_STORAGE_KEY))
+            if (Number.isInteger(saved) && saved >= 1 && saved <= HomeCardType.length) {
+                initialPage = saved
+            }
+        } catch { /* localStorage 不可用时使用默认页 */ }
         return {
-            SwitchPages: HomeCardType[0]!.eum,
+            SwitchPages: initialPage,
             theme: 'light',
+        }
+    },
+    actions: {
+        setPage(page: number) {
+            this.SwitchPages = page
+            try {
+                localStorage.setItem(PAGE_STORAGE_KEY, String(page))
+            } catch { /* 忽略持久化失败 */ }
         }
     }
 })

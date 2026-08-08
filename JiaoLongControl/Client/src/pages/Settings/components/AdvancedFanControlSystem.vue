@@ -1,25 +1,33 @@
-<script async setup lang="ts">
+<script setup lang="ts">
+import {computed, onMounted, ref} from "vue";
+import {Message} from '@arco-design/web-vue'
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
+import {useConfigStore} from '@/stores/config'
 
-import {onMounted, ref} from "vue";
-import {Config} from '@/utils/bridge';
-
+const configStore = useConfigStore()
 const loading = ref(false)
-const BootStartAdvancedFanControlSystem = ref(false)
-onMounted(async () => {
-  const fullResult = await Config.GetConfig()
-  BootStartAdvancedFanControlSystem.value = fullResult.Data.App.BootAdvancedFanControlSystem
-})
+const value = computed(() => configStore.config?.App.BootAdvancedFanControlSystem ?? false)
 
-async function SetBootStartAdvancedFanControlSystem(value: string | number | boolean) {
-  if (typeof value !== 'boolean') return
+onMounted(() => configStore.fetchConfig())
+
+async function onChange(value: string | number | boolean) {
+  if (typeof value !== 'boolean' || !configStore.config) return
+  const prev = configStore.config.App.BootAdvancedFanControlSystem
   loading.value = true
-  const fullResult = await Config.GetConfig()
-  const config = fullResult.Data
-  config.App.BootAdvancedFanControlSystem = value;
-  await Config.SetConfig(config)
-  BootStartAdvancedFanControlSystem.value = value
-  loading.value = false
+  try {
+    configStore.config.App.BootAdvancedFanControlSystem = value
+    const res = await configStore.saveConfig()
+    if (!res?.Success) {
+      configStore.config.App.BootAdvancedFanControlSystem = prev
+      Message.error(res?.Message || '保存失败')
+    }
+  } catch (e) {
+    configStore.config.App.BootAdvancedFanControlSystem = prev
+    Message.error('保存失败')
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -27,9 +35,9 @@ async function SetBootStartAdvancedFanControlSystem(value: string | number | boo
   <setting-card-component title="自启动高级风扇控制系统" description="启用后，软件将在后台实时监控硬件温度，并依据【风扇曲线】页面中用户自定义的策略来动态调整风扇转速">
     <template #extra>
       <a-switch
-          :model-value="BootStartAdvancedFanControlSystem"
+          :model-value="value"
           :loading="loading"
-          @change="SetBootStartAdvancedFanControlSystem($event)"
+          @change="onChange($event)"
       >
         <template #checked-icon>
           <icon-check/>

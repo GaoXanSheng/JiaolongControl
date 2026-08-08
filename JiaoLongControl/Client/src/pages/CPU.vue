@@ -80,8 +80,12 @@ async function handleApplyAll() {
     }
 
     // 保存并提示
-    configStore.debouncedSave()
-    Message.success('设置应用成功')
+    const saveRes = await configStore.saveConfig()
+    if (saveRes?.Success) {
+      Message.success('设置应用成功')
+    } else {
+      Message.error(saveRes?.Message || '设置保存失败')
+    }
   } catch (error) {
     Message.error('应用设置失败，请检查桥接服务。')
   } finally {
@@ -95,9 +99,9 @@ function handleReset() {
   Message.info('参数已重置为默认配置')
 }
 
-// 取消修改
-function handleCancel() {
-  configStore.fetchConfig() // 重新加载 store 原始配置
+// 取消修改：强制从后端重新加载原始配置
+async function handleCancel() {
+  await configStore.fetchConfig(true) // 重新加载 store 原始配置
   Message.info('已取消修改')
 }
 </script>

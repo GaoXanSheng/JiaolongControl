@@ -1,25 +1,33 @@
-<script async setup lang="ts">
+<script setup lang="ts">
+import {computed, onMounted, ref} from "vue";
+import {Message} from '@arco-design/web-vue'
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
+import {useConfigStore} from '@/stores/config'
 
-import {onMounted, ref} from "vue";
-import {Config} from '@/utils/bridge';
-
+const configStore = useConfigStore()
 const loading = ref(false)
-const BootStartAdvancedGPUSystem = ref(false)
-onMounted(async () => {
-  const fullResult = await Config.GetConfig()
-  BootStartAdvancedGPUSystem.value = fullResult.Data.App.BootAdvancedGPUSystem
-})
+const value = computed(() => configStore.config?.App.BootAdvancedGPUSystem ?? false)
 
-async function SetBootStartAdvancedGPUSystem(value: string | number | boolean) {
-  if (typeof value !== 'boolean') return
+onMounted(() => configStore.fetchConfig())
+
+async function onChange(value: string | number | boolean) {
+  if (typeof value !== 'boolean' || !configStore.config) return
+  const prev = configStore.config.App.BootAdvancedGPUSystem
   loading.value = true
-  const fullResult = await Config.GetConfig()
-  const config = fullResult.Data
-  config.App.BootAdvancedGPUSystem = value;
-  await Config.SetConfig(config)
-  BootStartAdvancedGPUSystem.value = value
-  loading.value = false
+  try {
+    configStore.config.App.BootAdvancedGPUSystem = value
+    const res = await configStore.saveConfig()
+    if (!res?.Success) {
+      configStore.config.App.BootAdvancedGPUSystem = prev
+      Message.error(res?.Message || '保存失败')
+    }
+  } catch (e) {
+    configStore.config.App.BootAdvancedGPUSystem = prev
+    Message.error('保存失败')
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -27,9 +35,9 @@ async function SetBootStartAdvancedGPUSystem(value: string | number | boolean) {
   <setting-card-component title="GPU 参数自动应用" description="在软件启动时，自动载入并应用【GPU】设置页面中保存的核心与显存超频、电压曲线、功耗目标等参数">
     <template #extra>
       <a-switch
-          :model-value="BootStartAdvancedGPUSystem"
+          :model-value="value"
           :loading="loading"
-          @change="SetBootStartAdvancedGPUSystem($event)"
+          @change="onChange($event)"
       >
         <template #checked-icon>
           <icon-check/>

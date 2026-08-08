@@ -4,6 +4,7 @@ import { useConfigStore } from '@/stores/config'
 import { useSystemInfoStore } from '@/stores/systemInfo'
 
 const systemInfoStore = useSystemInfoStore()
+const configStore = useConfigStore()
 
 let stopPolling: () => void;
 
@@ -17,8 +18,22 @@ function hideAppLoader() {
   }
 }
 
+// 后端配置变更通知（ConfigWatcher 触发）：同步刷新本地配置，避免界面显示过期值
+function onWebViewMessage(e: MessageEvent) {
+  try {
+    const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
+    if (data && data.type === 'config-changed') {
+      configStore.refreshIfUnmodified()
+    }
+  } catch {
+    // 忽略非 JSON 消息（窗口控制消息等）
+  }
+}
+
 onMounted(() => {
   stopPolling = systemInfoStore.startPolling()
+  // 订阅后端 WebView 消息（config-changed 等）
+  window.chrome?.webview?.addEventListener('message', onWebViewMessage)
   // 在 DOM 挂载和数据初始化后平滑淡出遮罩
   setTimeout(() => {
     hideAppLoader()
@@ -29,6 +44,7 @@ onUnmounted(() => {
   if (stopPolling) {
     stopPolling();
   }
+  window.chrome?.webview?.removeEventListener('message', onWebViewMessage)
 })
 </script>
 

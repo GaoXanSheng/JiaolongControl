@@ -8,6 +8,7 @@ import BootCurveOptimizerAllAutoStart from "./Settings/components/BootCurveOptim
 import FanCurveMerge from "./Settings/components/FanCurveMerge.vue";
 import GPUDirectConnection from "./Settings/components/GPUDirectConnection.vue";
 import GPUUnlockDB from "./Settings/components/GPUUnlockDB.vue";
+import PawnIODriverMode from "./Settings/components/PawnIODriverMode.vue";
 </script>   
 
 <template>
@@ -30,6 +31,7 @@ import GPUUnlockDB from "./Settings/components/GPUUnlockDB.vue";
       <GPUUnlockDB />
       <AdvancedFanControlSystem />
       <FanCurveMerge />
+      <PawnIODriverMode />
 
       <!-- 自动应用策略 -->
       <BootCPUAutoStart />

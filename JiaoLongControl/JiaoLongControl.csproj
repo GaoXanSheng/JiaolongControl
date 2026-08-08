@@ -11,7 +11,7 @@
         <Configurations>Debug;Release</Configurations>
         <Platforms>x64</Platforms>
         <SatelliteResourceLanguages>zh-CN</SatelliteResourceLanguages>
-        <AppVersion>10.12.20</AppVersion>
+        <AppVersion>10.12.21A</AppVersion>
     </PropertyGroup>
 
     <ItemGroup>
@@ -48,17 +48,14 @@
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Include="Server\Resources\Icons\app.ico" />
-        <None Update="Drivers\PawnIO\PawnIO.sys">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </None>
         <None Update="Drivers\PawnIO\PawnIO.LICENSE.txt">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </None>
-        <None Update="Drivers\PawnIO\PawnIOLib.dll">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
         <None Update="Drivers\PawnIO\RyzenSMU.bin">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Drivers\PawnIO\Nvidia.bin">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
         <None Update="Drivers\NVPCF\NVPCF.nvi">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
