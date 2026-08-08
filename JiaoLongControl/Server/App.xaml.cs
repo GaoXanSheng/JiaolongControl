@@ -38,8 +38,28 @@ namespace JiaoLongControl.Server
 
             ConfigSerializer.Initialize(version);
 
+            // 全局异常兜底：任何未处理异常都记录日志，避免闪退后无迹可查
+            AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            {
+                Logger.Fatal("AppDomain 未处理异常（应用即将终止）: " +
+                             (args.ExceptionObject as Exception)?.ToString(), args.ExceptionObject as Exception);
+                Cleanup();
+            };
+
+            // UI 线程（Dispatcher）未处理异常：记录日志并阻止闪退
+            DispatcherUnhandledException += (_, e) =>
+            {
+                Logger.Error("UI 线程未处理异常: " + e.Exception, e.Exception);
+                e.Handled = true;
+            };
+
+            TaskScheduler.UnobservedTaskException += (_, e) =>
+            {
+                Logger.Error("未观察到的 Task 异常: " + e.Exception, e.Exception);
+                e.SetObserved();
+            };
+
             AppDomain.CurrentDomain.ProcessExit += (_, __) => Cleanup();
-            AppDomain.CurrentDomain.UnhandledException += (_, __) => Cleanup();
 
             base.OnStartup(e);
 

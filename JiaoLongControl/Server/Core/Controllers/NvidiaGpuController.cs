@@ -1,7 +1,5 @@
-using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
-using JiaoLongControl.Server.Core.Drivers;
 using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Native;
 using JiaoLongControl.Server.Core.Utils;
@@ -112,13 +110,31 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         public CommandResult GetGpuCoreClock(int gpuIndex = -1)
         {
-            try { return new CommandResult(true, "获取成功", (int)(GetGPU(gpuIndex).CurrentClockFrequencies.GraphicsClock.Frequency / 1000)); }
+            try
+            {
+                var gpu = GetGPU(gpuIndex);
+                int clock = (int)(gpu.BoostClockFrequencies.GraphicsClock.Frequency / 1000);
+                if (clock == 0)
+                {
+                    clock = (int)(gpu.CurrentClockFrequencies.GraphicsClock.Frequency / 1000);
+                }
+                return new CommandResult(true, "获取成功", clock);
+            }
             catch (Exception ex) { return new CommandResult(false, ex.Message); }
         }
 
         public CommandResult GetGpuMemoryClock(int gpuIndex = -1)
         {
-            try { return new CommandResult(true, "获取成功", (int)(GetGPU(gpuIndex).CurrentClockFrequencies.MemoryClock.Frequency / 1000)); }
+            try
+            {
+                var gpu = GetGPU(gpuIndex);
+                int clock = (int)(gpu.BoostClockFrequencies.MemoryClock.Frequency / 1000);
+                if (clock == 0)
+                {
+                    clock = (int)(gpu.CurrentClockFrequencies.MemoryClock.Frequency / 1000);
+                }
+                return new CommandResult(true, "获取成功", clock);
+            }
             catch (Exception ex) { return new CommandResult(false, ex.Message); }
         }
 
@@ -160,10 +176,22 @@ namespace JiaoLongControl.Server.Core.Controllers
             try
             {
                 var gpu = GetGPU(gpuIndex);
-                int currentMhz = (int)(gpu.CurrentClockFrequencies.MemoryClock.Frequency / 1000);
-                if (currentMhz < 1000) throw new Exception("Invalid memory clock");
-                int minMhz = Math.Max(0, currentMhz - 2000);
-                int maxMhz = currentMhz + 3000;
+                int baseMem = (int)(gpu.BaseClockFrequencies.MemoryClock.Frequency / 1000);
+                int boostMem = (int)(gpu.BoostClockFrequencies.MemoryClock.Frequency / 1000);
+
+                if (boostMem == 0) boostMem = (int)(gpu.CurrentClockFrequencies.MemoryClock.Frequency / 1000);
+                if (baseMem == 0) baseMem = Math.Max(0, boostMem - 2000);
+
+                if (boostMem == 0) throw new Exception("Invalid memory clock");
+
+                int minMhz = Math.Min(baseMem, boostMem);
+                int maxMhz = Math.Max(baseMem, boostMem);
+
+                if (minMhz == maxMhz || minMhz == 0)
+                {
+                    minMhz = Math.Max(0, maxMhz - 2000);
+                }
+
                 return new CommandResult(true, "获取成功", new { Min = minMhz, Max = maxMhz });
             }
             catch { return new CommandResult(true, "获取成功 (Fallback)", new { Min = 0, Max = 10000 }); }
@@ -228,60 +256,9 @@ namespace JiaoLongControl.Server.Core.Controllers
             if (!NvapiClockPower.IsAvailable)
                 return new CommandResult(false, "nvapi64.dll 不可用");
             bool ok = NvapiClockPower.SetPowerLimit(watts, gpuIndex);
-            return new CommandResult(ok, ok ? $"功耗限制已设置为 {watts} W" : "功耗限制设置失败");
-        }
-
-        public CommandResult UnlockDB()
-        {
-            var driver = new NVPCF();
-            var installResult = driver.Install();
-            if (!installResult.Success)
-                return new CommandResult(false, $"驱动阶段失败: {installResult.Message}");
-
-            const string deviceId = @"ACPI\NVDA0820\NPCF";
-            string enableArgs = $@"/enable-device ""{deviceId}""";
-            var enableRes = ExecuteSystemCommand("pnputil", enableArgs);
-            if (!enableRes.Success)
-                return new CommandResult(false, $"UnlockDB 失败 (启用设备阶段): {enableRes.Message}");
-
-            Thread.Sleep(3000);
-            string disableArgs = $@"/disable-device ""{deviceId}""";
-            var disableRes = ExecuteSystemCommand("pnputil", disableArgs);
-            if (!disableRes.Success)
-                return new CommandResult(false, $"UnlockDB 失败 (禁用设备阶段): {disableRes.Message}");
-
-            return new CommandResult(true, "UnlockDB 成功。");
-        }
-
-        private CommandResult ExecuteSystemCommand(string fileName, string arguments)
-        {
-            try
-            {
-                ProcessStartInfo psi = new ProcessStartInfo
-                {
-                    FileName = fileName,
-                    Arguments = arguments,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                using (Process? process = Process.Start(psi))
-                {
-                    if (process == null) return new CommandResult(false, $"无法启动 {fileName}");
-                    string output = process.StandardOutput.ReadToEnd();
-                    string error = process.StandardError.ReadToEnd();
-                    process.WaitForExit();
-                    if (process.ExitCode != 0)
-                        return new CommandResult(false, $"命令返回码 {process.ExitCode}: {error} {output}");
-                    return new CommandResult(true, output);
-                }
-            }
-            catch (Exception ex)
-            {
-                return new CommandResult(false, $"执行 {fileName} 时发生异常: {ex.Message}");
-            }
+            if (ok)
+                return new CommandResult(true, $"功耗限制已设置为 {watts} W");
+            return new CommandResult(false, "功耗限制设置失败：笔记本 GPU 通常不支持通过驱动接口调节功耗墙（TGP 由固件管理）");
         }
 
         public void Dispose()

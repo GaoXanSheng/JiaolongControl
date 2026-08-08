@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Management;
 using System.Text.Json;
 using JiaoLongControl.Server.Core.Utils;
@@ -13,6 +14,31 @@ namespace JiaoLongControl.Server.Core.Controllers
             public string GpuName { get; set; } = "Unknown GPU";
             public string OsVersion { get; set; } = "Unknown OS";
             public string MemoryInfo { get; set; } = "Unknown Memory";
+        }
+
+        /// <summary>使用系统默认浏览器打开外部链接（仅允许 http/https）</summary>
+        public CommandResult OpenUrl(string url)
+        {
+            try
+            {
+                url = url?.Trim() ?? "";
+                if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+                    (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+                {
+                    return new CommandResult(false, "无效的链接地址");
+                }
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = uri.AbsoluteUri,
+                    UseShellExecute = true
+                });
+                return new CommandResult(true, "已打开浏览器");
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"打开浏览器失败: {ex.Message}");
+            }
         }
 
         public CommandResult GetSystemOverview()
