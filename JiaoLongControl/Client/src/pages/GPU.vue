@@ -249,26 +249,26 @@ async function handleResetAdvanced() {
           </div>
         </div>
         <!-- 3. 模式切换按钮 -->
-        <div class="flex gap-2">
-          <button @click="showAdvanced = false"
-                  :class="[
-                    'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',
-                    !showAdvanced
-                      ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'
-                      : 'bg-white/[0.02] text-gray-400 border-white/10 hover:text-white hover:border-white/20'
-                  ]">
-            常规设置
-          </button>
-          <button @click="showAdvanced = true"
-                  :class="[
-                    'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',
-                    showAdvanced
-                      ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'
-                      : 'bg-white/[0.02] text-gray-400 border-white/10 hover:text-white hover:border-white/20'
-                  ]">
-            高级超频
-          </button>
-        </div>
+<!--        <div class="flex gap-2">-->
+<!--          <button @click="showAdvanced = false"-->
+<!--                  :class="[-->
+<!--                    'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',-->
+<!--                    !showAdvanced-->
+<!--                      ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'-->
+<!--                      : 'bg-white/[0.02] text-gray-400 border-white/10 hover:text-white hover:border-white/20'-->
+<!--                  ]">-->
+<!--            常规设置-->
+<!--          </button>-->
+<!--          <button @click="showAdvanced = true"-->
+<!--                  :class="[-->
+<!--                    'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',-->
+<!--                    showAdvanced-->
+<!--                      ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'-->
+<!--                      : 'bg-white/[0.02] text-gray-400 border-white/10 hover:text-white hover:border-white/20'-->
+<!--                  ]">-->
+<!--            高级超频-->
+<!--          </button>-->
+<!--        </div>-->
 
         <!-- 常规设置面板 -->
         <div v-if="!showAdvanced" class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-5">
@@ -357,9 +357,7 @@ async function handleResetAdvanced() {
             </button>
           </div>
         </div>
-
-
-      </div>
+        </div>
 
       <!-- ==================== 右侧：显卡信息与实时监控栏 ==================== -->
       <div class="w-full lg:w-[360px] shrink-0 space-y-6 lg:pt-[115px]">
