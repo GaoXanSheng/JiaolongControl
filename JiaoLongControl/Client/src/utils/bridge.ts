@@ -130,6 +130,7 @@ declare global {
                         NvidiaGpu: {
                             GetGpuName(gpuIndex?: number): Promise<any>;
                             GetGpuDriverVersion(gpuIndex?: number): Promise<any>;
+                            GetGpuDriverDate(gpuIndex?: number): Promise<any>;
                             GetGpuMemoryTotal(gpuIndex?: number): Promise<any>;
                             GetGpuBusWidth(gpuIndex?: number): Promise<any>;
                             GetGpuUtilization(gpuIndex?: number): Promise<any>;
@@ -305,6 +306,7 @@ export const AutoFanControl = {
 export const NvidiaGpu = {
     GetGpuName: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuName(gpuIndex)),
     GetGpuDriverVersion: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuDriverVersion(gpuIndex)),
+    GetGpuDriverDate: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuDriverDate(gpuIndex)),
     GetGpuMemoryTotal: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuMemoryTotal(gpuIndex)),
     GetGpuBusWidth: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuBusWidth(gpuIndex)),
     GetGpuUtilization: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuUtilization(gpuIndex)),
