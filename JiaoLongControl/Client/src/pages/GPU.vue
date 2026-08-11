@@ -9,7 +9,7 @@ import { storeToRefs } from "pinia";
 const configStore = useConfigStore()
 const systemInfoStore = useSystemInfoStore()
 const {
-  gpuName, gpuDriverVersion, gpuMemoryTotal, gpuBusWidth,
+  gpuName, gpuDriverVersion, gpuDriverDate, gpuMemoryTotal, gpuBusWidth,
   gpuUtilization, gpuMemoryUtilization, gpuCoreClock, gpuMemoryClock,
   gpuTemp, gpuFanSpeed
 } = storeToRefs(systemInfoStore)
@@ -240,7 +240,7 @@ async function handleResetAdvanced() {
             </div>
             <div>
               <span class="text-gray-600 block mb-0.5">驱动日期</span>
-              <span class="text-white font-medium font-mono">N/A</span>
+              <span class="text-white font-medium font-mono">{{ gpuDriverDate }}</span>
             </div>
             <div>
               <span class="text-gray-600 block mb-0.5">总线宽度</span>
