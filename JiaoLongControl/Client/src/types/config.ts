@@ -14,13 +14,20 @@ export interface AppSectionType {
     BootSetRyzenSumCurveOptimizerAll: boolean;
 }
 
-export interface CpuSectionType {
+export interface CpuProfileDataType {
     CpuLongPower: number;
     CpuShortPower: number;
     CpuTempWall: number;
     CpuMaxFrequency: number;
     CpuTurbo: boolean;
+}
+
+export interface CpuSectionType {
     CpuProfile: string;
+    Default: CpuProfileDataType;
+    Performance: CpuProfileDataType;
+    Saving: CpuProfileDataType;
+    Custom: CpuProfileDataType;
 }
 
 export interface GpuSectionType {
