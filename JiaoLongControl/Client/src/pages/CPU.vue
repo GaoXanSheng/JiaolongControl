@@ -4,6 +4,7 @@ import { Message } from '@arco-design/web-vue'
 import { CPU, Power, RyzenSmu } from '@/utils/bridge.ts'
 import { useConfigStore } from '@/stores/config'
 import { useSystemInfoStore } from '@/stores/systemInfo'
+import type { CpuProfileDataType } from '@/types/config'
 
 const loading = ref(false)
 const configStore = useConfigStore()
@@ -31,45 +32,44 @@ if (CPUData.value?.CpuProfile) {
   selectedProfile.value = CPUData.value.CpuProfile
 }
 
-// 配置文件切换预设值（点击卡片时自动调整滑块，增强交互感）
+// 档位名 -> 配置块字段名（config.yaml 中 Cpu 下的 Default/Performance/Saving/Custom）
+function profileKey(profile: string): 'Default' | 'Performance' | 'Saving' | 'Custom' {
+  const map: Record<string, 'Default' | 'Performance' | 'Saving' | 'Custom'> = {
+    default: 'Default',
+    performance: 'Performance',
+    saving: 'Saving',
+    custom: 'Custom',
+  }
+  return map[profile] ?? 'Default'
+}
+
+// 当前选中档位的参数块（滑块直接绑定它；切换档位即切换绑定的数据源）
+const activeProfile = computed<CpuProfileDataType>(() => {
+  const cpu = CPUData.value
+  return (cpu?.[profileKey(selectedProfile.value)] ?? cpu?.Default) as CpuProfileDataType
+})
+
+// 切换档位：只改选中标记，界面滑块绑定的 activeProfile 随之指向该档位块
 function selectProfile(profile: string) {
   selectedProfile.value = profile
-  if (!CPUData.value) return
-
-  if (profile === 'default') {
-    CPUData.value.CpuLongPower = 45
-    CPUData.value.CpuShortPower = 65
-    CPUData.value.CpuMaxFrequency = 4400
-    CPUData.value.CpuTempWall = 80
-  } else if (profile === 'performance') {
-    CPUData.value.CpuLongPower = 65
-    CPUData.value.CpuShortPower = 90
-    CPUData.value.CpuMaxFrequency = 4700
-    CPUData.value.CpuTempWall = 95
-  } else if (profile === 'saving') {
-    CPUData.value.CpuLongPower = 30
-    CPUData.value.CpuShortPower = 45
-    CPUData.value.CpuMaxFrequency = 3200
-    CPUData.value.CpuTempWall = 75
-  }
-  CPUData.value.CpuProfile = profile
+  if (CPUData.value) CPUData.value.CpuProfile = profile
 }
 
 // 统一应用逻辑
 async function handleApplyAll() {
-  if (!CPUData.value) return
+  if (!CPUData.value || !activeProfile.value) return
   loading.value = true
   try {
     // 1. 设置长时功耗限制 (PL1)
-    await CPU.SetCpuLongPower(CPUData.value.CpuLongPower)
+    await CPU.SetCpuLongPower(activeProfile.value.CpuLongPower)
     // 2. 设置短时功耗限制 (PL2)
-    await CPU.SetCpuShortPower(CPUData.value.CpuShortPower)
+    await CPU.SetCpuShortPower(activeProfile.value.CpuShortPower)
     // 3. 设置温度墙
-    await CPU.SetCPUTempWall(CPUData.value.CpuTempWall)
+    await CPU.SetCPUTempWall(activeProfile.value.CpuTempWall)
     // 4. 设置最大频率
-    await Power.SetCPUMaxFrequency(CPUData.value.CpuMaxFrequency)
+    await Power.SetCPUMaxFrequency(activeProfile.value.CpuMaxFrequency)
     // 5. 设置睿频开关
-    if (CPUData.value.CpuTurbo) {
+    if (activeProfile.value.CpuTurbo) {
       await Power.EnableTurbo()
     } else {
       await Power.DisableTurbo()
@@ -79,7 +79,7 @@ async function handleApplyAll() {
       await RyzenSmu.SetCurveOptimizerAll(configStore.config.Smu.CurveOptimizerAll)
     }
 
-    // 保存并提示
+    // 7. 保存主配置（含当前档位块参数与选中档位，供开机自启等使用）
     const saveRes = await configStore.saveConfig()
     if (saveRes?.Success) {
       Message.success('设置应用成功')
@@ -93,7 +93,7 @@ async function handleApplyAll() {
   }
 }
 
-// 重置到初始状态
+// 重置到默认档位
 function handleReset() {
   selectProfile('default')
   Message.info('参数已重置为默认配置')
@@ -192,18 +192,18 @@ async function handleCancel() {
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1">功耗限制 (PL1) <span class="text-gray-500 cursor-pointer text-[10px] hover:text-gray-300">ⓘ</span></span>
-                <span class="text-purple-400 font-medium font-mono">{{ CPUData.CpuLongPower }} W</span>
+                <span class="text-purple-400 font-medium font-mono">{{ activeProfile.CpuLongPower }} W</span>
               </div>
-              <a-slider v-model="CPUData.CpuLongPower" :min="30" :max="255" class="w-full" />
+              <a-slider v-model="activeProfile.CpuLongPower" :min="30" :max="255" class="w-full" />
             </div>
 
             <!-- 长时功耗限制 (PL2) -->
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1">长时功耗限制 (PL2) <span class="text-gray-500 cursor-pointer text-[10px] hover:text-gray-300">ⓘ</span></span>
-                <span class="text-purple-400 font-medium font-mono">{{ CPUData.CpuShortPower }} W</span>
+                <span class="text-purple-400 font-medium font-mono">{{ activeProfile.CpuShortPower }} W</span>
               </div>
-              <a-slider v-model="CPUData.CpuShortPower" :min="30" :max="255" class="w-full" />
+              <a-slider v-model="activeProfile.CpuShortPower" :min="30" :max="255" class="w-full" />
             </div>
 
             <!-- 核心电压偏移 (Curve Optimizer) -->
@@ -219,18 +219,18 @@ async function handleCancel() {
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1">CPU 温度墙 <span class="text-gray-500 cursor-pointer text-[10px] hover:text-gray-300">ⓘ</span></span>
-                <span class="text-purple-400 font-medium font-mono">{{ CPUData.CpuTempWall }} °C</span>
+                <span class="text-purple-400 font-medium font-mono">{{ activeProfile.CpuTempWall }} °C</span>
               </div>
-              <a-slider v-model="CPUData.CpuTempWall" :min="60" :max="105" class="w-full" />
+              <a-slider v-model="activeProfile.CpuTempWall" :min="60" :max="105" class="w-full" />
             </div>
 
             <!-- 最大睿频频率 -->
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1">最大睿频频率 <span class="text-gray-500 cursor-pointer text-[10px] hover:text-gray-300">ⓘ</span></span>
-                <span class="text-purple-400 font-medium font-mono">{{ (CPUData.CpuMaxFrequency / 1000).toFixed(1) }} GHz</span>
+                <span class="text-purple-400 font-medium font-mono">{{ (activeProfile.CpuMaxFrequency / 1000).toFixed(1) }} GHz</span>
               </div>
-              <a-slider v-model="CPUData.CpuMaxFrequency" :min="1000" :max="5400" :step="100" class="w-full" />
+              <a-slider v-model="activeProfile.CpuMaxFrequency" :min="1000" :max="5400" :step="100" class="w-full" />
             </div>
           </div>
         </div>
@@ -297,7 +297,7 @@ async function handleCancel() {
                 <span class="text-white font-mono font-medium">{{ cpuStats?.FrequencyMhz ? (cpuStats.FrequencyMhz / 1000).toFixed(2) : '0.00' }} GHz</span>
               </div>
               <div class="h-1.5 bg-white/[0.03] rounded-full overflow-hidden">
-                <div class="h-full bg-[#8A2BE2]" :style="{ width: `${Math.min((cpuStats?.FrequencyMhz || 0) / (CPUData?.CpuMaxFrequency || 5000) * 100, 100)}%` }"></div>
+                <div class="h-full bg-[#8A2BE2]" :style="{ width: `${Math.min((cpuStats?.FrequencyMhz || 0) / (activeProfile.CpuMaxFrequency || 5000) * 100, 100)}%` }"></div>
               </div>
             </div>
 

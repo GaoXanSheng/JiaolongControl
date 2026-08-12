@@ -29,8 +29,7 @@ public class ConfigController
             var config = JsonSerializer.Deserialize<JiaoLongConfig>(configJson);
             if (config == null)
                 return new CommandResult(false, "配置数据无效");
-            ConfigSerializer.Save(config);
-            Bridge.Instance.Config = config;
+            Bridge.Instance.ApplyConfig(config);
             return new CommandResult(true, "保存成功");
         }
         catch (Exception ex)

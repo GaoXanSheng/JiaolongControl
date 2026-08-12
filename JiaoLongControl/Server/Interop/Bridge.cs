@@ -16,36 +16,66 @@ namespace JiaoLongControl.Server.Interop
         public static Bridge Instance { get; } = new();
 
         private CoreWebView2? _webView;
-        private ConfigWatcher? _watcher;
+        private const int SaveIntervalMs = 5000;
 
-        internal JiaoLongConfig Config { get; set; } = null!;
+        private readonly object _configLock = new();
+        private System.Threading.Timer? _saveTimer;
+        internal JiaoLongConfig Config { get; private set; } = null!;
 
         public Bridge()
         {
             Config = ConfigSerializer.Load();
+            _saveTimer = new System.Threading.Timer(
+                _ => FlushIfDirty(),
+                null,
+                SaveIntervalMs,
+                SaveIntervalMs);
+        }
+        
+        public void ApplyConfig(JiaoLongConfig config)
+        {
+            lock (_configLock)
+            {
+                Config = config;
+            }
+
+            try
+            {
+                _webView?.PostWebMessageAsJson("{\"type\":\"config-changed\"}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"config-changed 通知失败: {ex.Message}");
+            }
+        }
+        internal void FlushIfDirty()
+        {
+            try
+            {
+                string memoryYaml;
+                lock (_configLock)
+                {
+                    memoryYaml = ConfigSerializer.Serialize(Config);
+                }
+
+                var diskYaml = ConfigSerializer.ReadFileContent();
+                if (diskYaml != memoryYaml)
+                {
+                    lock (_configLock)
+                    {
+                        ConfigSerializer.Save(Config);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"配置差异落盘失败: {ex.Message}");
+            }
         }
 
         public void InitWebView(CoreWebView2 webView)
         {
             _webView = webView;
-
-            // WebView 重建时旧 watcher 必须先释放，避免 FileSystemWatcher 泄漏（重复订阅）
-            _watcher?.Dispose();
-            _watcher = new ConfigWatcher(ConfigSerializer.ConfigDir);
-            _watcher.ConfigChanged += () =>
-            {
-                try
-                {
-                    Config = ConfigSerializer.Load();
-                    _webView?.PostWebMessageAsJson("{\"type\":\"config-changed\"}");
-                }
-                catch (Exception ex)
-                {
-                    // 浏览器进程崩溃/重建窗口期调用已失效的 CoreWebView2 会抛 COM 异常；
-                    // watcher 在后台线程触发，未捕获会走 AppDomain.UnhandledException 导致闪退，必须兜底
-                    Logger.Warn($"config-changed 通知失败: {ex.Message}");
-                }
-            };
         }
 
         public CpuController CPU { get; } = new();
@@ -64,7 +94,9 @@ namespace JiaoLongControl.Server.Interop
 
         public void Dispose()
         {
-            _watcher?.Dispose();
+            _saveTimer?.Dispose();
+            _saveTimer = null;
+            FlushIfDirty();
             CPU.Dispose();
             Fan.Dispose();
             AutoFan.Dispose();
