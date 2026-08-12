@@ -229,7 +229,7 @@ export async function call<T>(promise: Promise<any>): Promise<CommandResult<T>> 
 // 监控/静态信息类接口被多个轮询源（systemInfo 5s、FanSpeed ~1s、RyzenSmu 3s）反复调用，
 // 每次都穿透到后端驱动调用是一笔开销。这里在指定毫秒内对相同方法+参数复用上一条结果，
 // 减少后端/驱动调用量。写/动作类接口（Set*/Enable/Disable/Lock/Reset/Start/Stop 等）一律不缓存。
-const CACHE_TTL_MS = 1000          // 动态监控类：1 秒内复用，保证实时性
+const CACHE_TTL_MS = 3000          // 动态监控类：3 秒内复用，保证实时性
 const STATIC_TTL_MS = 60 * 1000    // 静态信息类（硬件名/驱动版本等）：1 分钟内复用
 
 const readCache = new Map<string, { result: any; ts: number }>()
