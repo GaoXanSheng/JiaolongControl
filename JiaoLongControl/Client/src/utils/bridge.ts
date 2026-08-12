@@ -225,6 +225,27 @@ export async function call<T>(promise: Promise<any>): Promise<CommandResult<T>> 
     return JSON.parse(await promise.toJson());
 }
 
+// ===== 读接口结果缓存 =====
+// 监控/静态信息类接口被多个轮询源（systemInfo 5s、FanSpeed ~1s、RyzenSmu 3s）反复调用，
+// 每次都穿透到后端驱动调用是一笔开销。这里在指定毫秒内对相同方法+参数复用上一条结果，
+// 减少后端/驱动调用量。写/动作类接口（Set*/Enable/Disable/Lock/Reset/Start/Stop 等）一律不缓存。
+const CACHE_TTL_MS = 1000          // 动态监控类：1 秒内复用，保证实时性
+const STATIC_TTL_MS = 60 * 1000    // 静态信息类（硬件名/驱动版本等）：1 分钟内复用
+
+const readCache = new Map<string, { result: any; ts: number }>()
+
+function cached<T>(ttlMs: number, key: string, exec: () => Promise<CommandResult<T>>): Promise<CommandResult<T>> {
+    const now = Date.now()
+    const hit = readCache.get(key)
+    if (hit && now - hit.ts < ttlMs) {
+        return Promise.resolve(hit.result)
+    }
+    return exec().then((result) => {
+        readCache.set(key, { result, ts: now })
+        return result
+    })
+}
+
 function toByte(value: number): number {
     if (!Number.isInteger(value)) {
         throw new Error('必须是整数');
@@ -253,16 +274,16 @@ export const CPU = {
     SetCustomMode: (open: boolean) => call(raw.CPU.SetCustomMode(open)),
     GetCustomMode: () => call(raw.CPU.GetCustomMode()),
     SetCPUTempWall: (tw: number) => call(raw.CPU.SetCPUTempWall(toByte(tw))),
-    GetCPUThermometer: () => call<number>(raw.CPU.GetCPUThermometer()),
-    GetCpuUsage: () => call<number>(raw.CPU.GetCpuUsage()),
-    GetCpuInfo: () => call<{Name: string, Cores: number, Threads: number, BaseFreqMhz: number}>(raw.CPU.GetCpuInfo()),
-    GetCpuFrequency: () => call<number>(raw.CPU.GetCpuFrequency()),
-    GetCpuVoltage: () => call<number>(raw.CPU.GetCpuVoltage()),
-    GetPhysicalCoreCount: () => call<number>(raw.CPU.GetPhysicalCoreCount()),
+    GetCPUThermometer: () => cached(CACHE_TTL_MS, 'CPU.GetCPUThermometer', () => call<number>(raw.CPU.GetCPUThermometer())),
+    GetCpuUsage: () => cached(CACHE_TTL_MS, 'CPU.GetCpuUsage', () => call<number>(raw.CPU.GetCpuUsage())),
+    GetCpuInfo: () => cached(STATIC_TTL_MS, 'CPU.GetCpuInfo', () => call<{Name: string, Cores: number, Threads: number, BaseFreqMhz: number}>(raw.CPU.GetCpuInfo())),
+    GetCpuFrequency: () => cached(CACHE_TTL_MS, 'CPU.GetCpuFrequency', () => call<number>(raw.CPU.GetCpuFrequency())),
+    GetCpuVoltage: () => cached(CACHE_TTL_MS, 'CPU.GetCpuVoltage', () => call<number>(raw.CPU.GetCpuVoltage())),
+    GetPhysicalCoreCount: () => cached(STATIC_TTL_MS, 'CPU.GetPhysicalCoreCount', () => call<number>(raw.CPU.GetPhysicalCoreCount())),
 };
 
 export const Fan = {
-    GetFanSpeed: () => call<FanSpeedInfo>(raw.Fan.GetFanSpeed()),
+    GetFanSpeed: () => cached(CACHE_TTL_MS, 'Fan.GetFanSpeed', () => call<FanSpeedInfo>(raw.Fan.GetFanSpeed())),
     SetFanSpeed: (fanSpeed: number) => call(raw.Fan.SetFanSpeed(toByte(fanSpeed / 100))),
     RemoveFanSpeed: () => call(raw.Fan.RemoveFanSpeed()),
 };
@@ -304,20 +325,20 @@ export const AutoFanControl = {
 };
 
 export const NvidiaGpu = {
-    GetGpuName: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuName(gpuIndex)),
-    GetGpuDriverVersion: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuDriverVersion(gpuIndex)),
-    GetGpuDriverDate: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuDriverDate(gpuIndex)),
-    GetGpuMemoryTotal: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuMemoryTotal(gpuIndex)),
-    GetGpuBusWidth: (gpuIndex?: number) => call<string>(raw.NvidiaGpu.GetGpuBusWidth(gpuIndex)),
-    GetGpuUtilization: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuUtilization(gpuIndex)),
-    GetGpuMemoryUtilization: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuMemoryUtilization(gpuIndex)),
-    GetGpuCoreClock: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuCoreClock(gpuIndex)),
-    GetGpuMemoryClock: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuMemoryClock(gpuIndex)),
-    GetGpuTemperature: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuTemperature(gpuIndex)),
-    GetGpuFanSpeed: (gpuIndex?: number) => call<number>(raw.NvidiaGpu.GetGpuFanSpeed(gpuIndex)),
-    GetGpuCoreClockRange: (gpuIndex?: number) => call<{Min: number, Max: number}>(raw.NvidiaGpu.GetGpuCoreClockRange(gpuIndex)),
-    GetGpuMemoryClockRange: (gpuIndex?: number) => call<{Min: number, Max: number}>(raw.NvidiaGpu.GetGpuMemoryClockRange(gpuIndex)),
-    GetGpuPowerLimitRange: (gpuIndex?: number) => call<{Min: number, Max: number}>(raw.NvidiaGpu.GetGpuPowerLimitRange(gpuIndex)),
+    GetGpuName: (gpuIndex?: number) => cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuName(${gpuIndex ?? ''})`, () => call<string>(raw.NvidiaGpu.GetGpuName(gpuIndex))),
+    GetGpuDriverVersion: (gpuIndex?: number) => cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuDriverVersion(${gpuIndex ?? ''})`, () => call<string>(raw.NvidiaGpu.GetGpuDriverVersion(gpuIndex))),
+    GetGpuDriverDate: (gpuIndex?: number) => cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuDriverDate(${gpuIndex ?? ''})`, () => call<string>(raw.NvidiaGpu.GetGpuDriverDate(gpuIndex))),
+    GetGpuMemoryTotal: (gpuIndex?: number) => cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuMemoryTotal(${gpuIndex ?? ''})`, () => call<string>(raw.NvidiaGpu.GetGpuMemoryTotal(gpuIndex))),
+    GetGpuBusWidth: (gpuIndex?: number) => cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuBusWidth(${gpuIndex ?? ''})`, () => call<string>(raw.NvidiaGpu.GetGpuBusWidth(gpuIndex))),
+    GetGpuUtilization: (gpuIndex?: number) => cached(CACHE_TTL_MS, `NvidiaGpu.GetGpuUtilization(${gpuIndex ?? ''})`, () => call<number>(raw.NvidiaGpu.GetGpuUtilization(gpuIndex))),
+    GetGpuMemoryUtilization: (gpuIndex?: number) => cached(CACHE_TTL_MS, `NvidiaGpu.GetGpuMemoryUtilization(${gpuIndex ?? ''})`, () => call<number>(raw.NvidiaGpu.GetGpuMemoryUtilization(gpuIndex))),
+    GetGpuCoreClock: (gpuIndex?: number) => cached(CACHE_TTL_MS, `NvidiaGpu.GetGpuCoreClock(${gpuIndex ?? ''})`, () => call<number>(raw.NvidiaGpu.GetGpuCoreClock(gpuIndex))),
+    GetGpuMemoryClock: (gpuIndex?: number) => cached(CACHE_TTL_MS, `NvidiaGpu.GetGpuMemoryClock(${gpuIndex ?? ''})`, () => call<number>(raw.NvidiaGpu.GetGpuMemoryClock(gpuIndex))),
+    GetGpuTemperature: (gpuIndex?: number) => cached(CACHE_TTL_MS, `NvidiaGpu.GetGpuTemperature(${gpuIndex ?? ''})`, () => call<number>(raw.NvidiaGpu.GetGpuTemperature(gpuIndex))),
+    GetGpuFanSpeed: (gpuIndex?: number) => cached(CACHE_TTL_MS, `NvidiaGpu.GetGpuFanSpeed(${gpuIndex ?? ''})`, () => call<number>(raw.NvidiaGpu.GetGpuFanSpeed(gpuIndex))),
+    GetGpuCoreClockRange: (gpuIndex?: number) => cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuCoreClockRange(${gpuIndex ?? ''})`, () => call<{Min: number, Max: number}>(raw.NvidiaGpu.GetGpuCoreClockRange(gpuIndex))),
+    GetGpuMemoryClockRange: (gpuIndex?: number) => cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuMemoryClockRange(${gpuIndex ?? ''})`, () => call<{Min: number, Max: number}>(raw.NvidiaGpu.GetGpuMemoryClockRange(gpuIndex))),
+    GetGpuPowerLimitRange: (gpuIndex?: number) => cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuPowerLimitRange(${gpuIndex ?? ''})`, () => call<{Min: number, Max: number}>(raw.NvidiaGpu.GetGpuPowerLimitRange(gpuIndex))),
     LockGpuClock: (freq: number, gpuIndex?: number) => call(raw.NvidiaGpu.LockGpuClock(freq, gpuIndex)),
     LockGpuClockRange: (minFreq: number, maxFreq: number, gpuIndex?: number) =>
         call(raw.NvidiaGpu.LockGpuClockRange(minFreq, maxFreq, gpuIndex)),
@@ -328,7 +349,7 @@ export const NvidiaGpu = {
 };
 
 export const SystemInfo = {
-    GetSystemOverview: () => call<SystemOverview>(raw.SystemInfo.GetSystemOverview()),
+    GetSystemOverview: () => cached(STATIC_TTL_MS, 'SystemInfo.GetSystemOverview', () => call<SystemOverview>(raw.SystemInfo.GetSystemOverview())),
     OpenUrl: (url: string) => call(raw.SystemInfo.OpenUrl(url)),
 };
 
@@ -353,7 +374,7 @@ export const RyzenSmu = {
     DisableOc: () => call(raw.RyzenSmu.DisableOc()),
     SetCurveOptimizerAll: (value: number) => call(raw.RyzenSmu.SetCurveOptimizerAll(value)),
     SetCurveOptimizerPerCore: (coreIdx: number, value: number) => call(raw.RyzenSmu.SetCurveOptimizerPerCore(coreIdx, value)),
-    GetSmuTelemetry: () => call<{ Ppt: number; Tdc: number; Edc: number; Temp: number; FreqMhz: number; Usage: number }>(raw.RyzenSmu.GetSmuTelemetry()),
+    GetSmuTelemetry: () => cached(CACHE_TTL_MS, 'RyzenSmu.GetSmuTelemetry', () => call<{ Ppt: number; Tdc: number; Edc: number; Temp: number; FreqMhz: number; Usage: number }>(raw.RyzenSmu.GetSmuTelemetry())),
 };
 export const Power = {
     SetCPUMaxFrequency: (mhz: number) => call(raw.Power.SetCPUMaxFrequency(mhz)),
