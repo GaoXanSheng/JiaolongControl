@@ -1,5 +1,6 @@
 using System.IO;
 using System.Runtime.InteropServices;
+using Microsoft.Win32;
 using JiaoLongControl.Server.Core.Native;
 
 namespace JiaoLongControl.Server.Core.Drivers;
@@ -114,11 +115,12 @@ public class PawnIO : IDisposable
         if (!File.Exists(scriptPath))
             throw new FileNotFoundException($"缺少 {ScriptBlobName} 脚本文件，请检查安装是否完整");
 
-        // 优先加载应用目录下的 PawnIOLib.dll（兼容旧版部署/手动放置），否则交给系统搜索（官网安装目录）
-        string localDll = Path.Combine(AppContext.BaseDirectory, "Drivers", "PawnIO", DllName);
-        _dllHandle = File.Exists(localDll)
-            ? Kernel32.LoadLibrary(localDll)
-            : Kernel32.LoadLibrary(DllName);
+        // 按官方用例定位 PawnIOLib.dll：
+        // 1) 应用目录下 Drivers\PawnIO\（兼容旧版部署/手动放置）；
+        // 2) 注册表 Uninstall\PawnIO 的 InstallLocation（官方用例主路径）；
+        // 3) 回退 %ProgramFiles%\PawnIO（官方安装器不允许修改安装路径）；
+        // 4) 最后交给系统 DLL 搜索（仅当 PawnIO 目录已加入 PATH 等搜索路径时有效）。
+        _dllHandle = LoadPawnIOLib(out _);
 
         if (_dllHandle == IntPtr.Zero)
         {
@@ -134,6 +136,58 @@ public class PawnIO : IDisposable
         byte[] blobData = File.ReadAllBytes(scriptPath);
         if (pawnio_load(_executorHandle, blobData, (UIntPtr)blobData.Length) != 0)
             throw new Exception("加载 RyzenSMU 脚本失败");
+    }
+
+    /// <summary>
+    /// 按官方用例（https://github.com/namazso/PawnIO.Modules/wiki/Using-PawnIO-Modules）定位并加载 PawnIOLib.dll。
+    /// 候选顺序：应用目录 Drivers\PawnIO → 注册表 InstallLocation → %ProgramFiles%\PawnIO → 系统 DLL 搜索。
+    /// </summary>
+    /// <param name="loadedFrom">实际加载成功的路径（失败时为空）。</param>
+    private IntPtr LoadPawnIOLib(out string loadedFrom)
+    {
+        List<string> candidates = new()
+        {
+            Path.Combine(AppContext.BaseDirectory, "Drivers", "PawnIO", DllName),
+        };
+
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\PawnIO");
+            string? installLocation = key?.GetValue("InstallLocation")?.ToString();
+            if (!string.IsNullOrWhiteSpace(installLocation))
+            {
+                installLocation = installLocation.Trim().Trim('"');
+                if (installLocation.Length > 0)
+                    candidates.Add(Path.Combine(installLocation, DllName));
+            }
+        }
+        catch
+        {
+        }
+
+        candidates.Add(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+            "PawnIO",
+            DllName));
+
+        foreach (string path in candidates)
+        {
+            if (!File.Exists(path))
+                continue;
+
+            IntPtr handle = Kernel32.LoadLibrary(path);
+            if (handle != IntPtr.Zero)
+            {
+                loadedFrom = path;
+                return handle;
+            }
+        }
+
+        // 兜底：交给系统 DLL 搜索路径（官网安装目录通常不在其中，仅个别环境有效）
+        IntPtr fallback = Kernel32.LoadLibrary(DllName);
+        loadedFrom = fallback != IntPtr.Zero ? DllName : string.Empty;
+        return fallback;
     }
 
     private void CleanupHandles()

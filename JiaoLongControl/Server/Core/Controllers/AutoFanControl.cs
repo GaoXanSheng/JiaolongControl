@@ -64,7 +64,6 @@ public class AutoFanControl : IDisposable
             TaskCreationOptions.LongRunning,
             TaskScheduler.Default
         );
-        // Give the loop a moment to set _isRunning = true
         Thread.Sleep(50);
         return new CommandResult(true, "自动风扇控制启动");
     }
@@ -112,9 +111,7 @@ public class AutoFanControl : IDisposable
                     float smoothedCpuTemp = UpdateSmoothedTemp(FanType.CPU, rawCpuTemp);
 
                     var gpuTempResult = Bridge.Instance.NvidiaGpu.GetGpuTemperature();
-                    float rawGpuTemp = gpuTempResult.Success
-                        ? Convert.ToSingle(gpuTempResult.Data)
-                        : smoothedCpuTemp; // fallback: use CPU temp if GPU unavailable
+                    float rawGpuTemp = gpuTempResult.Success ? Convert.ToSingle(gpuTempResult.Data) : smoothedCpuTemp; 
                     float smoothedGpuTemp = UpdateSmoothedTemp(FanType.GPU, rawGpuTemp);
                     int targetCpuByte = CalculateFanSpeed(smoothedCpuTemp, FanType.CPU);
                     int targetGpuByte = CalculateFanSpeed(smoothedGpuTemp, FanType.GPU);

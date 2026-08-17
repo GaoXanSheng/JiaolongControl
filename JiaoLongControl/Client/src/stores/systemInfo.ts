@@ -35,6 +35,7 @@ export const useSystemInfoStore = defineStore('systemInfo', {
   getters: {
     gpuName: (state) => state.gpuStats?.GpuName || 'N/A',
     gpuDriverVersion: (state) => state.gpuStats?.DriverVersion || 'N/A',
+    gpuDriverDate: (state) => state.gpuStats?.DriverDate || 'N/A',
     gpuMemoryTotal: (state) => state.gpuStats?.MemoryTotal || 'N/A',
     gpuBusWidth: (state) => state.gpuStats?.BusWidth || 'N/A',
     gpuUtilization: (state) => parseInt(state.gpuStats?.GpuUtilization || '0', 10),
@@ -51,7 +52,7 @@ export const useSystemInfoStore = defineStore('systemInfo', {
         const [
           cpuTemp, cpuUsage, cpuFreq, cpuVolt,
           gTemp, fSpeed,
-          gpuName, gpuDriverVersion, gpuMemoryTotal, gpuBusWidth,
+          gpuName, gpuDriverVersion, gpuDriverDate, gpuMemoryTotal, gpuBusWidth,
           gpuUtil, gpuMemUtil, gpuCoreClock, gpuMemClock, gpuFanSpeed
         ] = await Promise.all([
           CPU.GetCPUThermometer(),
@@ -62,6 +63,7 @@ export const useSystemInfoStore = defineStore('systemInfo', {
           Fan.GetFanSpeed(),
           NvidiaGpu.GetGpuName(),
           NvidiaGpu.GetGpuDriverVersion(),
+          NvidiaGpu.GetGpuDriverDate(),
           NvidiaGpu.GetGpuMemoryTotal(),
           NvidiaGpu.GetGpuBusWidth(),
           NvidiaGpu.GetGpuUtilization(),
@@ -82,6 +84,7 @@ export const useSystemInfoStore = defineStore('systemInfo', {
         this.gpuStats = {
           GpuName: gpuName.Success ? gpuName.Data : 'N/A',
           DriverVersion: gpuDriverVersion.Success ? gpuDriverVersion.Data : 'N/A',
+          DriverDate: gpuDriverDate.Success ? gpuDriverDate.Data : 'N/A',
           MemoryTotal: gpuMemoryTotal.Success ? gpuMemoryTotal.Data : 'N/A',
           BusWidth: gpuBusWidth.Success ? gpuBusWidth.Data : 'N/A',
           GpuUtilization: gpuUtil.Success ? String(gpuUtil.Data) : '0',
@@ -90,7 +93,6 @@ export const useSystemInfoStore = defineStore('systemInfo', {
           MemoryClock: gpuMemClock.Success ? String(gpuMemClock.Data) : '0',
           FanSpeed: gpuFanSpeed.Success ? String(gpuFanSpeed.Data) : '0',
           GpuTemperature: gTemp.Success ? String(gTemp.Data) : '0',
-          DriverDate: 'N/A'
         };
         this.gpuTemp = gTemp.Success ? gTemp.Data : 0;
 

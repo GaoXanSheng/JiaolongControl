@@ -7,16 +7,31 @@ import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
 const loading = ref(false)
 const GPUDirectConnection = ref(false)
 onMounted(async () => {
-  GPUDirectConnection.value = (await GPU.Get()).Data == GPUMode.DiscreteMode
+  try {
+    GPUDirectConnection.value = (await GPU.Get()).Data === GPUMode.DiscreteMode
+  } catch (e) {
+    GPUDirectConnection.value = false
+    Message.error(`获取独显直连状态失败：${(e as Error)?.message ?? e}`)
+  }
 })
 
 async function GPUDirectConnection_handleClick() {
   loading.value = true
-  const result = await GPU.Set(GPUDirectConnection.value ? GPUMode.DiscreteMode : GPUMode.HybridMode)
-  Message.success(result.Message)
-  Message.info('独显直连应用后需重启')
-  GPUDirectConnection.value = result.Success
-  loading.value = false
+  try {
+    const result = await GPU.Set(GPUDirectConnection.value ? GPUMode.DiscreteMode : GPUMode.HybridMode)
+    if (result.Success) {
+      Message.success(result.Message)
+      Message.info('独显直连应用后需重启')
+    } else {
+      Message.error(result.Message)
+      GPUDirectConnection.value = !GPUDirectConnection.value
+    }
+  } catch (e) {
+    Message.error(`设置失败：${(e as Error)?.message ?? e}`)
+    GPUDirectConnection.value = !GPUDirectConnection.value
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -26,7 +41,7 @@ async function GPUDirectConnection_handleClick() {
       <a-switch
           v-model="GPUDirectConnection"
           :loading="loading"
-          @click="GPUDirectConnection_handleClick"
+          @change="GPUDirectConnection_handleClick"
       >
         <template #checked-icon>
           <icon-check/>
