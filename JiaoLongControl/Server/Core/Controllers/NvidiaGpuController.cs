@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Management;
 using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Native;
@@ -51,6 +52,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                 {
                     GpuName = gpu.FullName,
                     DriverVersion = $"{(NVIDIA.DriverVersion / 100).ToString()}.{(NVIDIA.DriverVersion % 100).ToString()}",
+                    DriverDate = GetNvidiaDriverDate(gpuIndex) ?? "Unknown",
                     MemoryTotal = $"{(gpu.MemoryInformation.DedicatedVideoMemoryInkB / 1024).ToString()} MiB",
                     BusWidth = $"x{gpu.BusInformation.CurrentPCIeLanes}",
                     GpuUtilization = gpu.UsageInformation.GPU.Percentage.ToString(),
@@ -82,6 +84,43 @@ namespace JiaoLongControl.Server.Core.Controllers
                 return new CommandResult(true, "获取成功", $"{(ver / 100).ToString()}.{(ver % 100).ToString()}");
             }
             catch (Exception ex) { return new CommandResult(false, ex.Message); }
+        }
+
+        public CommandResult GetGpuDriverDate(int gpuIndex = -1)
+        {
+            try
+            {
+                string date = GetNvidiaDriverDate(gpuIndex);
+                if (string.IsNullOrEmpty(date))
+                    return new CommandResult(false, "未获取到 NVIDIA 驱动日期");
+                return new CommandResult(true, "获取成功", date);
+            }
+            catch (Exception ex) { return new CommandResult(false, ex.Message); }
+        }
+
+        /// <summary>
+        /// 通过 WMI 查询 Win32_VideoController 获取 NVIDIA 显卡驱动安装日期（格式 yyyy-MM-dd）。
+        /// </summary>
+        private string GetNvidiaDriverDate(int gpuIndex)
+        {
+            string fullName = GetGPU(gpuIndex).FullName;
+            string fallback = "";
+            using var searcher = new ManagementObjectSearcher("SELECT Name, DriverDate FROM Win32_VideoController");
+            foreach (var obj in searcher.Get())
+            {
+                string name = obj["Name"]?.ToString() ?? "";
+                if (!name.Contains("NVIDIA", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                string dateStr = obj["DriverDate"]?.ToString();
+                if (string.IsNullOrEmpty(dateStr))
+                    continue;
+                var date = ManagementDateTimeConverter.ToDateTime(dateStr);
+                if (name.Equals(fullName, StringComparison.OrdinalIgnoreCase))
+                    return date.ToString("yyyy-MM-dd");
+                if (string.IsNullOrEmpty(fallback))
+                    fallback = date.ToString("yyyy-MM-dd");
+            }
+            return fallback;
         }
 
         public CommandResult GetGpuMemoryTotal(int gpuIndex = -1)

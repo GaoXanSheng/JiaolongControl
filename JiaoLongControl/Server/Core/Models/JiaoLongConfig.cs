@@ -1,5 +1,7 @@
 namespace JiaoLongControl.Server.Core.Models;
 
+using YamlDotNet.Serialization;
+
 public class JiaoLongConfig
 {
     public string Version { get; set; } = "";
@@ -30,6 +32,42 @@ public class AppSection
 
 public class CpuSection
 {
+    [ConfigComment("当前选中档位: default / performance / saving / custom")]
+    public string CpuProfile { get; set; } = "default";
+
+    [ConfigComment("默认档位参数")]
+    public CpuProfileData Default { get; set; } = new()
+    {
+        CpuLongPower = 45, CpuShortPower = 65, CpuTempWall = 80, CpuMaxFrequency = 4400
+    };
+
+    [ConfigComment("高性能档位参数")]
+    public CpuProfileData Performance { get; set; } = new()
+    {
+        CpuLongPower = 65, CpuShortPower = 90, CpuTempWall = 95, CpuMaxFrequency = 4700
+    };
+
+    [ConfigComment("节能档位参数")]
+    public CpuProfileData Saving { get; set; } = new()
+    {
+        CpuLongPower = 30, CpuShortPower = 45, CpuTempWall = 75, CpuMaxFrequency = 3200
+    };
+
+    [ConfigComment("自定义档位参数")]
+    public CpuProfileData Custom { get; set; } = new();
+    
+    [YamlIgnore]
+    public CpuProfileData Active => CpuProfile switch
+    {
+        "performance" => Performance,
+        "saving" => Saving,
+        "custom" => Custom,
+        _ => Default
+    };
+}
+
+public class CpuProfileData
+{
     [ConfigComment("CPU长期功率限制 (W)")]
     [ConfigRange(5, 120)]
     public byte CpuLongPower { get; set; } = 45;
@@ -48,9 +86,6 @@ public class CpuSection
 
     [ConfigComment("CPU睿频开关")]
     public bool CpuTurbo { get; set; } = true;
-
-    [ConfigComment("当前选中档位: default / performance / saving / custom")]
-    public string CpuProfile { get; set; } = "default";
 }
 
 public class GpuSection

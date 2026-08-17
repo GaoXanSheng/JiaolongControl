@@ -22,11 +22,21 @@ public static class ConfigSerializer
         .ConfigureDefaultValuesHandling(DefaultValuesHandling.Preserve)
         .Build();
 
-    private static string ConfigPath => Path.Combine(ConfigDir, FileName);
+    public static string ConfigDir { get; set; } = Path.Combine(AppContext.BaseDirectory, "config");
+    public static string ConfigPath => Path.Combine(ConfigDir, FileName);
     private static string TempPath => ConfigPath + TempExt;
     private static string BackupPath => ConfigPath + BackupExt;
-
-    public static string ConfigDir { get; set; } = Path.Combine(AppContext.BaseDirectory, "config");
+    
+    public static string Serialize<T>(T config)
+    {
+        return Serializer.Serialize(config);
+    }
+    public static string? ReadFileContent()
+    {
+        if (!File.Exists(ConfigPath))
+            return null;
+        return File.ReadAllText(ConfigPath);
+    }
 
     public static JiaoLongConfig Load()
     {
@@ -60,7 +70,7 @@ public static class ConfigSerializer
     public static void Save(JiaoLongConfig config)
     {
         Directory.CreateDirectory(ConfigDir);
-        var yaml = Serializer.Serialize(config);
+        var yaml = Serialize(config);
         if (File.Exists(ConfigPath))
             File.Copy(ConfigPath, BackupPath, overwrite: true);
         File.WriteAllText(TempPath, yaml);
@@ -92,8 +102,6 @@ public static class ConfigSerializer
         {
             Update(existing, version);
         }
-
-
     }
 
     public static void Update(JiaoLongConfig LowConfig, string version)

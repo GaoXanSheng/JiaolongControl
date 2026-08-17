@@ -14,7 +14,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             var res =  MethodServices.GetValue<GpuMode>(MethodName.GpuMode);
             
-            return new CommandResult(true,"获取成功", res.ToString());
+            return new CommandResult(true,"获取成功", (byte)res);
         }
 
         public CommandResult Set(GpuMode mode)

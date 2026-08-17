@@ -20,11 +20,12 @@ public class SelfStart
     private void CPU()
     {
         var bridge = Bridge.Instance;
-        bridge.CPU.SetCpuLongPower(bridge.Config.Cpu.CpuLongPower);
-        bridge.CPU.SetCpuShortPower(bridge.Config.Cpu.CpuShortPower);
-        bridge.CPU.SetCPUTempWall(bridge.Config.Cpu.CpuTempWall);
-        bridge.Power.SetCPUMaxFrequency(bridge.Config.Cpu.CpuMaxFrequency);
-        if (bridge.Config.Cpu.CpuTurbo)
+        var cpu = bridge.Config.Cpu.Active;
+        bridge.CPU.SetCpuLongPower(cpu.CpuLongPower);
+        bridge.CPU.SetCpuShortPower(cpu.CpuShortPower);
+        bridge.CPU.SetCPUTempWall(cpu.CpuTempWall);
+        bridge.Power.SetCPUMaxFrequency(cpu.CpuMaxFrequency);
+        if (cpu.CpuTurbo)
             bridge.Power.EnableTurbo();
         else
             bridge.Power.DisableTurbo();
