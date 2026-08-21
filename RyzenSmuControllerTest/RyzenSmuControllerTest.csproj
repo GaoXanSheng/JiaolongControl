@@ -11,4 +11,10 @@
     <ItemGroup>
         <ProjectReference Include="..\JiaoLongControl\JiaoLongControl.csproj" />
     </ItemGroup>
+    <ItemGroup>
+        <None Update="AMDFamily17.bin">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <TargetPath>Drivers\PawnIO\AMDFamily17.bin</TargetPath>
+        </None>
+    </ItemGroup>
 </Project>

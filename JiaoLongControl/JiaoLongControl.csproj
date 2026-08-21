@@ -54,6 +54,9 @@
         <None Update="Drivers\PawnIO\RyzenSMU.bin">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
+        <None Update="Drivers\PawnIO\AMDFamily17.bin">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
         <None Update="Drivers\PawnIO\Nvidia.bin">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
