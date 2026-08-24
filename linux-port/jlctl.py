@@ -20,6 +20,7 @@ import json
 import os
 import re
 import subprocess
+import struct
 import sys
 import threading
 import time
@@ -325,6 +326,14 @@ def cpu_info():
     cores = int(m.group(1)) if m else (len(phys) or threads // 2)
     bm = re.search(r"@ (\d+\.\d+)GHz", name)
     base = int(float(bm.group(1)) * 1000) if bm else 0
+    if not base:  # 7745HX 等型号串不含 @ 频率, 从 DMI "Current Speed" 取
+        try:
+            out = subprocess.run(["dmidecode", "-t", "4"], capture_output=True,
+                                 text=True, timeout=5).stdout
+            m2 = re.search(r"Current Speed:\s*(\d+)\s*MHz", out)
+            if m2: base = int(m2.group(1))
+        except Exception:
+            pass
     return ok(data={"Name": name, "Cores": cores, "Threads": threads, "BaseFreqMhz": base})
 
 CPU_MAX_MHZ = 5151
@@ -554,21 +563,27 @@ def apply_boot_config():
 def smu_telemetry():
     freq = cpu_freq_mhz()
     usage = cpu_usage()
-    return ok(data={"Ppt": rapl_power_watts(), "Tdc": 0, "Edc": 0,
+    # TDC/EDC: Linux 无标准电流遥测接口, 返回 None(前端显示 —)而非误导性 0
+    return ok(data={"Ppt": rapl_power_watts(), "Tdc": None, "Edc": None,
                     "Temp": cpu_temp(), "FreqMhz": freq, "Usage": usage})
 
 SMU_SYS = "/sys/kernel/ryzen_smu_drv"
 def _smu_exec(is_mp1, cmd, args=None):
+    """ryzen_smu sysfs 二进制接口: smu_args=<6×u32 LE>, cmd寄存器=<u32 LE>.
+    与已验证的 jiaolong-cpu-undervolt 脚本完全一致; 文本 echo 方式会挂起."""
     if not os.path.isdir(SMU_SYS): return None, "ryzen_smu 未加载"
     try:
-        for i, v in enumerate(args or []):
-            if not writef(f"{SMU_SYS}/smu_args", f"{i} {int(v) & 0xFFFFFFFF}"):
-                return None, "smu_args 写入失败"
+        vals = [int(v) & 0xFFFFFFFF for v in (args or [])][:6]
+        vals += [0] * (6 - len(vals))
+        with open(f"{SMU_SYS}/smu_args", "wb", buffering=0) as f:
+            f.write(struct.pack("<6I", *vals))
         cf = f"{SMU_SYS}/{'mp1_smu_cmd' if is_mp1 else 'rsmu_cmd'}"
-        if not writef(cf, int(cmd)): return None, "cmd 写入失败"
-        time.sleep(0.03)
-        rsp = readf(cf)
-        return (int(rsp, 0) if rsp else None), None
+        with open(cf, "wb", buffering=0) as f:
+            f.write(struct.pack("<I", int(cmd)))
+        time.sleep(0.05)
+        with open(cf, "rb") as f:
+            rsp = struct.unpack("<I", f.read(4))[0]
+        return rsp, None
     except Exception as e:
         return None, str(e)
 
@@ -680,14 +695,22 @@ h("RyzenSmu","SetSlowLimit")(lambda a: smu_set_limit(a[0], "slow"))
 h("RyzenSmu","SetStapmTime")(lambda a: ok())
 h("RyzenSmu","SetSlowTime")(lambda a: ok())
 h("RyzenSmu","SetPptLimitRsmu")(lambda a: smu_set_limit(a[0], "ppt_rsmu"))
+# ---- 补齐 RyzenSmu 写端点 (Dragon Range 命令号来自 C# RyzenSmuController default 分支) ----
+def _smu_simple(is_mp1, cmd, name, val):
+    rsp, err = _smu_exec(is_mp1, cmd, [int(val) & 0xFFFFFFFF])
+    if err: return fail(err)
+    return ok(f"{name} 设置成功", {"rsp": hex(rsp)}) if rsp == 1 else fail(f"SMU 响应 {hex(rsp) if rsp is not None else 'None'}")
+h("RyzenSmu","SetVrmCurrentRsmu")(lambda a: _smu_simple(False, 0x57, "VRM Current", a[0]))
+h("RyzenSmu","SetEdcLimitRsmu") (lambda a: _smu_simple(False, 0x58, "EDC Limit", a[0]))
+h("RyzenSmu","SetTempLimitRsmu")(lambda a: _smu_simple(False, 0x59, "Temp Limit", a[0]))
+h("RyzenSmu","SetPboScalar")    (lambda a: _smu_simple(False, 0x5B, "PBO Scalar", a[0]))
+h("RyzenSmu","SetCurveOptimizerAll")(lambda a: smu_co_all(a[0]))
 
 def _unsupported(name):
     def fn(a): return fail(f"{name}: 该 SMU 写操作未开放 (安全起见请用既有降压脚本/CLI)")
     return fn
-for _m in ("SetVrmCurrentMp1","SetVrmCurrentRsmu","SetTdcLimitMp1","SetTdcLimitRsmu",
-           "SetEdcLimitMp1","SetEdcLimitRsmu","SetTempLimitMp1","SetTempLimitRsmu",
-           "SetPboScalar","SetOcClk","SetPerCoreOcClk","SetOcVolt","EnableOc",
-           "DisableOc","SetCurveOptimizerAll","SetCurveOptimizerPerCore"):
+for _m in ("SetVrmCurrentMp1","SetTdcLimitMp1","SetEdcLimitMp1","SetTempLimitMp1",
+           "SetOcClk","SetPerCoreOcClk","SetOcVolt"):
     h("RyzenSmu",_m)(_unsupported(_m))
 
 # ============================ HTTP Server ============================
