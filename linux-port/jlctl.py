@@ -771,7 +771,15 @@ def serve(port=8800):
             res = api_dispatch(parts[0], parts[1] if len(parts) > 1 else "", body.get("args", []))
             self._send(res)
 
-    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    try:
+        srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    except OSError as e:
+        if e.errno == 98:
+            print(f"错误: 端口 {port} 已被占用。\n"
+                  f"  可能已有一个 jlctl serve 在运行:  pgrep -af jlctl.py\n"
+                  f"  停止它:                            sudo fuser -k {port}/tcp", flush=True)
+            return 1
+        raise
     try:
         boot = apply_boot_config()
         print(f"[jlctl] boot config applied: {boot}", flush=True)
