@@ -241,19 +241,23 @@ def maxfanswitch_set(v):
     ECF2.wrbit(Ecf2.FAAP_B, 1 if v else 0)
     return ok("设置成功")
 
-def fan_set(target_rpm):
-    """手动定速: 前端传目标转速 RPM (1500-5800), EC 档位 = RPM/100
-    (bridge.ts: toByte(fanSpeed/100); Blding64: 1档≈100RPM). CPU+GPU 同步."""
-    lvl = max(0, min(68, int(round(int(target_rpm) / 100))))
+def fan_set(level_from_frontend):
+    """手动定速. 注意: WebUI 链路 bridge.ts 已做 toByte(fanSpeed/100),
+    所以此处收到的是 EC 档位 (RPM/100), 不可再次除以 100!
+    CLI 的 fan set <RPM> 入口请先用 fan_set_rpm(). CPU+GPU 同步."""
+    lvl = max(1, min(68, int(round(int(level_from_frontend)))))   # 0 档会停转, 最小钳到 1
     autofan_stop()
     if PEC is None or not PEC.alive():
         return fail("EC 端口不可用")
     maxfanswitch_set(False)                 # 与 C# 同款: 先关 ACPI 风扇策略
     PEC.write(0xC83C, lvl)
-    PEC.write(0xB20, PEC.read(0xB20) | 0x02)
     PEC.write(0xC83D, lvl)
-    PEC.write(0xB20, PEC.read(0xB20) | 0x08)
-    return ok("设置成功", {"level": lvl, "rpm": int(target_rpm)})
+    PEC.write(0xB20, 0x0A)                  # 绝对值手动位(CPU+GPU), 禁读改写(B20是动态状态寄存器)
+    return ok("设置成功", {"level": lvl, "rpm": lvl * 100})
+
+def fan_set_rpm(rpm):
+    """CLI 入口: 输入目标转速 RPM, 内部换算为档位."""
+    return fan_set(int(round(int(rpm) / 100)))
 
 def fan_auto():
     if PEC is None:
@@ -482,7 +486,8 @@ def _af_loop():
                 lvl = max(0, min(68, int(round(rpm / 100))))   # EC 档位 = RPM/100
                 maxfanswitch_set(False)                        # 关 ACPI 策略, EC 手动优先
                 PEC.write(0xC83C, lvl)
-                PEC.write(0xB20, PEC.read(0xB20) | 0x02)
+                PEC.write(0xC83D, lvl)
+                PEC.write(0xB20, 0x0A)     # 绝对值手动位 (禁读改写)
             _af["last"] = (t, rpm)
         except Exception:
             pass
@@ -866,7 +871,7 @@ def main():
         if args.fa == "auto": return emit(fan_auto())
         if args.fa == "autofan":
             return emit(autofan_stop() if _af["run"] else autofan_start())
-        return emit(fan_set(args.rpm))
+        return emit(fan_set_rpm(args.rpm))
     if c == "rgb":
         if args.ra == "color": return emit(kb_color_set(args.r, args.g, args.b))
         if args.ra == "brightness": return emit(kb_brightness_set(args.lvl))
