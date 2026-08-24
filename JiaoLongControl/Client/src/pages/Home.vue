@@ -203,7 +203,7 @@ const lineChartOption = computed(() => ({
 </script>
 
 <template>
-  <div class="p-6 h-full overflow-y-auto space-y-6 text-white no-scrollbar">
+  <div class="p-6 h-full overflow-hidden overflow-y-auto space-y-6 text-white no-scrollbar relative">
 
     <!-- Row 1: 顶部 Banner -->
     <WelcomeBannerComp :cpuTemp="cpuTemp" :gpuTemp="gpuTemp" :activeModeName="activeMode.name" :activeModeIcon="activeMode.icon" />

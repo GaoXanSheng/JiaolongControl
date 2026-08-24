@@ -473,19 +473,34 @@ def _af_loop():
     while _af["run"]:
         try:
             t = ECF2.rd(Ecf2.TSR6)
-            pct = 100
-            for tc, p in _af["curve"]:
-                if t <= tc: pct = p; break
+            rpm = None
+            pts = _af["curve"]
+            for tc, r in pts:
+                if t <= tc: rpm = r; break
+            if rpm is None: rpm = pts[-1][1] if pts else 3000
             if PEC and PEC.alive():
-                PEC.write(0xC83C, int(round(pct * 68 / 100)))
+                lvl = max(0, min(68, int(round(rpm / 100))))   # EC 档位 = RPM/100
+                maxfanswitch_set(False)                        # 关 ACPI 策略, EC 手动优先
+                PEC.write(0xC83C, lvl)
                 PEC.write(0xB20, PEC.read(0xB20) | 0x02)
-            _af["last"] = (t, pct)
+            _af["last"] = (t, rpm)
         except Exception:
             pass
         time.sleep(2.0)
 
+def _load_fan_curve_from_config():
+    try:
+        fan = config_get()["Data"].get("Fan", {})
+        curve = [(int(p["temp"]), int(p["speed"])) for p in fan.get("CpuFanCurve", [])
+                 if isinstance(p, dict) and p.get("temp") and p.get("speed")]
+        if len(curve) >= 2:
+            _af["curve"] = sorted(curve)
+    except Exception:
+        pass
+
 def autofan_start():
     if not _af["run"]:
+        _load_fan_curve_from_config()
         _af["run"] = True
         threading.Thread(target=_af_loop, daemon=True).start()
     return ok("自动风扇已启动")
@@ -495,6 +510,39 @@ def autofan_stop():
     return ok("自动风扇已停止" if was else "自动风扇未在运行")
 
 def autofan_state(): return ok(data=_af["run"])
+
+# ---- Boot 应用: 与 C# 版 App.BootXXX 语义一致, serve 启动时执行一次 ----
+def apply_boot_config():
+    """把持久化配置中标记为"开机自动应用"的项目真正写到硬件."""
+    results = []
+    try:
+        cfg = config_get()["Data"]
+    except Exception as e:
+        return {"applied": [], "error": str(e)}
+    app = cfg.get("App", {}) or {}
+    smu = cfg.get("Smu", {}) or {}
+    # 1) RyzenSMU 全核降压自动应用
+    if app.get("BootSetRyzenSumCurveOptimizerAll"):
+        co = smu.get("CurveOptimizerAll")
+        if co:
+            r = smu_co_all(int(co))
+            results.append(("curve_optimizer", r.get("Success"), r.get("Message", "")))
+    # 2) 高级风扇控制 (曲线自动调速)
+    if app.get("BootAdvancedFanControlSystem"):
+        r = autofan_start()
+        results.append(("auto_fan", True, r["Message"]))
+    # 3) CPU 参数自动应用 (性能模式 / 最大频率)
+    if app.get("BootCPUAutoStart"):
+        cpu = cfg.get("Cpu", {}) or {}
+        mode = {"PerformanceMode": 0, "QuietMode": 1, "BalanceMode": 2}.get(cpu.get("CpuProfile"), None)
+        if mode is not None:
+            r = perfmode_set(mode)
+            results.append(("perfmode", r.get("Success"), r.get("Message", "")))
+        fm = cpu.get("CpuMaxFrequency")
+        if fm:
+            r = power_freqmax_set(int(fm))
+            results.append(("freq_max", r.get("Success"), r.get("Message", "")))
+    return {"applied": [r for r in results], "count": len(results)}
 
 # ============================ RyzenSmu ============================
 
@@ -721,6 +769,11 @@ def serve(port=8800):
             self._send(res)
 
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    try:
+        boot = apply_boot_config()
+        print(f"[jlctl] boot config applied: {boot}", flush=True)
+    except Exception as e:
+        print(f"[jlctl] boot config apply failed: {e}", flush=True)
     print(f"JiaolongControl WebUI: http://127.0.0.1:{port}/  (dist={DIST})", flush=True)
     srv.serve_forever()
 
