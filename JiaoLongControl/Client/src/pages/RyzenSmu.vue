@@ -134,8 +134,8 @@ async function fetchTelemetry() {
     if (res.Success && res.Data) {
       telemetry.value = res.Data;
       pushHistory(pptHistory.value, res.Data.Ppt);
-      pushHistory(tdcHistory.value, res.Data.Tdc);
-      pushHistory(edcHistory.value, res.Data.Edc);
+      pushHistory(tdcHistory.value, res.Data.Tdc ?? NaN);
+      pushHistory(edcHistory.value, res.Data.Edc ?? NaN);
       pushHistory(tempHistory.value, res.Data.Temp);
     }
   } catch (e) {
@@ -390,7 +390,7 @@ onUnmounted(() => {
             <div class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between">
               <div>
                 <span class="text-[10px] text-gray-500 block">TDC 供电电流</span>
-                <span class="text-base font-bold text-white font-mono">{{ telemetry.Tdc.toFixed(1) }} <span class="text-[10px] text-gray-500 font-bold">A</span></span>
+                <span class="text-base font-bold text-white font-mono">{{ telemetry.Tdc != null ? telemetry.Tdc.toFixed(1) : '—' }} <span class="text-[10px] text-gray-500 font-bold">A</span></span>
               </div>
               <svg class="w-full h-8 opacity-80 mt-1" viewBox="0 0 160 40" preserveAspectRatio="none">
                 <defs>
@@ -405,7 +405,7 @@ onUnmounted(() => {
             <div class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between">
               <div>
                 <span class="text-[10px] text-gray-500 block">EDC 峰值电流</span>
-                <span class="text-base font-bold text-white font-mono">{{ telemetry.Edc.toFixed(1) }} <span class="text-[10px] text-gray-500 font-bold">A</span></span>
+                <span class="text-base font-bold text-white font-mono">{{ telemetry.Edc != null ? telemetry.Edc.toFixed(1) : '—' }} <span class="text-[10px] text-gray-500 font-bold">A</span></span>
               </div>
               <svg class="w-full h-8 opacity-80 mt-1" viewBox="0 0 160 40" preserveAspectRatio="none">
                 <defs>
