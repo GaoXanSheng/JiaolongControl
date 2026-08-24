@@ -186,19 +186,23 @@ def cpu_temp():
             if v: return int(v) / 1000.0
     return ECF2.rd(Ecf2.TSR6) if ECF2 else 0
 
+_rapl_last = None
 def rapl_power_watts():
-    import glob
-    for h in glob.glob("/sys/class/hwmon/hwmon*"):
-        name = readf(f"{h}/name", "")
-        if name in ("amdgpu", "nvme", "nvidia"):
-            continue
-        for ch in ("power1_average", "power1_input"):
-            v = readf(f"{h}/{ch}")
-            if v:
-                w = int(v) / 1_000_000
-                if 0 < w < 300:
-                    return round(w, 1)
-    return 0.0
+    """AMD 平台 RAPL: /sys/class/powercap/intel-rapl:0/energy_uj 是累积能量,
+    需两次采样差分算功率; 首次调用无历史, 返回 0.0."""
+    global _rapl_last
+    try:
+        v = int(readf("/sys/class/powercap/intel-rapl:0/energy_uj", "0"))
+    except Exception:
+        return 0.0
+    now = time.time()
+    if _rapl_last is None:
+        _rapl_last = (now, v); return 0.0
+    dt, dv = now - _rapl_last[0], v - _rapl_last[1]
+    _rapl_last = (now, v)
+    if dt <= 0 or dv < 0: return 0.0
+    w = dv / 1_000_000 / dt
+    return round(w, 1) if 0 < w < 300 else 0.0
 
 def nvidia_query(q):
     try:
@@ -434,12 +438,12 @@ def _default_config():
                 "Custom": dict(prof)},
         "Gpu": {"GpuClock": 0, "MemoryClock": 0, "PowerLimit": 0},
         "Fan": {"FanCurveMerge": True, "ManualFanSpeed": 0,
-                "CpuFanCurve": [{"temp": 40, "speed": 20}, {"temp": 55, "speed": 30},
-                                {"temp": 65, "speed": 45}, {"temp": 75, "speed": 65},
-                                {"temp": 85, "speed": 90}, {"temp": 92, "speed": 100}],
-                "GpuFanCurve": [{"temp": 40, "speed": 20}, {"temp": 55, "speed": 30},
-                                {"temp": 65, "speed": 45}, {"temp": 75, "speed": 65},
-                                {"temp": 85, "speed": 90}, {"temp": 92, "speed": 100}]},
+                "CpuFanCurve": [{"temp": 40, "speed": 1500}, {"temp": 55, "speed": 2200},
+                                {"temp": 65, "speed": 3000}, {"temp": 75, "speed": 4200},
+                                {"temp": 85, "speed": 5500}, {"temp": 92, "speed": 6800}],
+                "GpuFanCurve": [{"temp": 40, "speed": 1500}, {"temp": 55, "speed": 2200},
+                                {"temp": 65, "speed": 3000}, {"temp": 75, "speed": 4200},
+                                {"temp": 85, "speed": 5500}, {"temp": 92, "speed": 6800}]},
         "Smu": {"StapmLimit": 45, "StapmTime": 0, "FastLimit": 60, "SlowLimit": 54,
                 "SlowTime": 0, "PptLimitRsmu": 75, "VrmCurrentMp1": 0, "VrmCurrentRsmu": 0,
                 "TdcLimitMp1": 0, "TdcLimitRsmu": 0, "EdcLimitMp1": 0, "EdcLimitRsmu": 0,
@@ -479,25 +483,28 @@ def autostart_set(enable):
 
 # ============================ AutoFan ============================
 
-_af = {"run": False, "last": None,
-       "curve": [(45, 20), (58, 32), (66, 48), (74, 68), (80, 88), (86, 100)]}
+_af = {"run": False, "last": None, "merge": True,
+       "curve": [(45, 20), (58, 32), (66, 48), (74, 68), (80, 88), (86, 100)],
+       "gpu_curve": [(45, 20), (58, 32), (66, 48), (74, 68), (80, 88), (86, 100)]}
 
 def _af_loop():
     while _af["run"]:
         try:
             t = ECF2.rd(Ecf2.TSR6)
-            rpm = None
-            pts = _af["curve"]
-            for tc, r in pts:
-                if t <= tc: rpm = r; break
-            if rpm is None: rpm = pts[-1][1] if pts else 3000
+            def interp(pts):
+                for tc, r in pts:
+                    if t <= tc: return r
+                return pts[-1][1] if pts else 3000
+            rpm_cpu = interp(_af["curve"])
+            rpm_gpu = interp(_af["gpu_curve"]) if not _af.get("merge") else rpm_cpu
             if PEC and PEC.alive():
-                lvl = max(0, min(68, int(round(rpm / 100))))   # EC 档位 = RPM/100
+                lvl_c = max(0, min(68, int(round(rpm_cpu / 100))))   # EC 档位 = RPM/100
+                lvl_g = max(0, min(68, int(round(rpm_gpu / 100))))
                 maxfanswitch_set(False)                        # 关 ACPI 策略, EC 手动优先
-                PEC.write(0xC83C, lvl)
-                PEC.write(0xC83D, lvl)
+                PEC.write(0xC83C, lvl_c)
+                PEC.write(0xC83D, lvl_g)
                 PEC.write(0xB20, 0x0A)     # 绝对值手动位 (禁读改写)
-            _af["last"] = (t, rpm)
+            _af["last"] = (t, rpm_cpu)
         except Exception:
             pass
         time.sleep(2.0)
@@ -505,10 +512,15 @@ def _af_loop():
 def _load_fan_curve_from_config():
     try:
         fan = config_get()["Data"].get("Fan", {})
-        curve = [(int(p["temp"]), int(p["speed"])) for p in fan.get("CpuFanCurve", [])
-                 if isinstance(p, dict) and p.get("temp") and p.get("speed")]
-        if len(curve) >= 2:
-            _af["curve"] = sorted(curve)
+        def parse(key):
+            pts = [(int(p["temp"]), int(p["speed"])) for p in fan.get(key, [])
+                   if isinstance(p, dict) and p.get("temp") and p.get("speed")]
+            return sorted(pts) if len(pts) >= 2 else None
+        c = parse("CpuFanCurve")
+        if c: _af["curve"] = c
+        g = parse("GpuFanCurve")
+        if g: _af["gpu_curve"] = g
+        _af["merge"] = bool(fan.get("FanCurveMerge", True))
     except Exception:
         pass
 
