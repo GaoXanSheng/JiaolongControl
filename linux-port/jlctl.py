@@ -60,6 +60,10 @@ class Ecf2:
     TOCP_B = (37, 0)    # 触控板
     FWDE_B = (226, 0)   # Logo 灯 (Ambientlight)
     FAAP_B = (226, 1)   # ACPI 风扇策略开关 (MaxFanSpeedSwitch)
+    CMEN_B = (240, 0)   # CPUPower 自定义模式开关
+    CSPL   = 0xF5       # 当前 SPL 镜像
+    FPPT   = 0xF6       # 当前 SPPT 镜像
+    CTCL   = 0xF7       # 当前温度墙镜像
 
     def __init__(self):
         self.f = open("/dev/mem", "r+b", buffering=0)
@@ -403,9 +407,49 @@ def system_overview():
 
 CONF_DIR = os.path.expanduser("~/.config/jiaolongcontrol")
 CONF_FILE = os.path.join(CONF_DIR, "config.json")
+def _default_config():
+    """与前端 types/config.ts (JiaoLongConfigType) 完全对齐的默认结构"""
+    prof = dict(CpuLongPower=45, CpuShortPower=60, CpuTempWall=85, CpuMaxFrequency=5150, CpuTurbo=True)
+    return {
+        "Version": "linux-1.0",
+        "App": {"BootMinimized": False, "BootAdvancedFanControlSystem": False,
+                "BootAdvancedCPUSystem": False, "BootAdvancedGPUSystem": False,
+                "BootSetRyzenSumCurveOptimizerAll": False},
+        "Cpu": {"CpuProfile": "Balance", "Default": dict(prof),
+                "Performance": dict(CpuLongPower=54, CpuShortPower=75, CpuTempWall=90, CpuMaxFrequency=5150, CpuTurbo=True),
+                "Saving": dict(CpuLongPower=30, CpuShortPower=45, CpuTempWall=75, CpuMaxFrequency=3200, CpuTurbo=True),
+                "Custom": dict(prof)},
+        "Gpu": {"GpuClock": 0, "MemoryClock": 0, "PowerLimit": 0},
+        "Fan": {"FanCurveMerge": True, "ManualFanSpeed": 0,
+                "CpuFanCurve": [{"temp": 40, "speed": 20}, {"temp": 55, "speed": 30},
+                                {"temp": 65, "speed": 45}, {"temp": 75, "speed": 65},
+                                {"temp": 85, "speed": 90}, {"temp": 92, "speed": 100}],
+                "GpuFanCurve": [{"temp": 40, "speed": 20}, {"temp": 55, "speed": 30},
+                                {"temp": 65, "speed": 45}, {"temp": 75, "speed": 65},
+                                {"temp": 85, "speed": 90}, {"temp": 92, "speed": 100}]},
+        "Smu": {"StapmLimit": 45, "StapmTime": 0, "FastLimit": 60, "SlowLimit": 54,
+                "SlowTime": 0, "PptLimitRsmu": 75, "VrmCurrentMp1": 0, "VrmCurrentRsmu": 0,
+                "TdcLimitMp1": 0, "TdcLimitRsmu": 0, "EdcLimitMp1": 0, "EdcLimitRsmu": 0,
+                "TempLimitMp1": 0, "TempLimitRsmu": 0, "PboScalar": 0, "OcClk": 0,
+                "OcVolt": 0, "CurveOptimizerAll": 0},
+    }
+
+def _deep_merge(base, extra):
+    for k, v in (extra or {}).items():
+        if isinstance(v, dict) and isinstance(base.get(k), dict):
+            _deep_merge(base[k], v)
+        else:
+            base[k] = v
+    return base
+
 def config_get():
-    try: return ok(data=json.load(open(CONF_FILE)))
-    except Exception: return ok(data={})
+    try:
+        saved = json.load(open(CONF_FILE))
+        if not isinstance(saved, dict):
+            saved = {}
+    except Exception:
+        saved = {}
+    return ok(data=_deep_merge(_default_config(), saved))
 def config_set(cfg):
     os.makedirs(CONF_DIR, exist_ok=True)
     json.dump(cfg, open(CONF_FILE, "w"), ensure_ascii=False, indent=2)
@@ -599,6 +643,22 @@ DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 MIME = {".html": "text/html", ".js": "text/javascript", ".css": "text/css",
         ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon",
         ".woff2": "font/woff2", ".json": "application/json"}
+
+# ---- 补齐前端依赖的缺失端点 (2026-08-24 修复 CPU/Fan 页面卡加载) ----
+h("Power", "GetCPUMaxState")(lambda a: ok(data=int(ECF2.rd(240))))               # CMEN 所在字节: CPUPower 状态
+h("CPU", "GetCPUMaxState")(lambda a: ok(data=int(ECF2.rd(240))))
+h("Keyboard", "GetKeyboardMode")(lambda a: kb_mode_get())                        # LEDM 别名
+h("RyzenSmu", "GetSmuVersion")(lambda a: ok(data=(readf(f"{SMU_SYS}/version") or "").strip()))
+h("RyzenSmu", "GetCurveOptimizerSign")(lambda a: ok(data=-1))                    # 负值=降压 (与 Windows 一致)
+h("RyzenSmu", "DisableOc")(lambda a: ok("已禁用手动超频"))
+def _get_custom_mode(a):
+    on = bool(ECF2.rdbit(Ecf2.CMEN_B))
+    return ok("已开启" if on else "已关闭", data=on)
+h("CPU", "GetCustomMode")(_get_custom_mode)
+h("Power", "GetCPUPowerLimit")(lambda a: ok(data={"spl": int(ECF2.rd(Ecf2.CSPL)),
+                                                  "sppt": int(ECF2.rd(Ecf2.FPPT)),
+                                                  "fppt": int(ECF2.rd(Ecf2.CTCL))}))
+h("GPU", "GetGpuMemoryClockRange")(lambda a: fail("混合输出下不支持显存锁频"))
 
 def api_dispatch(group, method, args):
     fn = H.get((group, method))
