@@ -305,7 +305,7 @@ async function handleCancel() {
             <div class="space-y-1.5">
               <div class="flex justify-between text-[11px]">
                 <span class="text-gray-400">电压</span>
-                <span class="text-white font-mono font-medium">{{ cpuStats?.Voltage ? cpuStats.Voltage.toFixed(3) : '0.000' }} V</span>
+                <span class="text-white font-mono font-medium">{{ cpuStats?.Voltage ? cpuStats.Voltage.toFixed(3) : '—' }} {{ cpuStats?.Voltage ? 'V' : '' }}</span>
               </div>
               <div class="h-1.5 bg-white/[0.03] rounded-full overflow-hidden">
                 <div class="h-full bg-[#8A2BE2]" :style="{ width: `${Math.min((cpuStats?.Voltage || 0) / 1.5 * 100, 100)}%` }"></div>
