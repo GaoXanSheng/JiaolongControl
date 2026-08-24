@@ -731,6 +731,9 @@ def serve(port=8800):
             self.send_response(200)
             self.send_header("Content-Type", f"{ctype}; charset=utf-8")
             self.send_header("Content-Length", str(len(data)))
+            if "html" in ctype:
+                # index.html 不缓存: 保证浏览器总是加载最新 hash 的 assets
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
             self.end_headers()
             self.wfile.write(data)
 
