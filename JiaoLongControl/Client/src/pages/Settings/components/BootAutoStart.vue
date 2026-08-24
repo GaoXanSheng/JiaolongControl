@@ -70,22 +70,6 @@ async function MinimizedAfterBootingChange<T>(value: T) {
       </template>
     </setting-card-component>
 
-    <setting-card-component v-if="BootAutoStart" title="自启时最小化" description="随开机自动启动时自动最小化到系统托盘，不弹出主界面，保持桌面清爽干净。">
-      <template #extra>
-        <a-switch
-            :model-value="MinimizedAfterBooting"
-            :loading="loading"
-            @change="MinimizedAfterBootingChange($event)"
-        >
-          <template #checked-icon>
-            <icon-check/>
-          </template>
-          <template #unchecked-icon>
-            <icon-close/>
-          </template>
-        </a-switch>
-      </template>
-    </setting-card-component>
   </div>
 </template>
 <style scoped></style>
