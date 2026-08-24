@@ -241,19 +241,19 @@ def maxfanswitch_set(v):
     ECF2.wrbit(Ecf2.FAAP_B, 1 if v else 0)
     return ok("设置成功")
 
-def fan_set(speed_pct):
-    """手动定速: 0-100% → 档位 0-68 (Blding64: 1档≈100RPM, max68). CPU+GPU 同步."""
-    lvl = max(0, min(68, int(round(int(speed_pct) * 68 / 100))))
+def fan_set(target_rpm):
+    """手动定速: 前端传目标转速 RPM (1500-5800), EC 档位 = RPM/100
+    (bridge.ts: toByte(fanSpeed/100); Blding64: 1档≈100RPM). CPU+GPU 同步."""
+    lvl = max(0, min(68, int(round(int(target_rpm) / 100))))
     autofan_stop()
     if PEC is None or not PEC.alive():
         return fail("EC 端口不可用")
-    if not maxfanswitch_get()["Data"]:      # C# 同款: 先关 ACPI 自动策略
-        maxfanswitch_set(True)
+    maxfanswitch_set(False)                 # 与 C# 同款: 先关 ACPI 风扇策略
     PEC.write(0xC83C, lvl)
     PEC.write(0xB20, PEC.read(0xB20) | 0x02)
     PEC.write(0xC83D, lvl)
     PEC.write(0xB20, PEC.read(0xB20) | 0x08)
-    return ok("设置成功", {"level": lvl, "percent": speed_pct})
+    return ok("设置成功", {"level": lvl, "rpm": int(target_rpm)})
 
 def fan_auto():
     if PEC is None:
@@ -549,7 +549,7 @@ h("CPU","GetCpuUsage")(lambda a: ok(data=cpu_usage()))
 h("CPU","GetCpuFrequency")(lambda a: ok(data=cpu_freq_mhz()))
 h("CPU","GetCpuInfo")(lambda a: cpu_info())
 h("CPU","GetPhysicalCoreCount")(lambda a: ok(data=cpu_info()["Data"]["Cores"]))
-h("CPU","GetCpuVoltage")(lambda a: ok(data=0))
+h("CPU","GetCpuVoltage")(lambda a: fail("Linux 暂无 CPU 电压传感器 (SVI2 遥测未实现)"))
 h("CPU","GetCustomMode")(lambda a: ok(data=config_get()["Data"].get("customMode", False)))
 h("CPU","SetCustomMode")(lambda a: (config_set({**config_get()["Data"], "customMode": bool(a[0])}), ok("设置成功"))[1])
 h("CPU","SetCpuShortPower")(lambda a: smu_set_limit(a[0], "fast"))
@@ -588,7 +588,8 @@ h(_NG,"GetGpuMemoryUtilization")(lambda a: ok(data=int(float(_first(nvidia_query
 h(_NG,"GetGpuCoreClock")(lambda a: ok(data=int(float((_first(nvidia_query("clocks.gr")) or "0").replace("MHz","").strip()))))
 h(_NG,"GetGpuMemoryClock")(lambda a: ok(data=int(float((_first(nvidia_query("clocks.mem")) or "0").replace("MHz","").strip()))))
 h(_NG,"GetGpuTemperature")(lambda a: ok(data=int(float((_first(nvidia_query("temperature.gpu")) or "0")))))
-h(_NG,"GetGpuFanSpeed")(lambda a: fan_speed_get())
+h(_NG,"GetGpuFanSpeed")(lambda a: ok(data=(lambda f2: f2 * 100 if 0 < f2 < 100 else f2)(
+    (ECF2.rd(Ecf2.F2HI) << 8) | ECF2.rd(Ecf2.F2LO))))   # C# 原版返回单值 int, 前端按数字消费
 h(_NG,"GetGpuCoreClockRange")(lambda a: ok(data={"Min": 210, "Max": float((_first(nvidia_query("clocks.max.gr")) or "0").replace("MHz","").strip() or 2595)}))
 h(_NG,"GetGpuMemoryClockRange")(lambda a: ok(data={"Min": 1000, "Max": float((_first(nvidia_query("clocks.max.mem")) or "0").replace("MHz","").strip() or 8000)}))
 h(_NG,"GetGpuPowerLimitRange")(lambda a: gpu_powerlimit_range())
@@ -736,7 +737,7 @@ def main():
 
     p = sub.add_parser("fan"); sp = p.add_subparsers(dest="fa", required=True)
     sp.add_parser("status"); sp.add_parser("auto"); sp.add_parser("autofan")
-    ps = sp.add_parser("set"); ps.add_argument("pct", type=int)
+    ps = sp.add_parser("set"); ps.add_argument("rpm", type=int, help="目标转速 RPM (1500-5800, EC档位=RPM/100)")
 
     p = sub.add_parser("rgb"); sp = p.add_subparsers(dest="ra", required=True)
     ps = sp.add_parser("color"); ps.add_argument("r", type=int); ps.add_argument("g", type=int); ps.add_argument("b", type=int)
@@ -801,7 +802,7 @@ def main():
         if args.fa == "auto": return emit(fan_auto())
         if args.fa == "autofan":
             return emit(autofan_stop() if _af["run"] else autofan_start())
-        return emit(fan_set(args.pct))
+        return emit(fan_set(args.rpm))
     if c == "rgb":
         if args.ra == "color": return emit(kb_color_set(args.r, args.g, args.b))
         if args.ra == "brightness": return emit(kb_brightness_set(args.lvl))
