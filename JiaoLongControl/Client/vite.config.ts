@@ -6,18 +6,19 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     vue(),
-    vueDevTools(),
+    // devtools 面板仅开发模式启用, 避免注入生产构建
+    ...(mode === 'development' ? [vueDevTools()] : []),
     tailwindcss(),
   ],
-    resolve: {
-        alias: {
-            '@': fileURLToPath(new URL('./src', import.meta.url))
-        },
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
-    build: {
-        outDir: '../../bin/publish/WebRoot',
-    }
-})
+  },
+  build: {
+    outDir: '../../bin/publish/WebRoot',
+  },
+}))

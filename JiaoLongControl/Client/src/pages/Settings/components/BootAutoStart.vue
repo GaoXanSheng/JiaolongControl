@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
-import {computed, onMounted, ref} from 'vue'
-import {Message} from '@arco-design/web-vue'
-import {Boot} from '@/utils/bridge'
-import {useConfigStore} from '@/stores/config'
+import { computed, onMounted, ref } from 'vue'
+import { Message } from '@arco-design/web-vue'
+import { Boot } from '@/utils/bridge'
+import { useConfigStore } from '@/stores/config'
 
 const configStore = useConfigStore()
 const loading = ref(false)
@@ -16,7 +16,7 @@ onMounted(async () => {
 })
 
 async function BootAutoStartHandleChange<T>(value: T) {
-  if (typeof value != "boolean") return
+  if (typeof value != 'boolean') return
   loading.value = true
   try {
     if (value) {
@@ -31,7 +31,7 @@ async function BootAutoStartHandleChange<T>(value: T) {
 }
 
 async function MinimizedAfterBootingChange<T>(value: T) {
-  if (typeof value != "boolean" || !configStore.config) return
+  if (typeof value != 'boolean' || !configStore.config) return
   const prev = configStore.config.App.BootMinimized
   loading.value = true
   try {
@@ -53,35 +53,42 @@ async function MinimizedAfterBootingChange<T>(value: T) {
 
 <template>
   <div class="contents space-y-3">
-    <setting-card-component title="开机自启" description="允许 JiaoLongControl 随 Windows 操作系统启动而自动运行，确保各类硬件优化策略与自定义风扇曲线实时生效。">
+    <setting-card-component
+      title="开机自启"
+      description="允许 JiaoLongControl 随 Windows 操作系统启动而自动运行，确保各类硬件优化策略与自定义风扇曲线实时生效。"
+    >
       <template #extra>
         <a-switch
-            :model-value="BootAutoStart"
-            :loading="loading"
-            @change="BootAutoStartHandleChange($event)"
+          :model-value="BootAutoStart"
+          :loading="loading"
+          @change="BootAutoStartHandleChange($event)"
         >
           <template #checked-icon>
-            <icon-check/>
+            <icon-check />
           </template>
           <template #unchecked-icon>
-            <icon-close/>
+            <icon-close />
           </template>
         </a-switch>
       </template>
     </setting-card-component>
 
-    <setting-card-component v-if="BootAutoStart" title="自启时最小化" description="随开机自动启动时自动最小化到系统托盘，不弹出主界面，保持桌面清爽干净。">
+    <setting-card-component
+      v-if="BootAutoStart"
+      title="自启时最小化"
+      description="随开机自动启动时自动最小化到系统托盘，不弹出主界面，保持桌面清爽干净。"
+    >
       <template #extra>
         <a-switch
-            :model-value="MinimizedAfterBooting"
-            :loading="loading"
-            @change="MinimizedAfterBootingChange($event)"
+          :model-value="MinimizedAfterBooting"
+          :loading="loading"
+          @change="MinimizedAfterBootingChange($event)"
         >
           <template #checked-icon>
-            <icon-check/>
+            <icon-check />
           </template>
           <template #unchecked-icon>
-            <icon-close/>
+            <icon-close />
           </template>
         </a-switch>
       </template>

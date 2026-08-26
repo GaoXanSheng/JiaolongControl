@@ -14,7 +14,6 @@ import imgFan from '@/assets/icon/iconFan.png'
 import iconQuiet from '@/assets/icon/iconQuiet.png'
 import iconBalanced from '@/assets/icon/iconBalanced.png'
 import iconPerformance from '@/assets/icon/iconPerformance.png'
-import iconCustom from '@/assets/icon/iconCustom.png'
 import PerformanceModeComp from './Home/PerformanceMode.vue'
 import CoreMonitoringComp from './Home/CoreMonitoring.vue'
 import WelcomeBannerComp from './Home/WelcomeBanner.vue'
@@ -31,22 +30,26 @@ const performanceModes = ref([
   // { id: SystemPerMode.CustomMode, name: '自定义', icon: iconCustom, active: false }
 ])
 
-const activeMode = computed(() => performanceModes.value.find(m => m.active) || { name: '高性能', icon: iconPerformance })
+const activeMode = computed(
+  () => performanceModes.value.find((m) => m.active) || { name: '高性能', icon: iconPerformance },
+)
 
 async function fetchPerformanceMode() {
   try {
     const res = await PerformanceMode.Get()
     if (res.Success) {
-      performanceModes.value.forEach(e => {
+      performanceModes.value.forEach((e) => {
         e.active = e.id === res.Data
       })
     }
-  } catch (e) { console.error(e) }
+  } catch (e) {
+    console.error(e)
+  }
 }
 
 function setMode(id: SystemPerMode) {
-  performanceModes.value.forEach(m => {
-    m.active = (m.id === id)
+  performanceModes.value.forEach((m) => {
+    m.active = m.id === id
     if (id !== SystemPerMode.CustomMode) {
       PerformanceMode.Set(id)
     }
@@ -64,7 +67,7 @@ const sysOs = ref('Loading...')
 
 // 模拟历史数据
 const tempHistory = ref<{ cpu: number | null; gpu: number | null }[]>(
-  Array(10).fill({ cpu: null, gpu: null })
+  Array(10).fill({ cpu: null, gpu: null }),
 )
 
 // 心电图数据与生成逻辑
@@ -73,7 +76,7 @@ let ecgIndex = 0
 const ecgPattern = [0, 0, 0, 0, -2, 2, -25, 12, -2, -6, 0, 0, 0, 0, 0, 0]
 
 function tickEcg() {
-  const offset = ecgPattern[ecgIndex]
+  const offset = ecgPattern[ecgIndex] ?? 0
   ecgIndex = (ecgIndex + 1) % ecgPattern.length
   const noise = (Math.random() - 0.5) * 1.5
   const nextY = 30 + offset + noise
@@ -116,7 +119,7 @@ function startTimers() {
     // todo fake usage data
     cpuUsage.value = Math.floor(Math.random() * 30) + 10
     noiseLevel.value = Math.floor(Math.random() * 10) + 30
-    
+
     tempHistory.value.push({ cpu: cpuTemp.value, gpu: gpuTemp.value })
     if (tempHistory.value.length > 10) tempHistory.value.shift()
   }, 2000)
@@ -162,91 +165,110 @@ const lineChartOption = computed(() => ({
     itemWidth: 12,
     itemHeight: 4,
     textStyle: { color: '#A0AEC0', fontSize: 10 },
-    top: 0
+    top: 0,
   },
   xAxis: {
     type: 'category',
     data: Array(10).fill(''),
     axisLine: { show: false },
     axisTick: { show: false },
-    axisLabel: { color: '#6B7280', fontSize: 10, margin: 12 }
+    axisLabel: { color: '#6B7280', fontSize: 10, margin: 12 },
   },
   yAxis: {
     type: 'value',
-    min: 0, max: 100, interval: 25,
+    min: 0,
+    max: 100,
+    interval: 25,
     splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.05)' } },
-    axisLabel: { color: '#6B7280', fontSize: 10, formatter: '{value}°C' }
+    axisLabel: { color: '#6B7280', fontSize: 10, formatter: '{value}°C' },
   },
   series: [
     {
       name: 'CPU',
-      data: tempHistory.value.map(i => i.cpu),
+      data: tempHistory.value.map((i) => i.cpu),
       type: 'line',
       smooth: true,
       symbol: 'circle',
       symbolSize: 6,
       lineStyle: { color: '#3B82F6', width: 3 },
-      itemStyle: { color: '#3B82F6' }
+      itemStyle: { color: '#3B82F6' },
     },
     {
       name: 'GPU',
-      data: tempHistory.value.map(i => i.gpu),
+      data: tempHistory.value.map((i) => i.gpu),
       type: 'line',
       smooth: true,
       symbol: 'circle',
       symbolSize: 6,
       lineStyle: { color: '#10B981', width: 3 },
-      itemStyle: { color: '#10B981' }
-    }
-  ]
+      itemStyle: { color: '#10B981' },
+    },
+  ],
 }))
 </script>
 
 <template>
   <div class="p-6 h-full overflow-y-auto space-y-6 text-white no-scrollbar">
-
     <!-- Row 1: 顶部 Banner -->
-    <WelcomeBannerComp :cpuTemp="cpuTemp" :gpuTemp="gpuTemp" :activeModeName="activeMode.name" :activeModeIcon="activeMode.icon" />
+    <WelcomeBannerComp
+      :cpu-temp="cpuTemp"
+      :gpu-temp="gpuTemp"
+      :active-mode-name="activeMode.name"
+      :active-mode-icon="activeMode.icon"
+    />
 
     <!-- Row 2: 模式 & 监控 -->
     <div class="grid grid-cols-12 gap-3 h-[250px]">
       <PerformanceModeComp :modes="performanceModes" @change-mode="setMode" />
       <CoreMonitoringComp
-          :cpuUsage="cpuUsage"
-          :gpuUsage="gpuUsage"
-          :cpuTemp="cpuTemp"
-          :gpuTemp="gpuTemp"
+        :cpu-usage="cpuUsage"
+        :gpu-usage="gpuUsage"
+        :cpu-temp="cpuTemp"
+        :gpu-temp="gpuTemp"
       />
     </div>
 
     <!-- Row 3: 系统概览 & 风扇 & 曲线 -->
     <div class="grid grid-cols-12 gap-6 h-[280px]">
-
       <!-- 系统概览 -->
       <div class="col-span-4 glass-card p-6 flex flex-col">
         <h2 class="text-[15px] font-medium text-white/90 mb-4">系统概览</h2>
         <div class="flex-1 flex flex-col justify-between">
           <div class="flex items-center gap-4">
-            <div class="w-8 h-8 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-500"><img
-                :src="imgCPU" class="w-4 h-4" style="filter: invert(48%) sepia(79%) saturate(2476%)
-      hue-rotate(190deg)"/></div>
+            <div
+              class="w-8 h-8 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-500"
+            >
+              <img
+                :src="imgCPU"
+                class="w-4 h-4"
+                style="filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(190deg)"
+              />
+            </div>
             <div>
               <div class="text-xs text-white/90">CPU</div>
               <div class="text-xs text-gray-500 mt-0.5">{{ sysCpuName }}</div>
             </div>
           </div>
           <div class="flex items-center gap-4">
-            <div class="w-8 h-8 rounded-full bg-green-900/30 flex items-center justify-center text-green-500"><img
-                :src="imgGPU" class="w-4 h-4" style="filter: invert(57%) sepia(52%) saturate(2859%)
-      hue-rotate(120deg)"/></div>
+            <div
+              class="w-8 h-8 rounded-full bg-green-900/30 flex items-center justify-center text-green-500"
+            >
+              <img
+                :src="imgGPU"
+                class="w-4 h-4"
+                style="filter: invert(57%) sepia(52%) saturate(2859%) hue-rotate(120deg)"
+              />
+            </div>
             <div>
               <div class="text-xs text-white/90">GPU</div>
               <div class="text-xs text-gray-500 mt-0.5">{{ sysGpuName }}</div>
             </div>
           </div>
           <div class="flex items-center gap-4">
-            <div class="w-8 h-8 rounded-full bg-yellow-900/30 flex items-center justify-center text-yellow-500">
-              <icon-storage/>
+            <div
+              class="w-8 h-8 rounded-full bg-yellow-900/30 flex items-center justify-center text-yellow-500"
+            >
+              <icon-storage />
             </div>
             <div>
               <div class="text-xs text-white/90">内存</div>
@@ -254,8 +276,10 @@ const lineChartOption = computed(() => ({
             </div>
           </div>
           <div class="flex items-center gap-4">
-            <div class="w-8 h-8 rounded-full bg-red-900/30 flex items-center justify-center text-red-500">
-              <icon-computer/>
+            <div
+              class="w-8 h-8 rounded-full bg-red-900/30 flex items-center justify-center text-red-500"
+            >
+              <icon-computer />
             </div>
             <div>
               <div class="text-xs text-white/90">系统</div>
@@ -270,13 +294,24 @@ const lineChartOption = computed(() => ({
         <h2 class="text-[15px] font-medium text-white/90 mb-4">风扇与噪音</h2>
 
         <div class="flex items-center gap-4 mb-6">
-          <div class="w-12 h-12 rounded-full bg-blue-600/20 flex items-center justify-center overflow-hidden">
-            <img :src="imgFan" class="w-7 h-7 object-contain animate-spin"
-                 style="animation-duration: 3s; filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(190deg) brightness(118%) contrast(119%);"/>
+          <div
+            class="w-12 h-12 rounded-full bg-blue-600/20 flex items-center justify-center overflow-hidden"
+          >
+            <img
+              :src="imgFan"
+              class="w-7 h-7 object-contain animate-spin"
+              style="
+                animation-duration: 3s;
+                filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(190deg) brightness(118%)
+                  contrast(119%);
+              "
+            />
           </div>
           <div>
             <div class="flex items-baseline gap-1">
-              <span class="text-3xl font-semibold">{{ Math.max(fanSpeed.CPUFanSpeed, fanSpeed.GPUFanSpeed) }}</span>
+              <span class="text-3xl font-semibold">{{
+                Math.max(fanSpeed.CPUFanSpeed, fanSpeed.GPUFanSpeed)
+              }}</span>
               <span class="text-xs text-gray-400">RPM</span>
             </div>
             <div class="text-xs text-gray-500">风扇转速</div>
@@ -303,13 +338,13 @@ const lineChartOption = computed(() => ({
               </filter>
             </defs>
             <polyline
-                fill="none"
-                stroke="url(#ecgGrad)"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                filter="url(#glow)"
-                :points="ecgPointsString"
+              fill="none"
+              stroke="url(#ecgGrad)"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              filter="url(#glow)"
+              :points="ecgPointsString"
             />
           </svg>
         </div>
@@ -327,10 +362,9 @@ const lineChartOption = computed(() => ({
       <div class="col-span-4 glass-card p-6 flex flex-col">
         <h2 class="text-[15px] font-medium text-white/90 mb-2">温度曲线</h2>
         <div class="flex-1">
-          <VChart :option="lineChartOption" autoresize/>
+          <VChart :option="lineChartOption" autoresize />
         </div>
       </div>
-
     </div>
   </div>
 </template>

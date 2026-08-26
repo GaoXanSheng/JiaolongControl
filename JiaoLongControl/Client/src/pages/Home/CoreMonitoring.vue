@@ -15,7 +15,12 @@ const props = defineProps<{
   gpuTemp: number
 }>()
 
-const getRingOption = (value: number, colorStart: string, colorEnd: string, suffix: string = '%') => ({
+const getRingOption = (
+  value: number,
+  colorStart: string,
+  colorEnd: string,
+  suffix: string = '%',
+) => ({
   series: [
     {
       type: 'pie',
@@ -26,28 +31,35 @@ const getRingOption = (value: number, colorStart: string, colorEnd: string, suff
         show: true,
         position: 'center',
         formatter: () => `${value}${suffix}`,
-        fontSize: 24, 
+        fontSize: 24,
         fontWeight: 'bold',
-        color: '#FFFFFF'
+        color: '#FFFFFF',
       },
       data: [
         {
           value: value,
           itemStyle: {
             color: {
-              type: 'linear', x: 0, y: 0, x2: 1, y2: 1,
-              colorStops: [{ offset: 0, color: colorStart }, { offset: 1, color: colorEnd }]
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 1,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: colorStart },
+                { offset: 1, color: colorEnd },
+              ],
             },
-            borderRadius: 10
-          }
+            borderRadius: 10,
+          },
         },
         {
           value: 100 - value,
-          itemStyle: { color: 'rgba(255, 255, 255, 0.05)' }
-        }
-      ]
-    }
-  ]
+          itemStyle: { color: 'rgba(255, 255, 255, 0.05)' },
+        },
+      ],
+    },
+  ],
 })
 
 const cpuUsageOption = computed(() => getRingOption(props.cpuUsage || 0, '#3B82F6', '#8A2BE2'))

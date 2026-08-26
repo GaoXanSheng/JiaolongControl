@@ -3,7 +3,9 @@
     <div class="max-w-[1300px] mx-auto space-y-6">
       <div>
         <h1 class="text-2xl font-bold tracking-wide">风扇曲线编辑器</h1>
-        <p class="text-[13px] text-gray-500 mt-1">可视化拖动调整不同核心温度下的风扇转速，支持 CPU/GPU 独立配置。</p>
+        <p class="text-[13px] text-gray-500 mt-1">
+          可视化拖动调整不同核心温度下的风扇转速，支持 CPU/GPU 独立配置。
+        </p>
       </div>
       <a-card class="fan-curve-card" :bordered="false" @click="closeMenu">
         <div class="header-info">
@@ -11,17 +13,17 @@
           <div class="info-section">
             <a-space size="medium">
               <a-radio-group
-                  v-model="activeTab"
-                  type="button"
-                  @change="onTabChange"
-                  :class="['radio-group-dark', activeTab === 'GPU' ? 'radio-gpu' : '']"
+                v-model="activeTab"
+                type="button"
+                :class="['radio-group-dark', activeTab === 'GPU' ? 'radio-gpu' : '']"
+                @change="onTabChange"
               >
                 <a-radio value="CPU">CPU 曲线</a-radio>
                 <a-radio value="GPU">GPU 曲线</a-radio>
               </a-radio-group>
               <button
-                  @click="handleRemoveFanClick"
-                  class="text-xs font-semibold text-rose-400 border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500 hover:text-white px-4 py-1.5 rounded-lg transition-all"
+                class="text-xs font-semibold text-rose-400 border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500 hover:text-white px-4 py-1.5 rounded-lg transition-all"
+                @click="handleRemoveFanClick"
               >
                 移除转速设置
               </button>
@@ -37,29 +39,33 @@
               </a-tag>
 
               <a-switch
-                  v-model="isServiceRunning"
-                  :loading="serviceLoading"
-                  :before-change="handleServiceToggle"
-                  class="switch-purple"
+                v-model="isServiceRunning"
+                :loading="serviceLoading"
+                :before-change="handleServiceToggle"
+                class="switch-purple"
               />
             </a-space>
           </div>
-          <div class="help-section sub-info">
-            拖拽节点调整 / 右键管理节点
-          </div>
+          <div class="help-section sub-info">拖拽节点调整 / 右键管理节点</div>
         </div>
-        <div class="svg-container" ref="containerRef">
+        <div ref="containerRef" class="svg-container">
           <svg
-              v-if="isValidRender"
-              :width="width"
-              :height="height"
-              @mousemove="onSvgMouseMove"
-              @mouseup="onDragEnd"
-              @mouseleave="onDragEnd"
+            v-if="isValidRender"
+            :width="width"
+            :height="height"
+            @mousemove="onSvgMouseMove"
+            @mouseup="onDragEnd"
+            @mouseleave="onDragEnd"
           >
             <defs>
               <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-                <feDropShadow dx="0" dy="0" stdDeviation="3" :flood-color="activeTab === 'CPU' ? '#8A2BE2' : '#10B981'" flood-opacity="0.8"/>
+                <feDropShadow
+                  dx="0"
+                  dy="0"
+                  stdDeviation="3"
+                  :flood-color="activeTab === 'CPU' ? '#8A2BE2' : '#10B981'"
+                  flood-opacity="0.8"
+                />
               </filter>
               <linearGradient id="cpu-glow" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stop-color="#8A2BE2" stop-opacity="0.25" />
@@ -70,97 +76,119 @@
                 <stop offset="100%" stop-color="#10B981" stop-opacity="0.0" />
               </linearGradient>
             </defs>
-            
+
             <g class="grid">
               <line
-                  v-for="i in 11"
-                  :key="'v-'+i"
-                  :x1="safeMapX(currentTempRange[0]! + (i - 1) * (currentTempRange[1]! - currentTempRange[0]!) / 10)"
-                  :y1="padding.top"
-                  :x2="safeMapX(currentTempRange[0]! + (i - 1) * (currentTempRange[1]! - currentTempRange[0]!) / 10)"
-                  :y2="height - padding.bottom"
-                  stroke="rgba(255, 255, 255, 0.03)"
-                  stroke-dasharray="3"
+                v-for="i in 11"
+                :key="'v-' + i"
+                :x1="
+                  safeMapX(
+                    currentTempRange[0]! +
+                      ((i - 1) * (currentTempRange[1]! - currentTempRange[0]!)) / 10,
+                  )
+                "
+                :y1="padding.top"
+                :x2="
+                  safeMapX(
+                    currentTempRange[0]! +
+                      ((i - 1) * (currentTempRange[1]! - currentTempRange[0]!)) / 10,
+                  )
+                "
+                :y2="height - padding.bottom"
+                stroke="rgba(255, 255, 255, 0.03)"
+                stroke-dasharray="3"
               />
               <line
-                  v-for="i in 11"
-                  :key="'h-'+i"
-                  :x1="padding.left"
-                  :y1="safeMapY(speedRange[0]! + (i - 1) * (speedRange[1]! - speedRange[0]!) / 10)"
-                  :x2="width - padding.right"
-                  :y2="safeMapY(speedRange[0]! + (i - 1) * (speedRange[1]! - speedRange[0]!) / 10)"
-                  stroke="rgba(255, 255, 255, 0.03)"
-                  stroke-dasharray="3"
+                v-for="i in 11"
+                :key="'h-' + i"
+                :x1="padding.left"
+                :y1="safeMapY(speedRange[0]! + ((i - 1) * (speedRange[1]! - speedRange[0]!)) / 10)"
+                :x2="width - padding.right"
+                :y2="safeMapY(speedRange[0]! + ((i - 1) * (speedRange[1]! - speedRange[0]!)) / 10)"
+                stroke="rgba(255, 255, 255, 0.03)"
+                stroke-dasharray="3"
               />
             </g>
-            
-            <g class="labels" style="user-select: none; pointer-events: none;">
+
+            <g class="labels" style="user-select: none; pointer-events: none">
               <text
-                  v-for="i in 6"
-                  :key="'xl-'+i"
-                  :x="safeMapX(currentTempRange[0]! + (i - 1) * (currentTempRange[1]! - currentTempRange[0]!) / 5)"
-                  :y="height - 12"
-                  text-anchor="middle"
-                  fill="rgba(255, 255, 255, 0.3)"
-                  font-size="9"
-                  font-family="monospace"
+                v-for="i in 6"
+                :key="'xl-' + i"
+                :x="
+                  safeMapX(
+                    currentTempRange[0]! +
+                      ((i - 1) * (currentTempRange[1]! - currentTempRange[0]!)) / 5,
+                  )
+                "
+                :y="height - 12"
+                text-anchor="middle"
+                fill="rgba(255, 255, 255, 0.3)"
+                font-size="9"
+                font-family="monospace"
               >
-                {{ Math.round(currentTempRange[0]! + (i - 1) * (currentTempRange[1]! - currentTempRange[0]!) / 5) }}°C
+                {{
+                  Math.round(
+                    currentTempRange[0]! +
+                      ((i - 1) * (currentTempRange[1]! - currentTempRange[0]!)) / 5,
+                  )
+                }}°C
               </text>
               <text
-                  v-for="i in 6"
-                  :key="'yl-'+i"
-                  :x="padding.left - 12"
-                  :y="safeMapY(speedRange[0]! + (i - 1) * (speedRange[1]! - speedRange[0]!) / 5) + 3"
-                  text-anchor="end"
-                  fill="rgba(255, 255, 255, 0.3)"
-                  font-size="9"
-                  font-family="monospace"
+                v-for="i in 6"
+                :key="'yl-' + i"
+                :x="padding.left - 12"
+                :y="
+                  safeMapY(speedRange[0]! + ((i - 1) * (speedRange[1]! - speedRange[0]!)) / 5) + 3
+                "
+                text-anchor="end"
+                fill="rgba(255, 255, 255, 0.3)"
+                font-size="9"
+                font-family="monospace"
               >
-                {{ Math.round(speedRange[0]! + (i - 1) * (speedRange[1]! - speedRange[0]!) / 5) }}
+                {{ Math.round(speedRange[0]! + ((i - 1) * (speedRange[1]! - speedRange[0]!)) / 5) }}
               </text>
             </g>
             <polygon
-                :points="polygonPoints"
-                :fill="activeTab === 'CPU' ? 'url(#cpu-glow)' : 'url(#gpu-glow)'"
+              :points="polygonPoints"
+              :fill="activeTab === 'CPU' ? 'url(#cpu-glow)' : 'url(#gpu-glow)'"
             />
             <polyline
-                :points="polylinePoints"
-                fill="none"
-                :stroke="activeTab === 'CPU' ? '#8A2BE2' : '#10B981'"
-                stroke-width="2.5"
-                stroke-linejoin="round"
-                stroke-linecap="round"
+              :points="polylinePoints"
+              fill="none"
+              :stroke="activeTab === 'CPU' ? '#8A2BE2' : '#10B981'"
+              stroke-width="2.5"
+              stroke-linejoin="round"
+              stroke-linecap="round"
             />
             <g v-for="(p, index) in currentPoints" :key="index">
               <circle
-                  :cx="safeMapX(p.temp)"
-                  :cy="safeMapY(p.speed)"
-                  r="14"
-                  fill="transparent"
-                  cursor="pointer"
-                  @mousedown.stop="onDragStart(index, $event)"
-                  @contextmenu.prevent.stop="openContextMenu(index, $event)"
+                :cx="safeMapX(p.temp)"
+                :cy="safeMapY(p.speed)"
+                r="14"
+                fill="transparent"
+                cursor="pointer"
+                @mousedown.stop="onDragStart(index, $event)"
+                @contextmenu.prevent.stop="openContextMenu(index, $event)"
               />
               <circle
-                  :cx="safeMapX(p.temp)"
-                  :cy="safeMapY(p.speed)"
-                  r="5"
-                  :fill="activeTab === 'CPU' ? '#8A2BE2' : '#10B981'"
-                  stroke="#fff"
-                  stroke-width="1.5"
-                  style="filter: url(#shadow); pointer-events: none;"
+                :cx="safeMapX(p.temp)"
+                :cy="safeMapY(p.speed)"
+                r="5"
+                :fill="activeTab === 'CPU' ? '#8A2BE2' : '#10B981'"
+                stroke="#fff"
+                stroke-width="1.5"
+                style="filter: url(#shadow); pointer-events: none"
               />
               <text
-                  v-if="draggingIndex === index"
-                  :x="safeMapX(p.temp)"
-                  :y="safeMapY(p.speed) - 15"
-                  text-anchor="middle"
-                  fill="#ffffff"
-                  font-size="10"
-                  font-weight="bold"
-                  font-family="monospace"
-                  style="pointer-events: none; text-shadow: 0 0 4px rgba(0,0,0,0.8);"
+                v-if="draggingIndex === index"
+                :x="safeMapX(p.temp)"
+                :y="safeMapY(p.speed) - 15"
+                text-anchor="middle"
+                fill="#ffffff"
+                font-size="10"
+                font-weight="bold"
+                font-family="monospace"
+                style="pointer-events: none; text-shadow: 0 0 4px rgba(0, 0, 0, 0.8)"
               >
                 {{ p.temp }}°C / {{ p.speed }} RPM
               </text>
@@ -169,27 +197,56 @@
 
           <div v-else class="loading-state">
             <a-spin :size="20" />
-            <span class="ml-2 text-xs text-gray-500">{{ width === 0 ? '初始化编辑器视图...' : '数据失效' }}</span>
+            <span class="ml-2 text-xs text-gray-500">{{
+              width === 0 ? '初始化编辑器视图...' : '数据失效'
+            }}</span>
           </div>
         </div>
         <div
-            v-if="menuVisible"
-            class="context-menu"
-            :style="menuStyle"
-            @click.stop
-            @contextmenu.prevent
+          v-if="menuVisible"
+          class="context-menu"
+          :style="menuStyle"
+          @click.stop
+          @contextmenu.prevent
         >
           <div class="menu-item" @click="onAddNode">在此处右侧添加节点</div>
-          <div class="menu-item border-t border-white/[0.03]" :class="{ disabled: !canDelete }" @click="onRemoveNode">删除当前节点</div>
-          <div class="menu-item border-t border-white/[0.03]" @click="openEditModal">编辑精确数值</div>
+          <div
+            class="menu-item border-t border-white/[0.03]"
+            :class="{ disabled: !canDelete }"
+            @click="onRemoveNode"
+          >
+            删除当前节点
+          </div>
+          <div class="menu-item border-t border-white/[0.03]" @click="openEditModal">
+            编辑精确数值
+          </div>
         </div>
-        <a-modal v-model:visible="showEdit" title="编辑转速节点" :mask-closable="false" @ok="onEditConfirm">
-          <a-space v-if="selectedIndex !== null" direction="vertical" size="large" style="width: 100%">
-            <a-input-number v-model="editForm.temp" :min="getMinTemp(selectedIndex)" :max="getMaxTemp(selectedIndex)"
-                            style="width: 100%">
+        <a-modal
+          v-model:visible="showEdit"
+          title="编辑转速节点"
+          :mask-closable="false"
+          @ok="onEditConfirm"
+        >
+          <a-space
+            v-if="selectedIndex !== null"
+            direction="vertical"
+            size="large"
+            style="width: 100%"
+          >
+            <a-input-number
+              v-model="editForm.temp"
+              :min="getMinTemp(selectedIndex)"
+              :max="getMaxTemp(selectedIndex)"
+              style="width: 100%"
+            >
               <template #prepend>温度 (°C)</template>
             </a-input-number>
-            <a-input-number v-model="editForm.speed" :min="speedRange[0]" :max="speedRange[1]" style="width: 100%">
+            <a-input-number
+              v-model="editForm.speed"
+              :min="speedRange[0]"
+              :max="speedRange[1]"
+              style="width: 100%"
+            >
               <template #prepend>转速 (RPM)</template>
             </a-input-number>
           </a-space>
@@ -201,11 +258,11 @@
 </template>
 
 <script lang="ts" setup>
-import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
-import {Message} from '@arco-design/web-vue'
-import {AutoFanControl, Config, Fan} from '@/utils/bridge'
-import {useConfigStore} from '@/stores/config'
-import FanSpeed from "@/components/common/FanSpeed.vue";
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { Message } from '@arco-design/web-vue'
+import { AutoFanControl, Fan } from '@/utils/bridge'
+import { useConfigStore } from '@/stores/config'
+import FanSpeed from '@/components/common/FanSpeed.vue'
 
 interface Point {
   temp: number
@@ -217,21 +274,23 @@ if (!configStore.config) {
 }
 const activeTab = ref<'CPU' | 'GPU'>('CPU')
 const cpuPoints = ref<Point[]>([
-  {temp: 60, speed: 1500},
-  {temp: 80, speed: 3000},
-  {temp: 100, speed: 5800}
+  { temp: 60, speed: 1500 },
+  { temp: 80, speed: 3000 },
+  { temp: 100, speed: 5800 },
 ])
 
 const gpuPoints = ref<Point[]>([
-  {temp: 60, speed: 1500},
-  {temp: 75, speed: 3000},
-  {temp: 87, speed: 5800}
+  { temp: 60, speed: 1500 },
+  { temp: 75, speed: 3000 },
+  { temp: 87, speed: 5800 },
 ])
-const currentPoints = computed(() => activeTab.value === 'CPU' ? cpuPoints.value : gpuPoints.value)
-const currentTempRange = computed(() => activeTab.value === 'CPU' ? [60, 100] : [60, 87])
+const currentPoints = computed(() =>
+  activeTab.value === 'CPU' ? cpuPoints.value : gpuPoints.value,
+)
+const currentTempRange = computed(() => (activeTab.value === 'CPU' ? [60, 100] : [60, 87]))
 
 const speedRange = [1500, 6800]
-const padding = {top: 40, right: 60, bottom: 40, left: 60}
+const padding = { top: 40, right: 60, bottom: 40, left: 60 }
 
 const containerRef = ref<HTMLDivElement | null>(null)
 const width = ref(0)
@@ -240,10 +299,10 @@ let resizeObserver: ResizeObserver | null = null
 
 const draggingIndex = ref<number | null>(null)
 const menuVisible = ref(false)
-const menuPos = reactive({x: 0, y: 0})
+const menuPos = reactive({ x: 0, y: 0 })
 const selectedIndex = ref<number | null>(null)
 const showEdit = ref(false)
-const editForm = reactive({temp: 0, speed: 0})
+const editForm = reactive({ temp: 0, speed: 0 })
 const isServiceRunning = ref(false)
 const serviceLoading = ref(false)
 
@@ -252,7 +311,11 @@ let autoSaveTimer: number | null = null
 const canDelete = computed(() => selectedIndex.value !== null && currentPoints.value.length > 2)
 
 const isValidRender = computed(() => {
-  return width.value > 0 && height.value > 0 && currentPoints.value.every(p => !isNaN(p.temp) && !isNaN(p.speed))
+  return (
+    width.value > 0 &&
+    height.value > 0 &&
+    currentPoints.value.every((p) => !isNaN(p.temp) && !isNaN(p.speed))
+  )
 })
 
 function onTabChange() {
@@ -269,7 +332,7 @@ const checkServiceStatus = async () => {
   }
 }
 
-const handleServiceToggle = async (newValue: any): Promise<boolean> => {
+const handleServiceToggle = async (newValue: string | number | boolean): Promise<boolean> => {
   serviceLoading.value = true
   try {
     if (newValue) {
@@ -281,7 +344,7 @@ const handleServiceToggle = async (newValue: any): Promise<boolean> => {
     }
     isServiceRunning.value = (await AutoFanControl.IsRunning()).Success
     return true
-  } catch (e) {
+  } catch {
     Message.error('操作失败，请检查日志')
     isServiceRunning.value = (await AutoFanControl.IsRunning()).Success
     return false
@@ -300,14 +363,18 @@ const autoSave = async () => {
     console.error('Save failed:', e)
   }
 }
-watch([cpuPoints, gpuPoints], () => {
-  if (autoSaveTimer) {
-    clearTimeout(autoSaveTimer)
-  }
-  autoSaveTimer = window.setTimeout(() => {
-    autoSave()
-  }, 500)
-}, {deep: true})
+watch(
+  [cpuPoints, gpuPoints],
+  () => {
+    if (autoSaveTimer) {
+      clearTimeout(autoSaveTimer)
+    }
+    autoSaveTimer = window.setTimeout(() => {
+      autoSave()
+    }, 500)
+  },
+  { deep: true },
+)
 
 function safeMapX(val: number): number {
   if (isNaN(val) || width.value <= 0) return 0
@@ -348,13 +415,13 @@ function unmapY(y: number) {
 }
 
 const polylinePoints = computed(() => {
-  return currentPoints.value.map(p => `${safeMapX(p.temp)},${safeMapY(p.speed)}`).join(' ')
+  return currentPoints.value.map((p) => `${safeMapX(p.temp)},${safeMapY(p.speed)}`).join(' ')
 })
 
 // 计算面积渐变闭合多边形的坐标�?
 const polygonPoints = computed(() => {
   if (currentPoints.value.length === 0) return ''
-  const pts = currentPoints.value.map(p => `${safeMapX(p.temp)},${safeMapY(p.speed)}`)
+  const pts = currentPoints.value.map((p) => `${safeMapX(p.temp)},${safeMapY(p.speed)}`)
   // 投影右下角点与左下角点以闭合底部
   const lastPt = currentPoints.value[currentPoints.value.length - 1]
   const firstPt = currentPoints.value[0]
@@ -363,12 +430,13 @@ const polygonPoints = computed(() => {
   return pts.join(' ')
 })
 
-function parseConfigPoints(rawData: any) {
+function parseConfigPoints(rawData: unknown) {
   if (!rawData || !Array.isArray(rawData)) return null
-  const cleanData = rawData.map((item: any) => {
-    const t = Number(item.temp ?? item.Temp ?? item.Temperature ?? item.temperature ?? 0)
-    const s = Number(item.speed ?? item.Speed ?? item.FanSpeed ?? item.rpm ?? 0)
-    return {temp: t, speed: s}
+  const cleanData = rawData.map((item) => {
+    const rec = (item ?? {}) as Record<string, unknown>
+    const t = Number(rec.temp ?? rec.Temp ?? rec.Temperature ?? rec.temperature ?? 0)
+    const s = Number(rec.speed ?? rec.Speed ?? rec.FanSpeed ?? rec.rpm ?? 0)
+    return { temp: t, speed: s }
   })
   const validData = cleanData.filter((p: Point) => !isNaN(p.temp) && !isNaN(p.speed) && p.temp > 0)
   return validData.length > 0 ? validData : null
@@ -439,7 +507,7 @@ function onDragEnd() {
 
 const menuStyle = computed(() => ({
   left: `${menuPos.x}px`,
-  top: `${menuPos.y}px`
+  top: `${menuPos.y}px`,
 }))
 
 function openContextMenu(index: number, e: MouseEvent) {
@@ -471,12 +539,12 @@ function onAddNode() {
   const curr = pointsRef[selectedIndex.value]
   const next = pointsRef[selectedIndex.value + 1]
 
-  if (curr == undefined) return;
+  if (curr == undefined) return
   if (!next || next.temp <= curr.temp + 1) return
 
   pointsRef.splice(selectedIndex.value + 1, 0, {
     temp: Math.floor((curr.temp + next.temp) / 2),
-    speed: Math.floor((curr.speed + next.speed) / 2)
+    speed: Math.floor((curr.speed + next.speed) / 2),
   })
   closeMenu()
 }
@@ -682,7 +750,7 @@ async function handleRemoveFanClick() {
     }
 
     &.arco-radio-button-checked {
-      background-color: #8A2BE2 !important;
+      background-color: #8a2be2 !important;
       color: #ffffff !important;
       box-shadow: 0 0 10px rgba(138, 43, 226, 0.3) !important;
     }
@@ -691,12 +759,12 @@ async function handleRemoveFanClick() {
 
 :deep(.radio-gpu.arco-radio-group-button) {
   .arco-radio-button.arco-radio-button-checked {
-    background-color: #10B981 !important;
+    background-color: #10b981 !important;
     box-shadow: 0 0 10px rgba(16, 185, 129, 0.3) !important;
   }
 }
 :deep(.switch-purple.arco-switch-checked) {
-  background-color: #8A2BE2 !important;
+  background-color: #8a2be2 !important;
 }
 
 :deep(.arco-modal) {

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import {computed, onMounted, ref} from "vue";
-import {Message} from '@arco-design/web-vue'
+import { computed, onMounted, ref } from 'vue'
+import { Message } from '@arco-design/web-vue'
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
-import {useConfigStore} from '@/stores/config'
+import { useConfigStore } from '@/stores/config'
 
 const configStore = useConfigStore()
 const loading = ref(false)
@@ -32,24 +32,21 @@ async function onChange(value: string | number | boolean) {
 </script>
 
 <template>
-  <setting-card-component title="CPU 参数自动应用" description="在软件启动时，自动载入并应用【CPU】设置页面中保存的功耗、频率、温度墙等高级参数">
+  <setting-card-component
+    title="CPU 参数自动应用"
+    description="在软件启动时，自动载入并应用【CPU】设置页面中保存的功耗、频率、温度墙等高级参数"
+  >
     <template #extra>
-      <a-switch
-          :model-value="value"
-          :loading="loading"
-          @change="onChange($event)"
-      >
+      <a-switch :model-value="value" :loading="loading" @change="onChange($event)">
         <template #checked-icon>
-          <icon-check/>
+          <icon-check />
         </template>
         <template #unchecked-icon>
-          <icon-close/>
+          <icon-close />
         </template>
       </a-switch>
     </template>
   </setting-card-component>
 </template>
 
-<style scoped lang="scss">
-
-</style>
+<style scoped lang="scss"></style>

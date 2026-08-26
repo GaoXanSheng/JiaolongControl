@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import {computed, onMounted, ref} from "vue";
-import {Message} from '@arco-design/web-vue'
+import { computed, onMounted, ref } from 'vue'
+import { Message } from '@arco-design/web-vue'
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
-import {useConfigStore} from '@/stores/config'
+import { useConfigStore } from '@/stores/config'
 
 const configStore = useConfigStore()
 const loading = ref(false)
@@ -32,24 +32,21 @@ async function onChange(value: string | number | boolean) {
 </script>
 
 <template>
-  <setting-card-component title="RyzenSMU 全核降压自动应用" description="在软件启动时，自动应用【Ryzen SMU】页面中保存的 Curve Optimizer 全核心负压（降压超频）设定">
+  <setting-card-component
+    title="RyzenSMU 全核降压自动应用"
+    description="在软件启动时，自动应用【Ryzen SMU】页面中保存的 Curve Optimizer 全核心负压（降压超频）设定"
+  >
     <template #extra>
-      <a-switch
-          :model-value="value"
-          :loading="loading"
-          @change="onChange($event)"
-      >
+      <a-switch :model-value="value" :loading="loading" @change="onChange($event)">
         <template #checked-icon>
-          <icon-check/>
+          <icon-check />
         </template>
         <template #unchecked-icon>
-          <icon-close/>
+          <icon-close />
         </template>
       </a-switch>
     </template>
   </setting-card-component>
 </template>
 
-<style scoped lang="scss">
-
-</style>
+<style scoped lang="scss"></style>
