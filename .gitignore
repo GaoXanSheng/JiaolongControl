@@ -37,7 +37,8 @@ JiaoLongControl.sln.DotSettings.user
 .qwen
 .reasonix
 # Linux port dev-only artifacts (kept locally, not for the repo)
-linux-port/__pycache__/
+JiaoLongControl/linux-port/__pycache__/
+JiaoLongControl/Server/__pycache__/
 PORTING_PROGRESS.md
 freeze_forensics.md
 linux_port_audit.md

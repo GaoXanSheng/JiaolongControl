@@ -19,8 +19,27 @@ sudo python3 jlctl.py rgb color 255 60 0
 sudo python3 jlctl.py serve --port 8800 # 启动 WebUI → http://127.0.0.1:8800/
 ```
 
-WebUI 前端已预构建在 `../bin/publish/WebRoot`（由 `Client/` vite 构建产出）。
-如需重建前端: `cd ../Client && npm install && npx vite build`。
+WebUI 前端已预构建在 `../../bin/publish/WebRoot`（由 `JiaoLongControl/Client/` vite 构建产出）。
+如需重建前端: `cd ../../JiaoLongControl/Client && npm install && npx vite build`。
+
+## 代码结构
+
+`jlctl.py` 是薄入口，实际实现按职责拆分在 `../Server/` 包中：
+
+| 模块 | 职责 |
+|---|---|
+| `Server/common.py` | CommandResult 助手 (`ok`/`fail`) |
+| `Server/ecf2.py` / `portec.py` | EC 硬件访问：ECF2 共享内存 / EC 端口 IO (Blding64) |
+| `Server/hardware.py` | ECF2/PEC 单例、root 检查、sysfs/procfs 助手、nvidia-smi 封装 |
+| `Server/mifs.py` | 性能模式/风扇/键盘 RGB/Logo/FnLock/触控板锁/显卡模式 |
+| `Server/cpu_power.py` | CPU 频率墙/Turbo/EPP/governor |
+| `Server/gpu.py` | NVIDIA 遥测/锁频/功耗墙 |
+| `Server/system_info.py` | 系统概览、持久化配置、systemd 自启 |
+| `Server/autofan.py` | 自动风扇后台线程 + 开机配置应用 |
+| `Server/smu.py` | RyzenSmu sysfs 二进制接口 |
+| `Server/bridge.py` | API 分发表 `H` 与全部 handler 注册 |
+| `Server/server.py` | HTTP 服务 (前端托管 + `/api/*` 分发) |
+| `Server/cli.py` | argparse 子命令解析与分发 |
 
 ## 功能矩阵
 
