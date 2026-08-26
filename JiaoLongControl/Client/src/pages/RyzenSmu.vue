@@ -570,14 +570,14 @@ onUnmounted(() => {
               >
                 <defs>
                   <linearGradient id="smu-g-purple" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="var(--color-accent-purple)" stop-opacity="0.35" />
-                    <stop offset="100%" stop-color="var(--color-accent-purple)" stop-opacity="0" />
+                    <stop offset="0%" stop-color="#8A2BE2" stop-opacity="0.35" />
+                    <stop offset="100%" stop-color="#8A2BE2" stop-opacity="0" />
                   </linearGradient>
                 </defs>
                 <path
                   :d="pptChart.line"
                   fill="none"
-                  stroke="var(--color-accent-purple)"
+                  stroke="#8A2BE2"
                   stroke-width="1.5"
                   stroke-linecap="round"
                 />

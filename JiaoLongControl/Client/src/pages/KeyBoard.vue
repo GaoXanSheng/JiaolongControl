@@ -7,11 +7,11 @@ const loading = ref(false)
 
 const color = ref({ red: 0, green: 0, blue: 0 })
 const LightBrightness = ref(0)
-const colorPicker = ref('var(--color-accent-purple)')
+const colorPicker = ref('#8A2BE2')
 
 // 快捷配色预设
 const colorPresets = [
-  { name: '炫彩紫', hex: 'var(--color-accent-purple)', r: 138, g: 43, b: 226 },
+  { name: '炫彩紫', hex: '#8A2BE2', r: 138, g: 43, b: 226 },
   { name: '冰晶蓝', hex: '#00F0FF', r: 0, g: 240, b: 255 },
   { name: '极光绿', hex: '#00FF66', r: 0, g: 255, b: 102 },
   { name: '烈焰红', hex: '#FF3366', r: 255, g: 51, b: 102 },

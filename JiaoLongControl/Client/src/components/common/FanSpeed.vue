@@ -9,7 +9,7 @@ const PADDING_X = 40
 const PADDING_Y = 20
 
 // 定义色板（与系统全局风格统一）
-const COLOR_CPU_FAN = 'var(--color-accent-purple)' // CPU转速：科技紫 (实线)
+const COLOR_CPU_FAN = '#8A2BE2' // CPU转速：科技紫 (实线)
 const COLOR_GPU_FAN = '#3B82F6' // GPU转速：科技蓝 (虚线)
 const COLOR_CPU_TEMP = '#E11D48' // CPU温度：玫瑰红 (实线)
 const COLOR_GPU_TEMP = '#10B981' // GPU温度：薄荷绿 (虚线)

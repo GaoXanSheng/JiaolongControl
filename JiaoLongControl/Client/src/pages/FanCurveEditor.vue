@@ -63,13 +63,13 @@
                   dx="0"
                   dy="0"
                   stdDeviation="3"
-                  :flood-color="activeTab === 'CPU' ? 'var(--color-accent-purple)' : '#10B981'"
+                  :flood-color="activeTab === 'CPU' ? '#8A2BE2' : '#10B981'"
                   flood-opacity="0.8"
                 />
               </filter>
               <linearGradient id="cpu-glow" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="var(--color-accent-purple)" stop-opacity="0.25" />
-                <stop offset="100%" stop-color="var(--color-accent-purple)" stop-opacity="0.0" />
+                <stop offset="0%" stop-color="#8A2BE2" stop-opacity="0.25" />
+                <stop offset="100%" stop-color="#8A2BE2" stop-opacity="0.0" />
               </linearGradient>
               <linearGradient id="gpu-glow" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stop-color="#10B981" stop-opacity="0.25" />
@@ -155,7 +155,7 @@
             <polyline
               :points="polylinePoints"
               fill="none"
-              :stroke="activeTab === 'CPU' ? 'var(--color-accent-purple)' : '#10B981'"
+              :stroke="activeTab === 'CPU' ? '#8A2BE2' : '#10B981'"
               stroke-width="2.5"
               stroke-linejoin="round"
               stroke-linecap="round"
@@ -174,7 +174,7 @@
                 :cx="safeMapX(p.temp)"
                 :cy="safeMapY(p.speed)"
                 r="5"
-                :fill="activeTab === 'CPU' ? 'var(--color-accent-purple)' : '#10B981'"
+                :fill="activeTab === 'CPU' ? '#8A2BE2' : '#10B981'"
                 stroke="#fff"
                 stroke-width="1.5"
                 style="filter: url(#shadow); pointer-events: none"

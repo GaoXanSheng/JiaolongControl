@@ -408,11 +408,11 @@ async function handleResetAdvanced() {
               >
                 <defs>
                   <linearGradient id="g-purple" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="var(--color-accent-purple)" stop-opacity="0.3" />
-                    <stop offset="100%" stop-color="var(--color-accent-purple)" stop-opacity="0" />
+                    <stop offset="0%" stop-color="#8A2BE2" stop-opacity="0.3" />
+                    <stop offset="100%" stop-color="#8A2BE2" stop-opacity="0" />
                   </linearGradient>
                 </defs>
-                <path :d="utilChart.line" fill="none" stroke="var(--color-accent-purple)" stroke-width="1.2" />
+                <path :d="utilChart.line" fill="none" stroke="#8A2BE2" stroke-width="1.2" />
                 <path :d="utilChart.area" fill="url(#g-purple)" />
               </svg>
             </div>
@@ -460,7 +460,7 @@ async function handleResetAdvanced() {
                 viewBox="0 0 160 40"
                 preserveAspectRatio="none"
               >
-                <path :d="coreClockChart.line" fill="none" stroke="var(--color-accent-purple)" stroke-width="1.2" />
+                <path :d="coreClockChart.line" fill="none" stroke="#8A2BE2" stroke-width="1.2" />
                 <path :d="coreClockChart.area" fill="url(#g-purple)" />
               </svg>
             </div>

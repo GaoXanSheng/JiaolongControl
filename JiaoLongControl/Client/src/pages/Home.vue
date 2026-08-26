@@ -326,7 +326,7 @@ const lineChartOption = computed(() => ({
             <defs>
               <!-- 水平方向渐变色，从紫色过渡到蓝色，再到浅绿 -->
               <linearGradient id="ecgGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="var(--color-accent-purple)" stop-opacity="0.3" />
+                <stop offset="0%" stop-color="#8A2BE2" stop-opacity="0.3" />
                 <stop offset="50%" stop-color="#3B82F6" stop-opacity="0.8" />
                 <stop offset="100%" stop-color="#10B981" stop-opacity="1" />
               </linearGradient>
