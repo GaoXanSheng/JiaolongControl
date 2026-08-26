@@ -81,7 +81,7 @@ async function handleRemoveFanClick() {
             <a-slider
                 v-model="FanPageStore.ManualFanSpeed"
                 :min="0"
-                :max="8000"
+                :max="6800"
                 :step="100"
                 class="w-full"
                 

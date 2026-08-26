@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import LogoLight from './Settings/components/LogoLight.vue'
 import BootAutoStart from "./Settings/components/BootAutoStart.vue";
 import AdvancedFanControlSystem from "./Settings/components/AdvancedFanControlSystem.vue";
 import BootCPUAutoStart from "./Settings/components/BootCPUAutoStart.vue";
@@ -7,7 +6,6 @@ import BootGPUAutoStart from "./Settings/components/BootGPUAutoStart.vue";
 import BootCurveOptimizerAllAutoStart from "./Settings/components/BootCurveOptimizerAllAutoStart.vue";
 import FanCurveMerge from "./Settings/components/FanCurveMerge.vue";
 import GPUDirectConnection from "./Settings/components/GPUDirectConnection.vue";
-import PawnIODriverMode from "./Settings/components/PawnIODriverMode.vue";
 </script>   
 
 <template>
@@ -23,13 +21,11 @@ import PawnIODriverMode from "./Settings/components/PawnIODriverMode.vue";
       
       <!-- 通用设置 -->
       <BootAutoStart />
-      <LogoLight />
       
       <!-- 高级硬件控制 -->
       <GPUDirectConnection />
       <AdvancedFanControlSystem />
       <FanCurveMerge />
-      <PawnIODriverMode />
 
       <!-- 自动应用策略 -->
       <BootCPUAutoStart />
