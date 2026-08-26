@@ -19,7 +19,7 @@ const PAGE_STORAGE_KEY = 'jl-ui-page'
 const useStore = defineStore('store', {
   state: () => {
     // 页面状态持久化：记住上次停留的页面，重启后恢复
-    let initialPage = HomeCardType[0]!.eum
+    let initialPage = HomeCardType[0]!.num
     try {
       const saved = Number(localStorage.getItem(PAGE_STORAGE_KEY))
       if (Number.isInteger(saved) && saved >= 1 && saved <= HomeCardType.length) {
@@ -55,7 +55,7 @@ export const HomeCardType = [
   { title: '设置', icon: Settings, page: Settings_Page },
 ].map((item, index) => ({
   ...item,
-  eum: index + 1,
+  num: index + 1,
 }))
 
 export default useStore

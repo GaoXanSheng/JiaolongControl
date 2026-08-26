@@ -4,6 +4,7 @@ import { Message } from '@arco-design/web-vue'
 import { AutoFanControl, Fan } from '@/utils/bridge'
 import { useConfigStore } from '@/stores/config'
 import FanSpeed from '@/components/common/FanSpeed.vue'
+import { FAN_MAX_RPM, FAN_MIN_RPM } from '@/constants'
 
 const loading = ref(false)
 const visible = ref(false)
@@ -16,7 +17,7 @@ const FanPageStore = computed(() => configStore.config?.Fan)
 
 const handleClick = () => {
   if (!FanPageStore.value) return
-  if (FanPageStore.value.ManualFanSpeed > 5800 || FanPageStore.value.ManualFanSpeed < 1500) {
+  if (FanPageStore.value.ManualFanSpeed > FAN_MAX_RPM || FanPageStore.value.ManualFanSpeed < FAN_MIN_RPM) {
     visible.value = true
   } else {
     handleOk()
@@ -177,23 +178,7 @@ async function handleRemoveFanClick() {
 }
 
 /* 高发光 Slider 拖拽钮及轨道重写 */
-:deep(.arco-slider-bar) {
-  background: linear-gradient(90deg, #6366f1 0%, #8a2be2 100%) !important;
-  height: 5px !important;
-  border-radius: 99px;
-}
-:deep(.arco-slider-track) {
-  background-color: rgba(255, 255, 255, 0.04) !important;
-  height: 5px !important;
-  border-radius: 99px;
-}
-:deep(.arco-slider-button) {
-  background-color: #ffffff !important;
-  border: 2.5px solid #8a2be2 !important;
-  width: 13px !important;
-  height: 13px !important;
-  box-shadow: 0 0 10px rgba(138, 43, 226, 0.7) !important;
-}
+
 
 /* 重构 Arco Modal 的深色磨砂遮罩及按钮样式 */
 :deep(.arco-modal) {

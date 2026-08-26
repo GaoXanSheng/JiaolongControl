@@ -1,11 +1,10 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import './style.css'
-import '@arco-design/web-vue/dist/arco.css'
 import './assets/magic.min.css'
-import ArcoVue from '@arco-design/web-vue'
-import ArcoVueIcon from '@arco-design/web-vue/es/icon'
+// 函数式 API (Message) 样式: 组件样式由 unplugin-vue-components 按需注入
+import '@arco-design/web-vue/es/message/style/css.js'
 import { createPinia } from 'pinia'
 import router from '@/router/routes.ts'
 import './assets/Global.scss'
-createApp(App).use(createPinia()).use(router).use(ArcoVue).use(ArcoVueIcon).mount('#app')
+createApp(App).use(createPinia()).use(router).mount('#app')

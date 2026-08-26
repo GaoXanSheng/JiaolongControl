@@ -9,7 +9,7 @@
       </div>
       <a-card class="fan-curve-card" :bordered="false" @click="closeMenu">
         <div class="header-info">
-          <!-- 左侧：CPU/GPU 切换及移除设�?-->
+          <!-- 左侧：CPU/GPU 切换及移除设置 -->
           <div class="info-section">
             <a-space size="medium">
               <a-radio-group
@@ -418,7 +418,7 @@ const polylinePoints = computed(() => {
   return currentPoints.value.map((p) => `${safeMapX(p.temp)},${safeMapY(p.speed)}`).join(' ')
 })
 
-// 计算面积渐变闭合多边形的坐标�?
+// 计算面积渐变闭合多边形的坐标点
 const polygonPoints = computed(() => {
   if (currentPoints.value.length === 0) return ''
   const pts = currentPoints.value.map((p) => `${safeMapX(p.temp)},${safeMapY(p.speed)}`)

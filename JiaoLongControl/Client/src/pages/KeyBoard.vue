@@ -317,23 +317,7 @@ function handleReset() {
   scrollbar-width: none;
 }
 
-:deep(.arco-slider-bar) {
-  background: linear-gradient(90deg, #6366f1 0%, #8a2be2 100%) !important;
-  height: 5px !important;
-  border-radius: 99px;
-}
-:deep(.arco-slider-track) {
-  background-color: rgba(255, 255, 255, 0.04) !important;
-  height: 5px !important;
-  border-radius: 99px;
-}
-:deep(.arco-slider-button) {
-  background-color: #ffffff !important;
-  border: 2.5px solid #8a2be2 !important;
-  width: 13px !important;
-  height: 13px !important;
-  box-shadow: 0 0 10px rgba(138, 43, 226, 0.7) !important;
-}
+
 
 :deep(.red-slider .arco-slider-bar) {
   background: linear-gradient(90deg, #ef4444 0%, #f87171 100%) !important;

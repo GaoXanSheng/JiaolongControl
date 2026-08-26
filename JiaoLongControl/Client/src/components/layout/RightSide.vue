@@ -5,7 +5,7 @@ import { computed } from 'vue'
 const store = useStore()
 const currentComponent = computed(() => {
   for (let i of HomeCardType) {
-    if (i.eum === store.$state.SwitchPages) {
+    if (i.num === store.$state.SwitchPages) {
       return i.page
     }
   }

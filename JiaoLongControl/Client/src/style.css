@@ -65,3 +65,23 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Arco Slider 深色主题基础样式 (各页面共用; 页面级配色变体如 .slider-purple 保留在组件内) */
+.arco-slider-bar {
+  background: linear-gradient(90deg, #6366f1 0%, #8a2be2 100%) !important;
+  height: 5px !important;
+  border-radius: 99px;
+}
+.arco-slider-track {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  height: 5px !important;
+  border-radius: 99px;
+}
+.arco-slider-button {
+  background-color: #ffffff !important;
+  border: 2.5px solid #8a2be2 !important;
+  width: 13px !important;
+  height: 13px !important;
+  box-shadow: 0 0 10px rgba(138, 43, 226, 0.7) !important;
+}
+

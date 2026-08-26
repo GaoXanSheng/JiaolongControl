@@ -583,26 +583,6 @@ async function handleResetAdvanced() {
   scrollbar-width: none;
 }
 
-:deep(.arco-slider-bar) {
-  background: linear-gradient(90deg, #6366f1 0%, #8a2be2 100%) !important;
-  height: 5px !important;
-  border-radius: 99px;
-}
-
-:deep(.arco-slider-track) {
-  background-color: rgba(255, 255, 255, 0.04) !important;
-  height: 5px !important;
-  border-radius: 99px;
-}
-
-:deep(.arco-slider-button) {
-  background-color: #ffffff !important;
-  border: 2.5px solid #8a2be2 !important;
-  width: 13px !important;
-  height: 13px !important;
-  box-shadow: 0 0 10px rgba(138, 43, 226, 0.7) !important;
-}
-
 :deep(.select-dark .arco-select-view-single) {
   background-color: #17192a !important;
   border: 1px solid rgba(255, 255, 255, 0.05) !important;

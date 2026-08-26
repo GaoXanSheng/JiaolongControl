@@ -9,8 +9,8 @@ function onClickMenuItem(key: number) {
   store.setPage(key)
 }
 
-// 过滤掉 eum 为 8 的“设置”选项，主导航菜单中仅渲染除“设置”之外的其他项
-const mainNavItems = HomeCardType.filter((item) => item.eum !== 8)
+// 过滤掉 num 为 8 的“设置”选项，主导航菜单中仅渲染除“设置”之外的其他项
+const mainNavItems = HomeCardType.filter((item) => item.num !== 8)
 </script>
 
 <template>
@@ -26,20 +26,20 @@ const mainNavItems = HomeCardType.filter((item) => item.eum !== 8)
           <nav class="space-y-1.5">
             <button
               v-for="item in mainNavItems"
-              :key="item.eum"
+              :key="item.num"
               :class="[
                 'w-full flex items-center gap-4 px-5 py-3.5 rounded-[5px] transition-all duration-300',
-                store.SwitchPages === item.eum
+                store.SwitchPages === item.num
                   ? 'nav-item-active'
                   : 'hover:bg-white/[0.03] text-gray-400 hover:text-gray-1000',
               ]"
-              @click="onClickMenuItem(Number(item.eum))"
+              @click="onClickMenuItem(Number(item.num))"
             >
               <!-- 图标容器 -->
               <div class="w-5 h-5 flex items-center justify-center relative">
                 <!-- 1. 背景氛围炫光 -->
                 <span
-                  v-if="store.SwitchPages === item.eum"
+                  v-if="store.SwitchPages === item.num"
                   class="absolute w-5 h-5 bg-blue-500/40 rounded-full blur-[8px] animate-pulse pointer-events-none"
                 ></span>
 
@@ -48,7 +48,7 @@ const mainNavItems = HomeCardType.filter((item) => item.eum !== 8)
                   :src="item.icon"
                   :class="[
                     'relative z-10 w-full h-full brightness-0 transition-all duration-300',
-                    store.SwitchPages === item.eum
+                    store.SwitchPages === item.num
                       ? 'invert opacity-100 drop-shadow-[0_0_6px_rgba(59,130,246,0.9)]'
                       : 'invert opacity-60 group-hover:opacity-100',
                   ]"
@@ -59,7 +59,7 @@ const mainNavItems = HomeCardType.filter((item) => item.eum !== 8)
             </button>
           </nav>
 
-          <!-- 底部工具/设置：依然保持独立渲染，触发 eum 为 8 的事件 -->
+          <!-- 底部工具/设置：依然保持独立渲染，触发 num 为 8 的事件 -->
           <div class="pb-6">
             <button
               :class="[

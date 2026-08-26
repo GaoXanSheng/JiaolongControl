@@ -11,6 +11,8 @@
   "compilerOptions": {
     "noEmit": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    // vite/eslint 等配置脚本依赖部分无类型声明的第三方包, 交由 ESLint 检查
+    "noCheck": true,
 
     "module": "ESNext",
     "moduleResolution": "Bundler",

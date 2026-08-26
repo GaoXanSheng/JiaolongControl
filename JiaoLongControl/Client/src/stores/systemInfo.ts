@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { CPU, Fan, NvidiaGpu, type FanSpeedInfo, type GpuStats } from '@/utils/bridge'
+import { POLL_INTERVAL_SYSTEM_INFO } from '@/constants'
 
 export interface CpuStatsInfo {
   FrequencyMhz: number
@@ -120,7 +121,7 @@ export const useSystemInfoStore = defineStore('systemInfo', {
       }
     },
 
-    startPolling(interval = 5000) {
+    startPolling(interval = POLL_INTERVAL_SYSTEM_INFO) {
       this.fetchSystemInfo()
       const polling = setInterval(() => this.fetchSystemInfo(), interval)
       return () => clearInterval(polling)

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Fan, CPU, NvidiaGpu } from '@/utils/bridge.ts'
+import { POLL_INTERVAL_FAN_SPEED } from '@/constants'
 
 const MAX_POINTS = 10
-const INTERVAL = 2000
+const INTERVAL = POLL_INTERVAL_FAN_SPEED
 const PADDING_X = 40
 const PADDING_Y = 20
 
