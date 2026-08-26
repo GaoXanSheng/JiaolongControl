@@ -53,7 +53,7 @@ async function MinimizedAfterBootingChange<T>(value: T) {
 
 <template>
   <div class="contents space-y-3">
-    <setting-card-component title="开机自启" description="允许 JiaoLongControl 随 Windows 操作系统启动而自动运行，确保各类硬件优化策略与自定义风扇曲线实时生效。">
+    <setting-card-component title="开机自启" description="允许 JiaoLongControl 随 Linux 系统启动而自动运行（systemd 用户服务），确保各类硬件优化策略与自定义风扇曲线实时生效。">
       <template #extra>
         <a-switch
             :model-value="BootAutoStart"
@@ -70,22 +70,6 @@ async function MinimizedAfterBootingChange<T>(value: T) {
       </template>
     </setting-card-component>
 
-    <setting-card-component v-if="BootAutoStart" title="自启时最小化" description="随开机自动启动时自动最小化到系统托盘，不弹出主界面，保持桌面清爽干净。">
-      <template #extra>
-        <a-switch
-            :model-value="MinimizedAfterBooting"
-            :loading="loading"
-            @change="MinimizedAfterBootingChange($event)"
-        >
-          <template #checked-icon>
-            <icon-check/>
-          </template>
-          <template #unchecked-icon>
-            <icon-close/>
-          </template>
-        </a-switch>
-      </template>
-    </setting-card-component>
   </div>
 </template>
 <style scoped></style>

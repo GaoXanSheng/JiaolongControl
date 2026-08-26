@@ -201,7 +201,7 @@
 </template>
 
 <script lang="ts" setup>
-import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {Message} from '@arco-design/web-vue'
 import {AutoFanControl, Config, Fan} from '@/utils/bridge'
 import {useConfigStore} from '@/stores/config'
@@ -384,6 +384,19 @@ onMounted(async () => {
       }
     })
     resizeObserver.observe(containerRef.value)
+    // 防御: 某些时序下 ResizeObserver 首帧回调不触发, 手动测量一次
+    const r0 = containerRef.value.getBoundingClientRect()
+    if (r0.width > 0 && r0.height > 0) {
+      width.value = r0.width
+      height.value = r0.height
+    } else {
+      nextTick(() => {
+        if (!width.value && containerRef.value) {
+          const r1 = containerRef.value.getBoundingClientRect()
+          if (r1.width > 0 && r1.height > 0) { width.value = r1.width; height.value = r1.height }
+        }
+      })
+    }
   }
 
   await checkServiceStatus()

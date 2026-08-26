@@ -207,13 +207,43 @@ declare global {
  */
 let cachedBridge: any = null;
 
+/**
+ * HTTP 桥接 (Linux port): 非 WebView2 环境下把 Group.Method(args) 映射为
+ * POST /api/Group/Method {args:[...]}，由 linux-port/jlctl.py 内置服务处理。
+ * 页面层代码零改动。
+ */
+function httpBridge(): any {
+    const groups: Record<string, any> = {};
+    return new Proxy({} as any, {
+        get(_t, group: string) {
+            if (!groups[group]) {
+                groups[group] = new Proxy({} as any, {
+                    get(_t2, method: string) {
+                        return (...args: any[]) =>
+                            fetch(`/api/${group}/${method}`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ args }),
+                            }).then((r) => r.json());
+                    },
+                });
+            }
+            return groups[group];
+        },
+    });
+}
+
+function isHttpMode(): boolean {
+    return typeof window !== "undefined" &&
+        (window.location.protocol === "http:" || window.location.protocol === "https:");
+}
+
 function getBridge(): any {
-    const bridge = cachedBridge ?? window.chrome?.webview?.hostObjects?.bridge;
-    if (!bridge) {
-        throw new Error('WebView2 bridge 不可用（请通过 JiaoLongControl 主窗口使用）');
-    }
-    cachedBridge = bridge;
-    return bridge;
+    if (cachedBridge) return cachedBridge;
+    const wv = window.chrome?.webview?.hostObjects?.bridge;
+    if (wv) { cachedBridge = wv; return wv; }
+    if (isHttpMode()) { cachedBridge = httpBridge(); return cachedBridge; }
+    throw new Error("WebView2 bridge 不可用（请通过 JiaoLongControl 主窗口使用）");
 }
 
 export const raw: any = new Proxy({} as any, {
@@ -221,8 +251,12 @@ export const raw: any = new Proxy({} as any, {
 });
 
 export async function call<T>(promise: Promise<any>): Promise<CommandResult<T>> {
-    // @ts-ignore
-    return JSON.parse(await promise.toJson());
+    // WebView2 桥返回带 toJson() 的宿主对象; HTTP 桥直接返回 JSON 结果
+    if (promise && typeof (promise as any).toJson === "function") {
+        // @ts-ignore
+        return JSON.parse(await promise.toJson());
+    }
+    return promise as CommandResult<T>;
 }
 
 // ===== 读接口结果缓存 =====
@@ -391,7 +425,7 @@ export const Config = {
 };
 const postMessage = (message: any) => {
     if (!window.chrome?.webview) {
-        throw new Error('WebView2 不可用');
+        return; // HTTP(WebUI) 模式: 窗口控制无意义, 静默忽略
     }
     return window.chrome.webview.postMessage(message);
 };
