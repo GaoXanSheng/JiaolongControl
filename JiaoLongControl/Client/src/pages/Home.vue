@@ -58,10 +58,26 @@ function setMode(id: SystemPerMode) {
 
 const cpuUsage = computed(() => systemInfoStore.cpuStats?.Usage ?? 0)
 const gpuUsage = computed(() => parseInt(gpuStats.value?.GpuUtilization || '0', 10))
-// 无噪音传感器: 以风扇转速推算 (标定: 约 3000 RPM ≈ 25 dBA, 静止底噪 20 dBA)
+// 无噪音传感器: 以风扇转速查表估算 (用户标定: 3000 RPM≈25 dBA, 4800 RPM≈40 dBA)
+const NOISE_CALIBRATION: Array<[rpm: number, dba: number]> = [
+  [1500, 19],
+  [3000, 25],
+  [4800, 40],
+  [5800, 45],
+  [6800, 48],
+]
 const noiseLevel = computed(() => {
   const rpm = Math.max(fanSpeed.value.CPUFanSpeed, fanSpeed.value.GPUFanSpeed)
-  return Math.round(20 + (rpm / 3000) * 5)
+  const pts = NOISE_CALIBRATION
+  if (rpm <= pts[0]![0]) return pts[0]![1]
+  for (let i = 1; i < pts.length; i++) {
+    const [hiRpm, hiDba] = pts[i]!
+    if (rpm <= hiRpm) {
+      const [loRpm, loDba] = pts[i - 1]!
+      return Math.round(loDba + ((rpm - loRpm) / (hiRpm - loRpm)) * (hiDba - loDba))
+    }
+  }
+  return pts[pts.length - 1]![1]
 })
 
 const sysCpuName = ref('Loading...')
