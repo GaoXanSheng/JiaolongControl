@@ -58,13 +58,11 @@ function setMode(id: SystemPerMode) {
 
 const cpuUsage = computed(() => systemInfoStore.cpuStats?.Usage ?? 0)
 const gpuUsage = computed(() => parseInt(gpuStats.value?.GpuUtilization || '0', 10))
-// 无噪音传感器: 不展示随机假数据, 以风扇转速估算 (真实遥测缺失时的合理化近似)
-const noiseLevel = computed(() =>
-  Math.min(
-    60,
-    30 + Math.round(Math.max(fanSpeed.value.CPUFanSpeed, fanSpeed.value.GPUFanSpeed) / 200),
-  ),
-)
+// 无噪音传感器: 以风扇转速推算 (标定: 约 3000 RPM ≈ 25 dBA, 静止底噪 20 dBA)
+const noiseLevel = computed(() => {
+  const rpm = Math.max(fanSpeed.value.CPUFanSpeed, fanSpeed.value.GPUFanSpeed)
+  return Math.round(20 + (rpm / 3000) * 5)
+})
 
 const sysCpuName = ref('Loading...')
 const sysGpuName = ref('Loading...')
