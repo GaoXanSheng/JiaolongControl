@@ -57,7 +57,7 @@
   }
   .nav-item-active::before {
     content: '';
-    @apply absolute left-0 inset-y-4 w-1 bg-cyber-purple rounded-r-full shadow-[2px_0_10px_#8A2BE2];
+    @apply absolute left-0 inset-y-4 w-1 bg-cyber-purple rounded-r-full shadow-[2px_0_10px_var(--color-accent-purple)];
   }
 }
 
@@ -68,7 +68,7 @@
 
 /* Arco Slider 深色主题基础样式 (各页面共用; 页面级配色变体如 .slider-purple 保留在组件内) */
 .arco-slider-bar {
-  background: linear-gradient(90deg, #6366f1 0%, #8a2be2 100%) !important;
+  background: linear-gradient(90deg, #6366f1 0%, var(--color-accent-purple) 100%) !important;
   height: 5px !important;
   border-radius: 99px;
 }
@@ -79,7 +79,7 @@
 }
 .arco-slider-button {
   background-color: #ffffff !important;
-  border: 2.5px solid #8a2be2 !important;
+  border: 2.5px solid var(--color-accent-purple) !important;
   width: 13px !important;
   height: 13px !important;
   box-shadow: 0 0 10px rgba(138, 43, 226, 0.7) !important;

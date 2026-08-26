@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, type Ref, watch } from 'vue'
 import { Message } from '@arco-design/web-vue'
 import { NvidiaGpu } from '@/utils/bridge.ts'
+import { buildSparkline } from '@/utils/chart'
 import { useConfigStore } from '@/stores/config'
 import { useSystemInfoStore } from '@/stores/systemInfo'
 import { storeToRefs } from 'pinia'
@@ -71,35 +72,7 @@ onUnmounted(() => {
 
 // --- Chart Generation ---
 function generateSvgPath(history: number[], yMax: number, smooth = true) {
-  if (history.length < 2) return { line: 'M 0 40', area: 'M 0 40' }
-
-  const width = 160
-  const height = 40
-
-  const points = history.map((value, index) => {
-    const x = (index / (historyLength - 1)) * width
-    const y = height - (Math.max(0, Math.min(value, yMax)) / yMax) * height
-    return { x, y }
-  })
-
-  const linePath = points
-    .map((p, i) => {
-      if (i === 0) return `M ${p.x},${p.y}`
-      if (smooth) {
-        const prev = points[i - 1]!
-        const cp1x = prev.x + (p.x - prev.x) / 2
-        const cp1y = prev.y
-        const cp2x = prev.x + (p.x - prev.x) / 2
-        const cp2y = p.y
-        return `C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p.x},${p.y}`
-      }
-      return `L ${p.x},${p.y}`
-    })
-    .join(' ')
-
-  const areaPath = `${linePath} L ${width},${height} L 0,${height} Z`
-
-  return { line: linePath, area: areaPath }
+  return buildSparkline(history, { width: 160, height: 40, max: yMax, smooth, area: true })
 }
 
 const utilChart = computed(() => generateSvgPath(utilHistory.value, 100))
@@ -435,11 +408,11 @@ async function handleResetAdvanced() {
               >
                 <defs>
                   <linearGradient id="g-purple" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#8A2BE2" stop-opacity="0.3" />
-                    <stop offset="100%" stop-color="#8A2BE2" stop-opacity="0" />
+                    <stop offset="0%" stop-color="var(--color-accent-purple)" stop-opacity="0.3" />
+                    <stop offset="100%" stop-color="var(--color-accent-purple)" stop-opacity="0" />
                   </linearGradient>
                 </defs>
-                <path :d="utilChart.line" fill="none" stroke="#8A2BE2" stroke-width="1.2" />
+                <path :d="utilChart.line" fill="none" stroke="var(--color-accent-purple)" stroke-width="1.2" />
                 <path :d="utilChart.area" fill="url(#g-purple)" />
               </svg>
             </div>
@@ -487,7 +460,7 @@ async function handleResetAdvanced() {
                 viewBox="0 0 160 40"
                 preserveAspectRatio="none"
               >
-                <path :d="coreClockChart.line" fill="none" stroke="#8A2BE2" stroke-width="1.2" />
+                <path :d="coreClockChart.line" fill="none" stroke="var(--color-accent-purple)" stroke-width="1.2" />
                 <path :d="coreClockChart.area" fill="url(#g-purple)" />
               </svg>
             </div>
@@ -592,6 +565,6 @@ async function handleResetAdvanced() {
 }
 
 :deep(.arco-switch-checked) {
-  background-color: #8a2be2 !important;
+  background-color: var(--color-accent-purple) !important;
 }
 </style>

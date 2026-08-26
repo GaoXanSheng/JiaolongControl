@@ -30,6 +30,14 @@ const cpuStats = computed(() => systemInfoStore.cpuStats)
 // 页面内部交互状态
 const selectedProfile = ref('default')
 
+// 配置文件卡片: 从配置恢复上次选中的档位（不覆盖已保存的值）
+const profiles = [
+  { key: 'default', title: '默认配置', desc: '平衡性能与功耗' },
+  { key: 'performance', title: '高性能模式', desc: '释放最大性能' },
+  { key: 'saving', title: '节能模式', desc: '降低功耗与温度' },
+  { key: 'custom', title: '自定义配置', desc: '自定义参数设置' },
+] as const
+
 // 从配置恢复上次选中的档位（不覆盖已保存的值）
 if (CPUData.value?.CpuProfile) {
   selectedProfile.value = CPUData.value.CpuProfile
@@ -129,76 +137,23 @@ async function handleCancel() {
           </div>
 
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <!-- 默认配置 -->
             <div
+              v-for="p in profiles"
+              :key="p.key"
               :class="[
                 'border rounded-xl p-4 cursor-pointer transition-all duration-300 flex flex-col justify-between h-[96px]',
-                selectedProfile === 'default'
-                  ? 'border-[#8A2BE2] bg-[#1a182f] shadow-[0_0_15px_rgba(138,43,226,0.25)]'
+                selectedProfile === p.key
+                  ? 'border-cyber-purple bg-[#1a182f] shadow-[0_0_15px_rgba(138,43,226,0.25)]'
                   : 'border-white/[0.05] bg-[#121320] hover:border-white/10',
               ]"
-              @click="selectProfile('default')"
+              @click="selectProfile(p.key)"
             >
               <span
                 class="text-xs font-semibold"
-                :class="selectedProfile === 'default' ? 'text-white' : 'text-gray-300'"
-                >默认配置</span
+                :class="selectedProfile === p.key ? 'text-white' : 'text-gray-300'"
+                >{{ p.title }}</span
               >
-              <span class="text-[11px] text-gray-500">平衡性能与功耗</span>
-            </div>
-
-            <!-- 高性能模式 -->
-            <div
-              :class="[
-                'border rounded-xl p-4 cursor-pointer transition-all duration-300 flex flex-col justify-between h-[96px]',
-                selectedProfile === 'performance'
-                  ? 'border-[#8A2BE2] bg-[#1a182f] shadow-[0_0_15px_rgba(138,43,226,0.25)]'
-                  : 'border-white/[0.05] bg-[#121320] hover:border-white/10',
-              ]"
-              @click="selectProfile('performance')"
-            >
-              <span
-                class="text-xs font-semibold"
-                :class="selectedProfile === 'performance' ? 'text-white' : 'text-gray-300'"
-                >高性能模式</span
-              >
-              <span class="text-[11px] text-gray-500">释放最大性能</span>
-            </div>
-
-            <!-- 节能模式 -->
-            <div
-              :class="[
-                'border rounded-xl p-4 cursor-pointer transition-all duration-300 flex flex-col justify-between h-[96px]',
-                selectedProfile === 'saving'
-                  ? 'border-[#8A2BE2] bg-[#1a182f] shadow-[0_0_15px_rgba(138,43,226,0.25)]'
-                  : 'border-white/[0.05] bg-[#121320] hover:border-white/10',
-              ]"
-              @click="selectProfile('saving')"
-            >
-              <span
-                class="text-xs font-semibold"
-                :class="selectedProfile === 'saving' ? 'text-white' : 'text-gray-300'"
-                >节能模式</span
-              >
-              <span class="text-[11px] text-gray-500">降低功耗与温度</span>
-            </div>
-
-            <!-- 自定义配置 -->
-            <div
-              :class="[
-                'border rounded-xl p-4 cursor-pointer transition-all duration-300 flex flex-col justify-between h-[96px]',
-                selectedProfile === 'custom'
-                  ? 'border-[#8A2BE2] bg-[#1a182f] shadow-[0_0_15px_rgba(138,43,226,0.25)]'
-                  : 'border-white/[0.05] bg-[#121320] hover:border-white/10',
-              ]"
-              @click="selectProfile('custom')"
-            >
-              <span
-                class="text-xs font-semibold"
-                :class="selectedProfile === 'custom' ? 'text-white' : 'text-gray-300'"
-                >自定义配置</span
-              >
-              <span class="text-[11px] text-gray-500">自定义参数设置</span>
+              <span class="text-[11px] text-gray-500">{{ p.desc }}</span>
             </div>
           </div>
         </div>
@@ -387,7 +342,7 @@ async function handleCancel() {
               </div>
               <div class="h-1.5 bg-white/[0.03] rounded-full overflow-hidden">
                 <div
-                  class="h-full bg-[#8A2BE2]"
+                  class="h-full bg-cyber-purple"
                   :style="{
                     width: `${Math.min(((cpuStats?.FrequencyMhz || 0) / (activeProfile.CpuMaxFrequency || 5000)) * 100, 100)}%`,
                   }"
@@ -405,7 +360,7 @@ async function handleCancel() {
               </div>
               <div class="h-1.5 bg-white/[0.03] rounded-full overflow-hidden">
                 <div
-                  class="h-full bg-[#8A2BE2]"
+                  class="h-full bg-cyber-purple"
                   :style="{ width: `${Math.min(((cpuStats?.Voltage || 0) / 1.5) * 100, 100)}%` }"
                 ></div>
               </div>
@@ -435,7 +390,7 @@ async function handleCancel() {
               </div>
               <div class="h-1.5 bg-white/[0.03] rounded-full overflow-hidden">
                 <div
-                  class="h-full bg-[#8A2BE2]"
+                  class="h-full bg-cyber-purple"
                   :style="{ width: `${Math.min(cpuStats?.Temperature || 0, 100)}%` }"
                 ></div>
               </div>
@@ -512,7 +467,7 @@ async function handleCancel() {
 
 /* 深度重写 Arco Switch */
 :deep(.arco-switch-checked) {
-  background-color: #8a2be2 !important;
+  background-color: var(--color-accent-purple) !important;
 }
 
 /* 重写下拉菜单为深色模式样式 */

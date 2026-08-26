@@ -7,6 +7,7 @@ import { CPU, RyzenSmu, type CommandResult, type SmuTelemetry } from '@/utils/br
 import { useConfigStore } from '@/stores/config'
 import type { SmuSectionType } from '@/types/config'
 import { POLL_INTERVAL_SMU } from '@/constants'
+import { buildSparkline, type SparklineResult } from '@/utils/chart'
 
 interface ConfigGroupItem {
   label: string
@@ -239,24 +240,8 @@ function pushHistory(arr: number[], value: number) {
   if (arr.length > HISTORY_LEN) arr.shift()
 }
 
-function sparkline(history: number[], yMax: number): { line: string; area: string } {
-  if (history.length < 2) return { line: 'M 0 40', area: 'M 0 40 L 160 40 L 0 40 Z' }
-  const W = 160,
-    H = 40
-  const points = history.map((v, i) => ({
-    x: (i / (HISTORY_LEN - 1)) * W,
-    y: H - (Math.max(0, Math.min(v, yMax)) / yMax) * H,
-  }))
-  const line = points
-    .map((p, i) => {
-      if (i === 0) return `M ${p.x},${p.y}`
-      const prev = points[i - 1]
-      const cpx = (prev!.x + p.x) / 2
-      return `C ${cpx},${prev!.y} ${cpx},${p.y} ${p.x},${p.y}`
-    })
-    .join(' ')
-  const area = `${line} L ${W},${H} L 0,${H} Z`
-  return { line, area }
+function sparkline(history: number[], yMax: number): SparklineResult {
+  return buildSparkline(history, { width: 160, height: 40, max: yMax, smooth: true, area: true })
 }
 
 const pptChart = computed(() => sparkline(pptHistory.value, 150))
@@ -585,14 +570,14 @@ onUnmounted(() => {
               >
                 <defs>
                   <linearGradient id="smu-g-purple" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#8A2BE2" stop-opacity="0.35" />
-                    <stop offset="100%" stop-color="#8A2BE2" stop-opacity="0" />
+                    <stop offset="0%" stop-color="var(--color-accent-purple)" stop-opacity="0.35" />
+                    <stop offset="100%" stop-color="var(--color-accent-purple)" stop-opacity="0" />
                   </linearGradient>
                 </defs>
                 <path
                   :d="pptChart.line"
                   fill="none"
-                  stroke="#8A2BE2"
+                  stroke="var(--color-accent-purple)"
                   stroke-width="1.5"
                   stroke-linecap="round"
                 />
@@ -756,12 +741,12 @@ onUnmounted(() => {
 
 /* 分色重写 Slider 轨道（紫 / 蓝 / 红 / 橘） */
 :deep(.slider-purple .arco-slider-bar) {
-  background: linear-gradient(90deg, #6366f1 0%, #8a2be2 100%) !important;
+  background: linear-gradient(90deg, #6366f1 0%, var(--color-accent-purple) 100%) !important;
   height: 5px !important;
   border-radius: 99px;
 }
 :deep(.slider-purple .arco-slider-button) {
-  border: 2px solid #8a2be2 !important;
+  border: 2px solid var(--color-accent-purple) !important;
   box-shadow: 0 0 8px rgba(138, 43, 226, 0.6) !important;
 }
 

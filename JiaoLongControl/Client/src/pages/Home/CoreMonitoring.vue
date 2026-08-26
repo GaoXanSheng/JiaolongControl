@@ -62,10 +62,10 @@ const getRingOption = (
   ],
 })
 
-const cpuUsageOption = computed(() => getRingOption(props.cpuUsage || 0, '#3B82F6', '#8A2BE2'))
+const cpuUsageOption = computed(() => getRingOption(props.cpuUsage || 0, '#3B82F6', 'var(--color-accent-purple)'))
 const gpuUsageOption = computed(() => getRingOption(props.gpuUsage || 0, '#10B981', '#3B82F6'))
 const cpuTempOption = computed(() => getRingOption(props.cpuTemp || 0, '#3B82F6', '#3B82F6', '°C'))
-const gpuTempOption = computed(() => getRingOption(props.gpuTemp || 0, '#8A2BE2', '#8A2BE2', '°C'))
+const gpuTempOption = computed(() => getRingOption(props.gpuTemp || 0, 'var(--color-accent-purple)', 'var(--color-accent-purple)', '°C'))
 </script>
 
 <template>

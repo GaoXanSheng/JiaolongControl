@@ -23,11 +23,11 @@ use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent
 const systemInfoStore = useSystemInfoStore()
 const { cpuTemp, gpuTemp, fanSpeed, gpuStats } = storeToRefs(systemInfoStore)
 
+// 枚举↔中文映射以后端为准: 0=Performance(高性能) 1=Quiet(静音) 2=Balance(平衡)
 const performanceModes = ref([
-  { id: SystemPerMode.BalanceMode, name: '静音', icon: iconQuiet, active: false },
-  { id: SystemPerMode.PerformanceMode, name: '平衡', icon: iconBalanced, active: false },
-  { id: SystemPerMode.QuietMode, name: '高性能', icon: iconPerformance, active: false },
-  // { id: SystemPerMode.CustomMode, name: '自定义', icon: iconCustom, active: false }
+  { id: SystemPerMode.PerformanceMode, name: '高性能', icon: iconPerformance, active: false },
+  { id: SystemPerMode.QuietMode, name: '静音', icon: iconQuiet, active: false },
+  { id: SystemPerMode.BalanceMode, name: '平衡', icon: iconBalanced, active: false },
 ])
 
 const activeMode = computed(
@@ -56,9 +56,15 @@ function setMode(id: SystemPerMode) {
   })
 }
 
-const cpuUsage = ref(0) // This seems to be fake data, will keep it for now
+const cpuUsage = computed(() => systemInfoStore.cpuStats?.Usage ?? 0)
 const gpuUsage = computed(() => parseInt(gpuStats.value?.GpuUtilization || '0', 10))
-const noiseLevel = ref(0) // This seems to be fake data
+// 无噪音传感器: 不展示随机假数据, 以风扇转速估算 (真实遥测缺失时的合理化近似)
+const noiseLevel = computed(() =>
+  Math.min(
+    60,
+    30 + Math.round(Math.max(fanSpeed.value.CPUFanSpeed, fanSpeed.value.GPUFanSpeed) / 200),
+  ),
+)
 
 const sysCpuName = ref('Loading...')
 const sysGpuName = ref('Loading...')
@@ -116,10 +122,6 @@ function startTimers() {
   stopTimers()
   ecgTimer = setInterval(tickEcg, 100)
   historyTimer = setInterval(() => {
-    // todo fake usage data
-    cpuUsage.value = Math.floor(Math.random() * 30) + 10
-    noiseLevel.value = Math.floor(Math.random() * 10) + 30
-
     tempHistory.value.push({ cpu: cpuTemp.value, gpu: gpuTemp.value })
     if (tempHistory.value.length > 10) tempHistory.value.shift()
   }, 2000)
@@ -324,7 +326,7 @@ const lineChartOption = computed(() => ({
             <defs>
               <!-- 水平方向渐变色，从紫色过渡到蓝色，再到浅绿 -->
               <linearGradient id="ecgGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#8A2BE2" stop-opacity="0.3" />
+                <stop offset="0%" stop-color="var(--color-accent-purple)" stop-opacity="0.3" />
                 <stop offset="50%" stop-color="#3B82F6" stop-opacity="0.8" />
                 <stop offset="100%" stop-color="#10B981" stop-opacity="1" />
               </linearGradient>
@@ -354,7 +356,7 @@ const lineChartOption = computed(() => ({
             <span class="text-2xl font-semibold">{{ noiseLevel }}</span>
             <span class="text-xs text-gray-400">dBA</span>
           </div>
-          <div class="text-xs text-gray-500">当前噪音</div>
+          <div class="text-xs text-gray-500">当前噪音 (估算)</div>
         </div>
       </div>
 
