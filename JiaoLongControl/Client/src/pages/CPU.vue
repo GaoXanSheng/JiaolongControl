@@ -7,6 +7,7 @@ import { CPU, Power, RyzenSmu, type CpuInfo } from '@/utils/bridge.ts'
 import { useConfigStore } from '@/stores/config'
 import { useSystemInfoStore } from '@/stores/systemInfo'
 import type { CpuProfileDataType } from '@/types/config'
+import { CPU_PROFILE_DEFAULTS } from '@/constants'
 
 const loading = ref(false)
 const configStore = useConfigStore()
@@ -104,10 +105,19 @@ async function handleApplyAll() {
   }
 }
 
-// 重置到默认档位
-function handleReset() {
-  selectProfile('default')
-  Message.info('参数已重置为默认配置')
+// 重置当前选中档位的出厂默认参数 (不切换档位)
+async function handleReset() {
+  const key = profileKey(selectedProfile.value)
+  const defaults = CPU_PROFILE_DEFAULTS[key]
+  if (!CPUData.value || !defaults) return
+  Object.assign(CPUData.value[key], defaults)
+  const saveRes = await configStore.saveConfig()
+  const profileTitle = profiles.find((p) => p.key === selectedProfile.value)?.title ?? ''
+  if (saveRes?.Success) {
+    Message.info(`「${profileTitle}」参数已恢复为出厂默认`)
+  } else {
+    Message.error(saveRes?.Message || '重置值保存失败')
+  }
 }
 
 // 取消修改：强制从后端重新加载原始配置

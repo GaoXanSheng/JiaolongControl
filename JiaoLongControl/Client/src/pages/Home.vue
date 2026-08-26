@@ -58,7 +58,7 @@ function setMode(id: SystemPerMode) {
 
 const cpuUsage = computed(() => systemInfoStore.cpuStats?.Usage ?? 0)
 const gpuUsage = computed(() => parseInt(gpuStats.value?.GpuUtilization || '0', 10))
-// 无噪音传感器: 以风扇转速查表估算 (用户标定: 3000 RPM≈25 dBA, 4800 RPM≈40 dBA)
+// 无噪音传感器: 以风扇转速查表估算 (标定: 3000 RPM≈25 dBA, 4800 RPM≈40 dBA)
 const NOISE_CALIBRATION: Array<[rpm: number, dba: number]> = [
   [1500, 19],
   [3000, 25],
