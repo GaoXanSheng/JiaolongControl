@@ -23,11 +23,10 @@ use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent
 const systemInfoStore = useSystemInfoStore()
 const { cpuTemp, gpuTemp, fanSpeed, gpuStats } = storeToRefs(systemInfoStore)
 
-// 枚举↔中文映射以后端为准: 0=Performance(高性能) 1=Quiet(静音) 2=Balance(平衡)
 const performanceModes = ref([
-  { id: SystemPerMode.PerformanceMode, name: '高性能', icon: iconPerformance, active: false },
-  { id: SystemPerMode.QuietMode, name: '静音', icon: iconQuiet, active: false },
-  { id: SystemPerMode.BalanceMode, name: '平衡', icon: iconBalanced, active: false },
+  { id: SystemPerMode.QuietMode, name: '高性能', icon: iconPerformance, active: false },
+  { id: SystemPerMode.PerformanceMode, name: '平衡', icon: iconQuiet, active: false },
+  { id: SystemPerMode.BalanceMode, name: '静音', icon: iconBalanced, active: false },
 ])
 
 const activeMode = computed(
