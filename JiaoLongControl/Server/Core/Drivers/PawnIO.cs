@@ -85,7 +85,7 @@ public class PawnIO : IDisposable
     }
 
     /// <summary>
-    /// 读取指定 MSR 寄存器。由 AMDFamily17.bin 模块提供 ioctl_read_msr，不依赖 RyzenSMU.bin。
+    /// 读取指定 MSR 寄存器。由 AMDFamily17.bin 模块提供 ioctl_read_msr。
     /// </summary>
     public ulong ReadMsr(uint msrIndex)
     {

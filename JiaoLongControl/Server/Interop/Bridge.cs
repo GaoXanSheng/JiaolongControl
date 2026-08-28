@@ -19,13 +19,13 @@ namespace JiaoLongControl.Server.Interop
         private const int SaveIntervalMs = 5000;
 
         private readonly object _configLock = new();
-        private System.Threading.Timer? _saveTimer;
+        private Timer _saveTimer;
         internal JiaoLongConfig Config { get; private set; } = null!;
 
         public Bridge()
         {
             Config = ConfigSerializer.Load();
-            _saveTimer = new System.Threading.Timer(
+            _saveTimer = new Timer(
                 _ => FlushIfDirty(),
                 null,
                 SaveIntervalMs,

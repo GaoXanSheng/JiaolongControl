@@ -14,7 +14,6 @@ namespace JiaoLongControl.Server.Core.Controllers
         public int Usage { get; set; }
         public int FrequencyMhz { get; set; }
         public double Voltage { get; set; }
-        public int PowerWatts { get; set; } // Set to 0 if unsupported
     }
 
     [ComVisible(true)]
@@ -215,8 +214,6 @@ namespace JiaoLongControl.Server.Core.Controllers
                         }
                     }
                 }
-
-                // 只统计核心电压传感器(Vcore/VID)，取平均值作为 CPU 核心电压
                 return vcoreValues.Count > 0 ? vcoreValues.Average() : null;
             }
             catch
@@ -289,8 +286,6 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             try
             {
-                // NumberOfCores = physical cores (no hyperthreading)
-                // NumberOfLogicalProcessors = logical cores (with HT/SMT)
                 using var searcher = new ManagementObjectSearcher(
                     "SELECT NumberOfCores FROM Win32_Processor");
                 int total = 0;

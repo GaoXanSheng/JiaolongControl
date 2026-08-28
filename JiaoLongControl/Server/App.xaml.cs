@@ -90,8 +90,8 @@ namespace JiaoLongControl.Server
         {
             try
             {
-                Bridge.Instance?.Fan?.RemoveFanSpeed();
-                Bridge.Instance?.Dispose();
+                Bridge.Instance.Fan.RemoveFanSpeed();
+                Bridge.Instance.Dispose();
             }
             catch (Exception ex)
             {
