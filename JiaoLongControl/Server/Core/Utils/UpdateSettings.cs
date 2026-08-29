@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace JiaoLongControl.Server
+namespace JiaoLongControl.Server.Core.Utils
 {
     public static class UpdateSettings
     {

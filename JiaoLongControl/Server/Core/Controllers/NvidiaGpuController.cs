@@ -257,7 +257,7 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         public CommandResult LockGpuClock(int minFreq, int maxFreq, int gpuIndex = -1)
         {
-            var result = RunNvidiaSmi($"-i {ResolveGpuIndex(gpuIndex)} -lgc {minFreq},{maxFreq}");
+            var result = RunNvidiaSmi("-i", ResolveGpuIndex(gpuIndex).ToString(), "-lgc", $"{minFreq},{maxFreq}");
             if (!result.Success)
                 return result;
             string message = minFreq == maxFreq
@@ -268,25 +268,25 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         public CommandResult ResetGpuClock(int gpuIndex = -1)
         {
-            var result = RunNvidiaSmi($"-i {ResolveGpuIndex(gpuIndex)} -rgc");
+            var result = RunNvidiaSmi("-i", ResolveGpuIndex(gpuIndex).ToString(), "-rgc");
             return result.Success ? new CommandResult(true, "GPU 频率已重置") : result;
         }
 
         public CommandResult LockMemoryClock(int freq, int gpuIndex = -1)
         {
-            var result = RunNvidiaSmi($"-i {ResolveGpuIndex(gpuIndex)} -lmc {freq},{freq}");
+            var result = RunNvidiaSmi("-i", ResolveGpuIndex(gpuIndex).ToString(), "-lmc", $"{freq},{freq}");
             return result.Success ? new CommandResult(true, $"显存频率已锁定 {freq} MHz") : result;
         }
 
         public CommandResult ResetMemoryClock(int gpuIndex = -1)
         {
-            var result = RunNvidiaSmi($"-i {ResolveGpuIndex(gpuIndex)} -rmc");
+            var result = RunNvidiaSmi("-i", ResolveGpuIndex(gpuIndex).ToString(), "-rmc");
             return result.Success ? new CommandResult(true, "显存频率已重置") : result;
         }
 
         public CommandResult SetPowerLimit(int watts, int gpuIndex = -1)
         {
-            var result = RunNvidiaSmi($"-i {ResolveGpuIndex(gpuIndex)} -pl {watts}");
+            var result = RunNvidiaSmi("-i", ResolveGpuIndex(gpuIndex).ToString(), "-pl", watts.ToString());
             return result.Success ? new CommandResult(true, $"功耗限制已设置为 {watts} W") : result;
         }
 
@@ -295,19 +295,22 @@ namespace JiaoLongControl.Server.Core.Controllers
             return gpuIndex >= 0 ? gpuIndex : 0;
         }
 
-        private CommandResult RunNvidiaSmi(string arguments)
+        private CommandResult RunNvidiaSmi(params string[] arguments)
         {
             try
             {
                 var psi = new ProcessStartInfo
                 {
                     FileName = "nvidia-smi",
-                    Arguments = arguments,
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true
                 };
+                // ArgumentList 逐项传递并自动转义, 不构造命令行字符串, 避免参数注入
+                foreach (var arg in arguments)
+                    psi.ArgumentList.Add(arg);
+
                 using var process = Process.Start(psi);
                 string output = process!.StandardOutput.ReadToEnd();
                 string error = process.StandardError.ReadToEnd();
@@ -316,7 +319,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                 if (process.ExitCode != 0)
                 {
                     string message = string.IsNullOrWhiteSpace(error) ? output : error;
-                    return new CommandResult(false, $"[NvidiaGpuController] nvidia-smi {arguments} 失败: {message.Trim()}");
+                    return new CommandResult(false, $"[NvidiaGpuController] nvidia-smi {string.Join(" ", arguments)} 失败: {message.Trim()}");
                 }
             }
             catch (Exception ex)

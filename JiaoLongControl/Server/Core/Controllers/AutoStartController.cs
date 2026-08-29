@@ -27,6 +27,9 @@ public class AutoStartController
         td.Actions.Add(new ExecAction(exePath, "--boot", null));
         td.Principal.RunLevel = TaskRunLevel.Highest;
         td.Settings.MultipleInstances = TaskInstancesPolicy.IgnoreNew;
+        // TaskScheduler 库默认电池模式下禁止启动/切电池时停止, 显式关闭以支持笔记本电池场景
+        td.Settings.DisallowStartIfOnBatteries = false;
+        td.Settings.StopIfGoingOnBatteries = false;
         ts.RootFolder.RegisterTaskDefinition(
             AppName,
             td,
