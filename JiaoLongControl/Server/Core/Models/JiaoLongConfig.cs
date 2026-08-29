@@ -28,6 +28,9 @@ public class AppSection
 
     [ConfigComment("开机自动设置Ryzen SMU Curve Optimizer All")]
     public bool BootSetRyzenSumCurveOptimizerAll { get; set; }
+
+    [ConfigComment("开机自动开启键盘渐变")]
+    public bool BootKeyboardGradient { get; set; }
 }
 
 public class CpuSection

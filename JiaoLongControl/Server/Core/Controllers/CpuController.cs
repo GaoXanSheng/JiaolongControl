@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using System.Management;
 using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Models;
@@ -13,7 +14,6 @@ namespace JiaoLongControl.Server.Core.Controllers
         public int Usage { get; set; }
         public int FrequencyMhz { get; set; }
         public double Voltage { get; set; }
-        public int PowerWatts { get; set; } // Set to 0 if unsupported
     }
 
     [ComVisible(true)]
@@ -121,7 +121,6 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             try
             {
-                // % Processor Performance 相对于基础频率的百分比
                 float perfPercent = _cpuFreqCounter.NextValue();
                 int freqMhz = (int)(perfPercent / 100 * GetBaseFrequency());
                 return new CommandResult(true, "获取成功", freqMhz);
@@ -136,12 +135,9 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             try
             {
-                // 优先使用 LibreHardwareMonitor 读取实时电压
-                var voltage = ReadCpuVoltageFromLhm();
+                var voltage = ReadCoreVoltage();
                 if (voltage.HasValue)
                     return new CommandResult(true, "获取成功", Math.Round(voltage.Value, 3));
-
-                // 回退到 WMI Win32_Processor.CurrentVoltage
                 using var searcher = new ManagementObjectSearcher("SELECT CurrentVoltage FROM Win32_Processor");
                 foreach (var obj in searcher.Get())
                 {
@@ -158,6 +154,22 @@ namespace JiaoLongControl.Server.Core.Controllers
             {
                 return new CommandResult(false, ex.Message);
             }
+        }
+        
+        private static double? ReadCoreVoltage()
+        {
+            try
+            {
+                var v = Interop.Bridge.Instance.RyzenSmu.GetCoreVoltage();
+                if (v.HasValue)
+                    return v.Value;
+            }
+            catch
+            {
+
+            }
+
+            return ReadCpuVoltageFromLhm();
         }
 
         private static LibreHardwareMonitor.Hardware.Computer? _lhmComputer;
@@ -183,6 +195,8 @@ namespace JiaoLongControl.Server.Core.Controllers
                     }
                 }
 
+                var vcoreValues = new List<double>();
+
                 foreach (var hardware in _lhmComputer.Hardware)
                 {
                     if (hardware.HardwareType != LibreHardwareMonitor.Hardware.HardwareType.Cpu)
@@ -196,22 +210,11 @@ namespace JiaoLongControl.Server.Core.Controllers
                             sensor.Value.HasValue &&
                             (sensor.Name.Contains("Vcore") || sensor.Name.Contains("Core") && sensor.Name.Contains("VID")))
                         {
-                            return sensor.Value.Value;
-                        }
-                    }
-
-                    // 如果没找到 Vcore，取第一个电压传感器
-                    foreach (var sensor in hardware.Sensors)
-                    {
-                        if (sensor.SensorType == LibreHardwareMonitor.Hardware.SensorType.Voltage &&
-                            sensor.Value.HasValue)
-                        {
-                            return sensor.Value.Value;
+                            vcoreValues.Add(sensor.Value.Value);
                         }
                     }
                 }
-
-                return null;
+                return vcoreValues.Count > 0 ? vcoreValues.Average() : null;
             }
             catch
             {
@@ -238,19 +241,11 @@ namespace JiaoLongControl.Server.Core.Controllers
             try
             {
                 var stats = new CpuStatsInfo();
-                
-                // Temp
                 stats.Temperature = MethodServices.GetValue<byte>(MethodName.CPUThermometer);
-                
-                // Usage
                 stats.Usage = _cpuCounter != null ? (int)_cpuCounter.NextValue() : 0;
-                
-                // Frequency
                 float perfPercent = _cpuFreqCounter != null ? _cpuFreqCounter.NextValue() : 100f;
                 stats.FrequencyMhz = (int)(perfPercent / 100 * GetBaseFrequency());
-                
-                // Voltage
-                var voltage = ReadCpuVoltageFromLhm();
+                var voltage = ReadCoreVoltage();
                 if (voltage.HasValue)
                 {
                     stats.Voltage = Math.Round(voltage.Value, 3);
@@ -291,8 +286,6 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             try
             {
-                // NumberOfCores = physical cores (no hyperthreading)
-                // NumberOfLogicalProcessors = logical cores (with HT/SMT)
                 using var searcher = new ManagementObjectSearcher(
                     "SELECT NumberOfCores FROM Win32_Processor");
                 int total = 0;

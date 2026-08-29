@@ -6,7 +6,7 @@ import { useSystemInfoStore } from '@/stores/systemInfo'
 const systemInfoStore = useSystemInfoStore()
 const configStore = useConfigStore()
 
-let stopPolling: () => void;
+let stopPolling: () => void
 
 function hideAppLoader() {
   const loader = document.getElementById('app-loader')
@@ -25,6 +25,7 @@ function onWebViewMessage(e: MessageEvent) {
       configStore.refresh()
     }
   } catch {
+    // 来自 WebView2 外部消息, 非 JSON 时忽略
   }
 }
 
@@ -38,7 +39,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (stopPolling) {
-    stopPolling();
+    stopPolling()
   }
   window.chrome?.webview?.removeEventListener('message', onWebViewMessage)
 })
@@ -74,6 +75,6 @@ body {
   align-items: center;
   height: 100vh;
   color: #fff;
-  background-color: #0D0E15;
+  background-color: #0d0e15;
 }
 </style>

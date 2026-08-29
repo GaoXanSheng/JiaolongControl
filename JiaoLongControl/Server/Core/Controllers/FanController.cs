@@ -23,9 +23,9 @@ public class FanController : Blding64
 
     public CommandResult SetFanSpeed(byte fanSpeed)
     {
-        // ACPI表的风扇调速比EC的风扇调速优先级更高，所以如果开启了ACPI表的风扇调速，就无法通过EC来设置风扇速度，因此需要先关闭ACPI表的风扇调速开关
-        if (GetMaxFanSpeedSwitch().Success)
+        if ((bool)GetMaxFanSpeedSwitch().Data)
         {
+            // 此处为兼容性设置，为避免官方控制台冲突设计
             SetMaxFanSpeedSwitch(false);
         }
 

@@ -36,3 +36,11 @@ coverage
 JiaoLongControl.sln.DotSettings.user
 .qwen
 .reasonix
+
+# 本地工具运行时状态 (Mimosa 钩子 / ZCode 缓存), 不进入仓库
+.mimosa/
+.zcode/
+
+# Python 本地缓存
+__pycache__/
+*.pyc

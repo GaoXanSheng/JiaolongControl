@@ -49,7 +49,7 @@ public class AutoFanControl : IDisposable
 
     public CommandResult IsRunning()
     {
-        return new CommandResult(_isRunning, _isRunning ? "自动风扇控制正在运行" : "自动风扇控制没有在运行中");
+        return new CommandResult(_isRunning, _isRunning ? "自动风扇控制正在运行" : "自动风扇控制没有在运行中", _isRunning);
     }
 
     public CommandResult Start()

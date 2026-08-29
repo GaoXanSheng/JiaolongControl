@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Fan, CPU, NvidiaGpu } from '@/utils/bridge.ts'
+import { POLL_INTERVAL_FAN_SPEED } from '@/constants'
 
 const MAX_POINTS = 10
-const INTERVAL = 2000
+const INTERVAL = POLL_INTERVAL_FAN_SPEED
 const PADDING_X = 40
 const PADDING_Y = 20
 
 // 定义色板（与系统全局风格统一）
-const COLOR_CPU_FAN = '#8A2BE2'   // CPU转速：科技紫 (实线)
-const COLOR_GPU_FAN = '#3B82F6'   // GPU转速：科技蓝 (虚线)
-const COLOR_CPU_TEMP = '#E11D48'  // CPU温度：玫瑰红 (实线)
-const COLOR_GPU_TEMP = '#10B981'  // GPU温度：薄荷绿 (虚线)
+const COLOR_CPU_FAN = '#8A2BE2' // CPU转速：科技紫 (实线)
+const COLOR_GPU_FAN = '#3B82F6' // GPU转速：科技蓝 (虚线)
+const COLOR_CPU_TEMP = '#E11D48' // CPU温度：玫瑰红 (实线)
+const COLOR_GPU_TEMP = '#10B981' // GPU温度：薄荷绿 (虚线)
 
 const MAX_FAN_RPM = 7800
 const MAX_TEMP_C = 110
@@ -66,7 +67,7 @@ function getY(v: number, max: number, target: 'cpu' | 'gpu') {
     return PADDING_Y + relativeY
   } else {
     // GPU 处于下半区间 (55% 到 100%)，留出 10% 的中部空隙
-    return PADDING_Y + (chartH.value * 0.55) + relativeY
+    return PADDING_Y + chartH.value * 0.55 + relativeY
   }
 }
 
@@ -124,7 +125,7 @@ async function poll() {
   try {
     const gpu = await NvidiaGpu.GetGpuTemperature()
     if (gpu?.Data !== undefined) {
-      tempGpuTemp = Number(gpu.Data) ?? 0
+      tempGpuTemp = Number(gpu.Data)
     }
   } catch (e) {
     console.error('读取GPU温度失败:', e)
@@ -160,7 +161,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-4">
+  <div
+    class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-4"
+  >
     <!-- 图表顶栏标题 -->
     <div class="flex justify-between items-center select-none">
       <h2 class="text-[13px] font-semibold text-gray-300 flex items-center gap-1.5">
@@ -171,12 +174,12 @@ onUnmounted(() => {
     </div>
     <!-- 图表区域 -->
     <div
-        ref="container"
-        class="chart-container"
-        @mousemove="onMouseMove"
-        @mouseleave="hoverIndex = null"
+      ref="container"
+      class="chart-container"
+      @mousemove="onMouseMove"
+      @mouseleave="hoverIndex = null"
     >
-      <svg :width="width" :height="height" v-if="width > 0">
+      <svg v-if="width > 0" :width="width" :height="height">
         <defs>
           <!-- 荧光微弱发光滤镜 -->
           <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
@@ -188,94 +191,248 @@ onUnmounted(() => {
         <!-- 1. 背景网格横线 (CPU 区间) -->
         <g stroke="rgba(255, 255, 255, 0.02)" stroke-width="1">
           <line :x1="PADDING_X" :x2="width - PADDING_X" :y1="PADDING_Y" :y2="PADDING_Y" />
-          <line :x1="PADDING_X" :x2="width - PADDING_X" :y1="PADDING_Y + chartH * 0.22" :y2="PADDING_Y + chartH * 0.22" />
-          <line :x1="PADDING_X" :x2="width - PADDING_X" :y1="PADDING_Y + chartH * 0.45" :y2="PADDING_Y + chartH * 0.45" />
+          <line
+            :x1="PADDING_X"
+            :x2="width - PADDING_X"
+            :y1="PADDING_Y + chartH * 0.22"
+            :y2="PADDING_Y + chartH * 0.22"
+          />
+          <line
+            :x1="PADDING_X"
+            :x2="width - PADDING_X"
+            :y1="PADDING_Y + chartH * 0.45"
+            :y2="PADDING_Y + chartH * 0.45"
+          />
         </g>
 
         <!-- 2. 中部 CPU / GPU 软隔离线 -->
         <line
-            :x1="PADDING_X"
-            :x2="width - PADDING_X"
-            :y1="PADDING_Y + chartH * 0.5"
-            :y2="PADDING_Y + chartH * 0.5"
-            stroke="rgba(255, 255, 255, 0.08)"
-            stroke-width="1"
-            stroke-dasharray="4,4"
+          :x1="PADDING_X"
+          :x2="width - PADDING_X"
+          :y1="PADDING_Y + chartH * 0.5"
+          :y2="PADDING_Y + chartH * 0.5"
+          stroke="rgba(255, 255, 255, 0.08)"
+          stroke-width="1"
+          stroke-dasharray="4,4"
         />
 
         <!-- 3. 背景网格横线 (GPU 区间) -->
         <g stroke="rgba(255, 255, 255, 0.02)" stroke-width="1">
-          <line :x1="PADDING_X" :x2="width - PADDING_X" :y1="PADDING_Y + chartH * 0.55" :y2="PADDING_Y + chartH * 0.55" />
-          <line :x1="PADDING_X" :x2="width - PADDING_X" :y1="PADDING_Y + chartH * 0.77" :y2="PADDING_Y + chartH * 0.77" />
-          <line :x1="PADDING_X" :x2="width - PADDING_X" :y1="PADDING_Y + chartH" :y2="PADDING_Y + chartH" />
+          <line
+            :x1="PADDING_X"
+            :x2="width - PADDING_X"
+            :y1="PADDING_Y + chartH * 0.55"
+            :y2="PADDING_Y + chartH * 0.55"
+          />
+          <line
+            :x1="PADDING_X"
+            :x2="width - PADDING_X"
+            :y1="PADDING_Y + chartH * 0.77"
+            :y2="PADDING_Y + chartH * 0.77"
+          />
+          <line
+            :x1="PADDING_X"
+            :x2="width - PADDING_X"
+            :y1="PADDING_Y + chartH"
+            :y2="PADDING_Y + chartH"
+          />
         </g>
 
         <!-- 4. CPU/GPU 侧边标识文本 -->
-        <text :x="PADDING_X - 12" :y="PADDING_Y + chartH * 0.25" font-size="9" fill="rgba(255,255,255,0.25)" text-anchor="end" font-weight="bold">CPU</text>
-        <text :x="PADDING_X - 12" :y="PADDING_Y + chartH * 0.8" font-size="9" fill="rgba(255,255,255,0.25)" text-anchor="end" font-weight="bold">GPU</text>
+        <text
+          :x="PADDING_X - 12"
+          :y="PADDING_Y + chartH * 0.25"
+          font-size="9"
+          fill="rgba(255,255,255,0.25)"
+          text-anchor="end"
+          font-weight="bold"
+        >
+          CPU
+        </text>
+        <text
+          :x="PADDING_X - 12"
+          :y="PADDING_Y + chartH * 0.8"
+          font-size="9"
+          fill="rgba(255,255,255,0.25)"
+          text-anchor="end"
+          font-weight="bold"
+        >
+          GPU
+        </text>
 
         <!-- 5. 独立轨道折线路径 -->
-        <polyline :points="cpuFanPath" fill="none" :stroke="COLOR_CPU_FAN" stroke-width="2" filter="url(#neon-glow)" />
-        <polyline :points="gpuFanPath" fill="none" :stroke="COLOR_GPU_FAN" stroke-width="2" stroke-dasharray="6,4" filter="url(#neon-glow)" />
-        <polyline :points="cpuTempPath" fill="none" :stroke="COLOR_CPU_TEMP" stroke-width="2" filter="url(#neon-glow)" />
-        <polyline :points="gpuTempPath" fill="none" :stroke="COLOR_GPU_TEMP" stroke-width="2" stroke-dasharray="6,4" filter="url(#neon-glow)" />
+        <polyline
+          :points="cpuFanPath"
+          fill="none"
+          :stroke="COLOR_CPU_FAN"
+          stroke-width="2"
+          filter="url(#neon-glow)"
+        />
+        <polyline
+          :points="gpuFanPath"
+          fill="none"
+          :stroke="COLOR_GPU_FAN"
+          stroke-width="2"
+          stroke-dasharray="6,4"
+          filter="url(#neon-glow)"
+        />
+        <polyline
+          :points="cpuTempPath"
+          fill="none"
+          :stroke="COLOR_CPU_TEMP"
+          stroke-width="2"
+          filter="url(#neon-glow)"
+        />
+        <polyline
+          :points="gpuTempPath"
+          fill="none"
+          :stroke="COLOR_GPU_TEMP"
+          stroke-width="2"
+          stroke-dasharray="6,4"
+          filter="url(#neon-glow)"
+        />
 
         <!-- 6. 数据点拐点微圆点 -->
-        <g v-for="(x, i) in xs" :key="'nodes-'+i">
-          <circle v-if="cpuFan[i] !== undefined" :cx="x" :cy="getY(cpuFan[i]!, MAX_FAN_RPM, 'cpu')" r="2" :fill="COLOR_CPU_FAN"/>
-          <circle v-if="gpuFan[i] !== undefined" :cx="x" :cy="getY(gpuFan[i]!, MAX_FAN_RPM, 'gpu')" r="2" :fill="COLOR_GPU_FAN"/>
-          <circle v-if="cpuTemp[i] !== undefined" :cx="x" :cy="getY(cpuTemp[i]!, MAX_TEMP_C, 'cpu')" r="2" :fill="COLOR_CPU_TEMP"/>
-          <circle v-if="gpuTemp[i] !== undefined" :cx="x" :cy="getY(gpuTemp[i]!, MAX_TEMP_C, 'gpu')" r="2" :fill="COLOR_GPU_TEMP"/>
+        <g v-for="(x, i) in xs" :key="'nodes-' + i">
+          <circle
+            v-if="cpuFan[i] !== undefined"
+            :cx="x"
+            :cy="getY(cpuFan[i]!, MAX_FAN_RPM, 'cpu')"
+            r="2"
+            :fill="COLOR_CPU_FAN"
+          />
+          <circle
+            v-if="gpuFan[i] !== undefined"
+            :cx="x"
+            :cy="getY(gpuFan[i]!, MAX_FAN_RPM, 'gpu')"
+            r="2"
+            :fill="COLOR_GPU_FAN"
+          />
+          <circle
+            v-if="cpuTemp[i] !== undefined"
+            :cx="x"
+            :cy="getY(cpuTemp[i]!, MAX_TEMP_C, 'cpu')"
+            r="2"
+            :fill="COLOR_CPU_TEMP"
+          />
+          <circle
+            v-if="gpuTemp[i] !== undefined"
+            :cx="x"
+            :cy="getY(gpuTemp[i]!, MAX_TEMP_C, 'gpu')"
+            r="2"
+            :fill="COLOR_GPU_TEMP"
+          />
         </g>
 
         <!-- 7. 交互式悬浮垂直标线及 Tooltip -->
         <template v-if="hoverIndex !== null && xs[hoverIndex] !== undefined">
           <!-- 悬浮轴标虚线 -->
           <line
-              :x1="xs[hoverIndex]"
-              :x2="xs[hoverIndex]"
-              :y1="PADDING_Y"
-              :y2="height - PADDING_Y"
-              stroke="rgba(255, 255, 255, 0.12)"
-              stroke-width="1"
-              stroke-dasharray="3"
+            :x1="xs[hoverIndex]"
+            :x2="xs[hoverIndex]"
+            :y1="PADDING_Y"
+            :y2="height - PADDING_Y"
+            stroke="rgba(255, 255, 255, 0.12)"
+            stroke-width="1"
+            stroke-dasharray="3"
           />
           <!-- 悬浮高亮圆圈 -->
           <g>
-            <circle v-if="cpuFan[hoverIndex] !== undefined" :cx="xs[hoverIndex]" :cy="getY(cpuFan[hoverIndex]!, MAX_FAN_RPM, 'cpu')" r="3.5" fill="#fff" :stroke="COLOR_CPU_FAN" stroke-width="2"/>
-            <circle v-if="gpuFan[hoverIndex] !== undefined" :cx="xs[hoverIndex]" :cy="getY(gpuFan[hoverIndex]!, MAX_FAN_RPM, 'gpu')" r="3.5" fill="#fff" :stroke="COLOR_GPU_FAN" stroke-width="2"/>
-            <circle v-if="cpuTemp[hoverIndex] !== undefined" :cx="xs[hoverIndex]" :cy="getY(cpuTemp[hoverIndex]!, MAX_TEMP_C, 'cpu')" r="3.5" fill="#fff" :stroke="COLOR_CPU_TEMP" stroke-width="2"/>
-            <circle v-if="gpuTemp[hoverIndex] !== undefined" :cx="xs[hoverIndex]" :cy="getY(gpuTemp[hoverIndex]!, MAX_TEMP_C, 'gpu')" r="3.5" fill="#fff" :stroke="COLOR_GPU_TEMP" stroke-width="2"/>
+            <circle
+              v-if="cpuFan[hoverIndex] !== undefined"
+              :cx="xs[hoverIndex]"
+              :cy="getY(cpuFan[hoverIndex]!, MAX_FAN_RPM, 'cpu')"
+              r="3.5"
+              fill="#fff"
+              :stroke="COLOR_CPU_FAN"
+              stroke-width="2"
+            />
+            <circle
+              v-if="gpuFan[hoverIndex] !== undefined"
+              :cx="xs[hoverIndex]"
+              :cy="getY(gpuFan[hoverIndex]!, MAX_FAN_RPM, 'gpu')"
+              r="3.5"
+              fill="#fff"
+              :stroke="COLOR_GPU_FAN"
+              stroke-width="2"
+            />
+            <circle
+              v-if="cpuTemp[hoverIndex] !== undefined"
+              :cx="xs[hoverIndex]"
+              :cy="getY(cpuTemp[hoverIndex]!, MAX_TEMP_C, 'cpu')"
+              r="3.5"
+              fill="#fff"
+              :stroke="COLOR_CPU_TEMP"
+              stroke-width="2"
+            />
+            <circle
+              v-if="gpuTemp[hoverIndex] !== undefined"
+              :cx="xs[hoverIndex]"
+              :cy="getY(gpuTemp[hoverIndex]!, MAX_TEMP_C, 'gpu')"
+              r="3.5"
+              fill="#fff"
+              :stroke="COLOR_GPU_TEMP"
+              stroke-width="2"
+            />
           </g>
 
           <!-- 悬浮数据指示卡 -->
-          <g :transform="`translate(${
+          <g
+            :transform="`translate(${
               xs[hoverIndex]! + (xs[hoverIndex]! > width / 2 ? -200 : 20)
-            }, ${ PADDING_Y - 5 })`" style="pointer-events: none">
+            }, ${PADDING_Y - 5})`"
+            style="pointer-events: none"
+          >
             <rect
-                width="180"
-                height="124"
-                rx="8"
-                fill="rgba(18, 19, 32, 0.95)"
-                stroke="rgba(255, 255, 255, 0.08)"
-                stroke-width="1"
+              width="180"
+              height="124"
+              rx="8"
+              fill="rgba(18, 19, 32, 0.95)"
+              stroke="rgba(255, 255, 255, 0.08)"
+              stroke-width="1"
             />
-            <text x="15" y="24" font-size="11" font-weight="bold" fill="#ffffff">时间切片: {{ hoverIndex + 1 }} / 10</text>
+            <text x="15" y="24" font-size="11" font-weight="bold" fill="#ffffff">
+              时间切片: {{ hoverIndex + 1 }} / 10
+            </text>
             <g transform="translate(15, 46)">
               <circle r="3.5" :fill="COLOR_CPU_FAN" cy="-3.5" />
-              <text x="14" font-size="11" fill="rgba(255,255,255,0.7)">CPU风扇: <tspan font-weight="bold" fill="#ffffff" font-family="monospace">{{ cpuFan[hoverIndex] }}</tspan> RPM</text>
+              <text x="14" font-size="11" fill="rgba(255,255,255,0.7)">
+                CPU风扇:
+                <tspan font-weight="bold" fill="#ffffff" font-family="monospace">
+                  {{ cpuFan[hoverIndex] }}
+                </tspan>
+                RPM
+              </text>
             </g>
             <g transform="translate(15, 66)">
               <circle r="3.5" :fill="COLOR_GPU_FAN" cy="-3.5" />
-              <text x="14" font-size="11" fill="rgba(255,255,255,0.7)">GPU风扇: <tspan font-weight="bold" fill="#ffffff" font-family="monospace">{{ gpuFan[hoverIndex] }}</tspan> RPM</text>
+              <text x="14" font-size="11" fill="rgba(255,255,255,0.7)">
+                GPU风扇:
+                <tspan font-weight="bold" fill="#ffffff" font-family="monospace">
+                  {{ gpuFan[hoverIndex] }}
+                </tspan>
+                RPM
+              </text>
             </g>
             <g transform="translate(15, 86)">
               <circle r="3.5" :fill="COLOR_CPU_TEMP" cy="-3.5" />
-              <text x="14" font-size="11" fill="rgba(255,255,255,0.7)">CPU温度: <tspan font-weight="bold" fill="#ffffff" font-family="monospace">{{ cpuTemp[hoverIndex] }}</tspan> °C</text>
+              <text x="14" font-size="11" fill="rgba(255,255,255,0.7)">
+                CPU温度:
+                <tspan font-weight="bold" fill="#ffffff" font-family="monospace">
+                  {{ cpuTemp[hoverIndex] }}
+                </tspan>
+                °C
+              </text>
             </g>
             <g transform="translate(15, 106)">
               <circle r="3.5" :fill="COLOR_GPU_TEMP" cy="-3.5" />
-              <text x="14" font-size="11" fill="rgba(255,255,255,0.7)">GPU温度: <tspan font-weight="bold" fill="#ffffff" font-family="monospace">{{ gpuTemp[hoverIndex] }}</tspan> °C</text>
+              <text x="14" font-size="11" fill="rgba(255,255,255,0.7)">
+                GPU温度:
+                <tspan font-weight="bold" fill="#ffffff" font-family="monospace">
+                  {{ gpuTemp[hoverIndex] }}
+                </tspan>
+                °C
+              </text>
             </g>
           </g>
         </template>
@@ -297,6 +454,9 @@ svg {
 
 text {
   user-select: none;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 </style>

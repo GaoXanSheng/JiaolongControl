@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { Message } from '@arco-design/web-vue'
-import { Keyboard } from '@/utils/bridge.ts'
+import { Keyboard, KeyboardGradient } from '@/utils/bridge.ts'
 
 const loading = ref(false)
+const gradientRunning = ref(false)
+const gradientLoading = ref(false)
 
 const color = ref({ red: 0, green: 0, blue: 0 })
 const LightBrightness = ref(0)
@@ -16,10 +18,18 @@ const colorPresets = [
   { name: '极光绿', hex: '#00FF66', r: 0, g: 255, b: 102 },
   { name: '烈焰红', hex: '#FF3366', r: 255, g: 51, b: 102 },
   { name: '暖阳黄', hex: '#FFCC00', r: 255, g: 204, b: 0 },
-  { name: '纯净白', hex: '#FFFFFF', r: 255, g: 255, b: 255 }
+  { name: '纯净白', hex: '#FFFFFF', r: 255, g: 255, b: 255 },
 ]
 
 async function loadInitialData() {
+  // 渐变运行状态独立且优先读取: 不依赖颜色/亮度读取结果
+  try {
+    const gradientRes = await KeyboardGradient.IsRunning()
+    gradientRunning.value = gradientRes.Success
+  } catch (e) {
+    console.error('Failed to load keyboard gradient status', e)
+    gradientRunning.value = false
+  }
   try {
     const colorRes = await Keyboard.GetColor()
     const brightnessRes = await Keyboard.GetLightBrightness()
@@ -47,22 +57,55 @@ function hexToRgb(hex: string) {
     ? {
         red: parseInt(result[1]!, 16),
         green: parseInt(result[2]!, 16),
-        blue: parseInt(result[3]!, 16)
+        blue: parseInt(result[3]!, 16),
       }
     : null
 }
 
-watch(color, (val) => {
-  colorPicker.value = rgbToHex(val.red, val.green, val.blue)
-}, { deep: true })
+watch(
+  color,
+  (val) => {
+    colorPicker.value = rgbToHex(val.red, val.green, val.blue)
+  },
+  { deep: true },
+)
 
 watch(colorPicker, (val) => {
   const rgb = hexToRgb(val)
   if (rgb) Object.assign(color.value, rgb)
 })
 
-function applyPreset(preset: typeof colorPresets[0]) {
+function applyPreset(preset: (typeof colorPresets)[0]) {
   color.value = { red: preset.r, green: preset.g, blue: preset.b }
+}
+
+async function handleGradientToggle(newValue: string | number | boolean) {
+  gradientLoading.value = true
+  try {
+    if (newValue) {
+      const res = await KeyboardGradient.Start()
+      if (res.Success) {
+        gradientRunning.value = true
+        Message.success(res.Message || '键盘渐变已开启')
+      } else {
+        Message.error(res.Message || '渐变开启失败')
+      }
+    } else {
+      const res = await KeyboardGradient.Stop()
+      gradientRunning.value = false
+      if (res.Success) {
+        Message.info(res.Message || '键盘渐变已停止')
+      } else {
+        Message.error(res.Message || '渐变停止失败')
+      }
+    }
+  } catch {
+    Message.error('渐变操作异常，请检查日志')
+    const runningRes = await KeyboardGradient.IsRunning().catch(() => null)
+    gradientRunning.value = !!runningRes?.Success
+  } finally {
+    gradientLoading.value = false
+  }
 }
 
 async function handleApply() {
@@ -70,15 +113,16 @@ async function handleApply() {
   try {
     const [colorRes, brightnessRes] = await Promise.all([
       Keyboard.SetColor(color.value.red, color.value.green, color.value.blue),
-      Keyboard.SetLightBrightness(LightBrightness.value)
+      Keyboard.SetLightBrightness(LightBrightness.value),
     ])
 
-    if (colorRes && brightnessRes) {
+    if (colorRes.Success && brightnessRes.Success) {
       Message.success('键盘灯效设置已应用')
     } else {
-      Message.error('应用设置失败')
+      const failRes = !colorRes.Success ? colorRes : brightnessRes
+      Message.error(failRes.Message || '应用设置失败')
     }
-  } catch (err) {
+  } catch {
     Message.error('应用设置异常')
   } finally {
     loading.value = false
@@ -95,7 +139,6 @@ function handleReset() {
 <template>
   <div class="h-full overflow-y-auto text-white p-6 no-scrollbar">
     <div class="max-w-[1300px] mx-auto flex flex-col lg:flex-row gap-6">
-
       <!-- ==================== 左侧：键盘控制区 ==================== -->
       <div class="flex-1 space-y-6">
         <!-- 头部标题 -->
@@ -105,13 +148,15 @@ function handleReset() {
         </div>
 
         <!-- 1. 键盘灯效可视化预览卡片 -->
-        <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg">
+        <div
+          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg"
+        >
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-[13px] font-semibold text-gray-300">灯效实时预览</h2>
             <div class="flex items-center gap-2">
               <span class="text-xs text-gray-400">颜色拾取器:</span>
-              <a-color-picker v-model="colorPicker" size="mini">
-                <div 
+              <a-color-picker v-model="colorPicker" size="mini" :disabled="gradientRunning">
+                <div
                   class="w-6 h-6 rounded-md border border-white/20 cursor-pointer shadow-sm transition-transform hover:scale-105"
                   :style="{ backgroundColor: colorPicker }"
                 ></div>
@@ -124,29 +169,31 @@ function handleReset() {
             <div
               class="relative w-full max-w-[640px] h-[190px] bg-[#12131e] rounded-xl p-3.5 border border-white/10 overflow-hidden transition-all duration-300"
               :style="{
-                boxShadow: `0 10px 30px rgba(0, 0, 0, 0.6), 0 0 ${LightBrightness * 12}px rgba(${color.red}, ${color.green}, ${color.blue}, ${LightBrightness * 0.25})`
+                boxShadow: `0 10px 30px rgba(0, 0, 0, 0.6), 0 0 ${LightBrightness * 12}px rgba(${color.red}, ${color.green}, ${color.blue}, ${LightBrightness * 0.25})`,
               }"
             >
               <!-- 灯光溢出画幅 -->
-              <div 
+              <div
                 class="absolute inset-0 pointer-events-none transition-all duration-300"
+                :class="{ 'gradient-glow': gradientRunning }"
                 :style="{
-                  background: `radial-gradient(circle at center, rgba(${color.red}, ${color.green}, ${color.blue}, ${LightBrightness * 0.2}) 0%, transparent 85%)`
+                  background: `radial-gradient(circle at center, rgba(${color.red}, ${color.green}, ${color.blue}, ${LightBrightness * 0.2}) 0%, transparent 85%)`,
                 }"
               ></div>
 
               <!-- 按键矩阵线稿 -->
               <div class="grid grid-cols-13 grid-rows-4 gap-1.5 h-full relative z-10">
-                <div 
-                  v-for="i in 52" 
-                  :key="i" 
+                <div
+                  v-for="i in 52"
+                  :key="i"
                   class="bg-[#1a1b2b]/90 border border-white/[0.06] rounded flex items-center justify-center relative overflow-hidden transition-all duration-300"
                 >
-                  <div 
+                  <div
                     class="absolute inset-0 opacity-40 blur-[3px] transition-all duration-300"
+                    :class="{ 'gradient-glow': gradientRunning }"
                     :style="{
                       backgroundColor: `rgb(${color.red}, ${color.green}, ${color.blue})`,
-                      opacity: LightBrightness > 0 ? (LightBrightness / 3) * 0.6 : 0
+                      opacity: LightBrightness > 0 ? (LightBrightness / 3) * 0.6 : 0,
                     }"
                   ></div>
                   <span class="w-1.5 h-1.5 rounded-full bg-white/20"></span>
@@ -157,83 +204,137 @@ function handleReset() {
         </div>
 
         <!-- 2. 快捷配色预设 -->
-        <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg">
+        <div
+          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg"
+        >
           <h2 class="text-[13px] font-semibold text-gray-300 mb-3">快捷预设</h2>
           <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
             <div
               v-for="preset in colorPresets"
               :key="preset.name"
-              @click="applyPreset(preset)"
               class="border border-white/[0.05] hover:border-white/20 bg-[#121320] hover:bg-[#1a182f] rounded-xl p-3 cursor-pointer transition-all duration-300 flex flex-col items-center gap-2 group"
+              :class="{ 'opacity-40 pointer-events-none': gradientRunning }"
+              @click="applyPreset(preset)"
             >
-              <div 
+              <div
                 class="w-8 h-8 rounded-full border border-white/20 shadow-md group-hover:scale-110 transition-transform"
                 :style="{ backgroundColor: preset.hex, boxShadow: `0 0 10px ${preset.hex}66` }"
               ></div>
-              <span class="text-xs text-gray-300 group-hover:text-white font-medium">{{ preset.name }}</span>
+              <span class="text-xs text-gray-300 group-hover:text-white font-medium">{{
+                preset.name
+              }}</span>
             </div>
           </div>
         </div>
 
-        <!-- 3. 灯光通道与亮度手动调节 -->
-        <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-6">
+        <!-- 3. 键盘渐变效果 -->
+        <div
+          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg"
+        >
+          <div class="flex items-center justify-between gap-4">
+            <div class="space-y-1.5">
+              <h2 class="text-[13px] font-semibold text-gray-300">键盘渐变效果</h2>
+              <p class="text-xs text-gray-500 leading-relaxed max-w-[440px]">
+                开启后以键盘当前颜色为锚点做 360° 色相循环渐变；停止时自动恢复启动前的颜色与模式。
+              </p>
+              <span
+                class="text-xs inline-flex items-center gap-1.5"
+                :class="gradientRunning ? 'text-emerald-400' : 'text-gray-500'"
+              >
+                <span
+                  class="w-1.5 h-1.5 rounded-full"
+                  :class="gradientRunning ? 'bg-emerald-400 animate-pulse' : 'bg-gray-600'"
+                ></span>
+                {{ gradientRunning ? '渐变色环循环中' : '未运行' }}
+              </span>
+            </div>
+            <a-switch
+              :model-value="gradientRunning"
+              :loading="gradientLoading"
+              @change="handleGradientToggle"
+            >
+              <template #checked-icon><icon-check /></template>
+              <template #unchecked-icon><icon-close /></template>
+            </a-switch>
+          </div>
+        </div>
+
+        <!-- 4. 灯光通道与亮度手动调节 -->
+        <div
+          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-6"
+          :class="{ 'opacity-40 pointer-events-none': gradientRunning }"
+        >
           <h2 class="text-[13px] font-semibold text-gray-300">RGB 通道与亮度</h2>
 
           <div class="space-y-5">
             <!-- 红色通道 (Red) -->
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
-                <span class="text-gray-300 flex items-center gap-1 font-semibold text-red-400">红色通道 (R)</span>
+                <span class="text-gray-300 flex items-center gap-1 font-semibold text-red-400"
+                  >红色通道 (R)</span
+                >
                 <span class="text-red-400 font-medium font-mono">{{ color.red }}</span>
               </div>
-              <a-slider v-model="color.red" :min="0" :max="255" class="w-full red-slider" />
+              <a-slider v-model="color.red" :min="0" :max="255" :disabled="gradientRunning" class="w-full red-slider" />
             </div>
 
             <!-- 绿色通道 (Green) -->
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
-                <span class="text-gray-300 flex items-center gap-1 font-semibold text-green-400">绿色通道 (G)</span>
+                <span class="text-gray-300 flex items-center gap-1 font-semibold text-green-400"
+                  >绿色通道 (G)</span
+                >
                 <span class="text-green-400 font-medium font-mono">{{ color.green }}</span>
               </div>
-              <a-slider v-model="color.green" :min="0" :max="255" class="w-full green-slider" />
+              <a-slider v-model="color.green" :min="0" :max="255" :disabled="gradientRunning" class="w-full green-slider" />
             </div>
 
             <!-- 蓝色通道 (Blue) -->
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
-                <span class="text-gray-300 flex items-center gap-1 font-semibold text-blue-400">蓝色通道 (B)</span>
+                <span class="text-gray-300 flex items-center gap-1 font-semibold text-blue-400"
+                  >蓝色通道 (B)</span
+                >
                 <span class="text-blue-400 font-medium font-mono">{{ color.blue }}</span>
               </div>
-              <a-slider v-model="color.blue" :min="0" :max="255" class="w-full blue-slider" />
+              <a-slider v-model="color.blue" :min="0" :max="255" :disabled="gradientRunning" class="w-full blue-slider" />
             </div>
 
             <!-- 背光亮度 -->
             <div class="space-y-2 pt-2 border-t border-white/[0.05]">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1">背光亮度等级</span>
-                <span class="text-purple-400 font-medium font-mono">Level {{ LightBrightness }}</span>
+                <span class="text-purple-400 font-medium font-mono"
+                  >Level {{ LightBrightness }}</span
+                >
               </div>
-              <a-slider v-model="LightBrightness" :min="0" :max="3" :step="1" class="w-full" />
+              <a-slider v-model="LightBrightness" :min="0" :max="3" :step="1" :disabled="gradientRunning" class="w-full" />
             </div>
           </div>
         </div>
 
-        <!-- 4. 底部动作栏 -->
+        <!-- 5. 底部动作栏 -->
         <div class="flex justify-between items-center pt-2">
           <button
-            @click="handleReset"
             class="flex items-center gap-2 text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.05] px-4 py-2 rounded-lg transition-colors"
+            :class="{ 'opacity-40 pointer-events-none': gradientRunning }"
+            @click="handleReset"
           >
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3m-3-3v12" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3m-3-3v12"
+              />
             </svg>
             重置
           </button>
 
           <button
-            @click="handleApply"
-            :disabled="loading"
+            :disabled="loading || gradientRunning"
             class="text-xs font-medium text-white bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 disabled:opacity-50 px-6 py-2 rounded-lg transition-all shadow-[0_0_15px_rgba(138,43,226,0.3)]"
+            @click="handleApply"
           >
             {{ loading ? '应用中...' : '应用' }}
           </button>
@@ -243,26 +344,35 @@ function handleReset() {
       <!-- ==================== 右侧：信息与说明栏 ==================== -->
       <div class="w-full lg:w-[360px] shrink-0 space-y-6 lg:pt-[115px]">
         <!-- 1. 当前颜色色板卡片 -->
-        <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-4">
+        <div
+          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-4"
+        >
           <h2 class="text-[13px] font-semibold text-gray-300">当前配色方案</h2>
-          <div 
+          <div
             class="w-full h-24 rounded-xl border border-white/10 flex flex-col justify-end p-3 transition-all duration-300 shadow-lg relative overflow-hidden"
             :style="{ backgroundColor: `rgb(${color.red}, ${color.green}, ${color.blue})` }"
           >
             <div class="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
-            <div class="relative z-10 flex justify-between items-center text-xs font-mono font-bold" :style="{ color: (color.red + color.green + color.blue) > 380 ? '#000' : '#fff' }">
+            <div
+              class="relative z-10 flex justify-between items-center text-xs font-mono font-bold"
+              :style="{ color: color.red + color.green + color.blue > 380 ? '#000' : '#fff' }"
+            >
               <span>{{ rgbToHex(color.red, color.green, color.blue) }}</span>
               <span>RGB({{ color.red }}, {{ color.green }}, {{ color.blue }})</span>
             </div>
           </div>
           <div class="flex justify-between items-center text-xs text-gray-400">
             <span>当前亮度级别</span>
-            <span class="text-white font-mono font-bold bg-white/10 px-2 py-0.5 rounded">档位 {{ LightBrightness }}</span>
+            <span class="text-white font-mono font-bold bg-white/10 px-2 py-0.5 rounded"
+              >档位 {{ LightBrightness }}</span
+            >
           </div>
         </div>
 
         <!-- 2. 说明卡片 -->
-        <div class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-2.5">
+        <div
+          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-2.5"
+        >
           <h2 class="text-[13px] font-semibold text-gray-300">使用说明</h2>
           <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">
             <p>通过 R/G/B 三通道滑块、快捷预设或颜色拾取器设置背光颜色。</p>
@@ -271,7 +381,6 @@ function handleReset() {
           </div>
         </div>
       </div>
-
     </div>
   </div>
 </template>
@@ -285,23 +394,7 @@ function handleReset() {
   scrollbar-width: none;
 }
 
-:deep(.arco-slider-bar) {
-  background: linear-gradient(90deg, #6366f1 0%, #8A2BE2 100%) !important;
-  height: 5px !important;
-  border-radius: 99px;
-}
-:deep(.arco-slider-track) {
-  background-color: rgba(255, 255, 255, 0.04) !important;
-  height: 5px !important;
-  border-radius: 99px;
-}
-:deep(.arco-slider-button) {
-  background-color: #ffffff !important;
-  border: 2.5px solid #8A2BE2 !important;
-  width: 13px !important;
-  height: 13px !important;
-  box-shadow: 0 0 10px rgba(138, 43, 226, 0.7) !important;
-}
+
 
 :deep(.red-slider .arco-slider-bar) {
   background: linear-gradient(90deg, #ef4444 0%, #f87171 100%) !important;
@@ -325,5 +418,18 @@ function handleReset() {
 :deep(.blue-slider .arco-slider-button) {
   border-color: #3b82f6 !important;
   box-shadow: 0 0 10px rgba(59, 130, 246, 0.7) !important;
+}
+
+/* 渐变运行中: 预览灯层做 12s 一圈的色相旋转, 模拟真实色轮循环 */
+@keyframes gradient-hue {
+  from {
+    filter: hue-rotate(0deg);
+  }
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+.gradient-glow {
+  animation: gradient-hue 12s linear infinite;
 }
 </style>

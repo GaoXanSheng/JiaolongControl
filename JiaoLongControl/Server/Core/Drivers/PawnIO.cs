@@ -15,12 +15,14 @@ public class PawnIO : IDisposable
 {
     private const string DllName = "PawnIOLib.dll";
     private const string ScriptBlobName = "RyzenSMU.bin";
+    private const string Amd17BlobName = "AMDFamily17.bin";
     private const string PawnIOUrl = "https://pawnio.eu/";
 
     private readonly object _initLock = new();
     private readonly object _executeLock = new();
     private IntPtr _dllHandle = IntPtr.Zero;
     private IntPtr _executorHandle = IntPtr.Zero;
+    private IntPtr _amd17ExecutorHandle = IntPtr.Zero;
     private bool _disposed;
 
     public bool IsInitialized { get; private set; }
@@ -82,6 +84,59 @@ public class PawnIO : IDisposable
         return outputs;
     }
 
+    /// <summary>
+    /// 读取指定 MSR 寄存器。由 AMDFamily17.bin 模块提供 ioctl_read_msr。
+    /// </summary>
+    public ulong ReadMsr(uint msrIndex)
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(PawnIO));
+
+        lock (_initLock)
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(PawnIO));
+
+            EnsureDriver();
+
+            if (_amd17ExecutorHandle == IntPtr.Zero)
+            {
+                string amd17Path = Path.Combine(AppContext.BaseDirectory, "Drivers", "PawnIO", Amd17BlobName);
+                if (!File.Exists(amd17Path))
+                    throw new FileNotFoundException($"缺少 {Amd17BlobName} 脚本文件，请检查安装是否完整");
+
+                if (pawnio_open(out _amd17ExecutorHandle) != 0)
+                    throw new Exception("未检测到 PawnIO 驱动服务。请从 https://pawnio.eu/ 下载安装 PawnIO 后重启应用。");
+
+                byte[] blobData = File.ReadAllBytes(amd17Path);
+                if (pawnio_load(_amd17ExecutorHandle, blobData, (UIntPtr)blobData.Length) != 0)
+                    throw new Exception("加载 AMDFamily17 脚本失败");
+            }
+        }
+
+        lock (_executeLock)
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(PawnIO));
+
+            ulong[] outputs = new ulong[1];
+            int result = pawnio_execute(
+                _amd17ExecutorHandle,
+                "ioctl_read_msr",
+                new ulong[] { msrIndex },
+                (UIntPtr)1,
+                outputs,
+                (UIntPtr)1,
+                out _
+            );
+
+            if (result != 0)
+                throw new Exception($"Execute ioctl_read_msr failed, ErrorCode: 0x{result:X}");
+
+            return outputs[0];
+        }
+    }
+
     private void EnsureInitialized()
     {
         if (IsInitialized)
@@ -106,14 +161,13 @@ public class PawnIO : IDisposable
             }
         }
     }
-
-    private void InitCore()
+    
+    private void EnsureDriver()
     {
-        // 内核驱动由用户从官网（https://pawnio.eu/）安装，本软件只连接系统已运行的 PawnIO 服务
+        if (_executorHandle != IntPtr.Zero)
+            return;
 
-        string scriptPath = Path.Combine(AppContext.BaseDirectory, "Drivers", "PawnIO", ScriptBlobName);
-        if (!File.Exists(scriptPath))
-            throw new FileNotFoundException($"缺少 {ScriptBlobName} 脚本文件，请检查安装是否完整");
+        // 内核驱动由用户从官网（https://pawnio.eu/）安装，本软件只连接系统已运行的 PawnIO 服务
 
         // 按官方用例定位 PawnIOLib.dll：
         // 1) 应用目录下 Drivers\PawnIO\（兼容旧版部署/手动放置）；
@@ -132,6 +186,15 @@ public class PawnIO : IDisposable
         {
             throw new Exception($"未检测到 PawnIO 驱动服务。请从 {PawnIOUrl} 下载安装 PawnIO 后重启应用。");
         }
+    }
+
+    private void InitCore()
+    {
+        EnsureDriver();
+
+        string scriptPath = Path.Combine(AppContext.BaseDirectory, "Drivers", "PawnIO", ScriptBlobName);
+        if (!File.Exists(scriptPath))
+            throw new FileNotFoundException($"缺少 {ScriptBlobName} 脚本文件，请检查安装是否完整");
 
         byte[] blobData = File.ReadAllBytes(scriptPath);
         if (pawnio_load(_executorHandle, blobData, (UIntPtr)blobData.Length) != 0)
@@ -192,6 +255,19 @@ public class PawnIO : IDisposable
 
     private void CleanupHandles()
     {
+        if (_amd17ExecutorHandle != IntPtr.Zero)
+        {
+            try
+            {
+                pawnio_close(_amd17ExecutorHandle);
+            }
+            catch
+            {
+            }
+
+            _amd17ExecutorHandle = IntPtr.Zero;
+        }
+
         if (_executorHandle != IntPtr.Zero)
         {
             try

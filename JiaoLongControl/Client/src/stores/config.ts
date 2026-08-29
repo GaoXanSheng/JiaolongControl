@@ -2,11 +2,13 @@ import { defineStore } from 'pinia'
 import { Config } from '@/utils/bridge'
 import type { JiaoLongConfigType } from '@/types/config'
 
-function debounce(fn: Function, delay: number) {
-  let timer: any = null
-  return function (this: any, ...args: any[]) {
+function debounce(fn: (...args: unknown[]) => unknown, delay: number) {
+  let timer: ReturnType<typeof setTimeout> | null = null
+  return function (this: unknown, ...args: unknown[]) {
     if (timer) clearTimeout(timer)
-    timer = setTimeout(() => { fn.apply(this, args) }, delay)
+    timer = setTimeout(() => {
+      fn.apply(this, args)
+    }, delay)
   }
 }
 
@@ -38,8 +40,8 @@ export const useConfigStore = defineStore('config', {
           } else {
             this.error = result.Message || '获取配置失败'
           }
-        } catch (err: any) {
-          this.error = err.message || 'Failed to fetch config'
+        } catch (err) {
+          this.error = err instanceof Error ? err.message : 'Failed to fetch config'
         } finally {
           this.loading = false
           fetchPromise = null
@@ -55,12 +57,12 @@ export const useConfigStore = defineStore('config', {
       await this.fetchConfig(true)
     },
 
-    debouncedSave: debounce(async function (this: any) {
+    debouncedSave: debounce(async function (this: { saveConfig: () => Promise<unknown> }) {
       try {
         await this.saveConfig()
       } catch (e) {
         console.error('配置保存失败', e)
       }
     }, 1000),
-  }
+  },
 })

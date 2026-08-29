@@ -1,186 +1,212 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8"/>
+  <head>
+    <meta charset="UTF-8" />
     <title>JiaoLong Control Console</title>
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #070b1c;
-            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-        }
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #070b1c;
+        font-family:
+          'Inter',
+          'Segoe UI',
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
 
-        /* 初始 Loading 全屏遮罩 */
-        #app-loader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 99999;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background:
-                radial-gradient(circle at 15% 10%, rgba(40, 90, 255, 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 85% 15%, rgba(180, 60, 255, 0.25) 0%, transparent 50%),
-                radial-gradient(circle at 50% 50%, rgba(13, 16, 37, 0.95) 0%, #070b1c 100%);
-            transition: opacity 0.4s ease, visibility 0.4s ease;
-        }
+      /* 初始 Loading 全屏遮罩 */
+      #app-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background:
+          radial-gradient(circle at 15% 10%, rgba(40, 90, 255, 0.3) 0%, transparent 50%),
+          radial-gradient(circle at 85% 15%, rgba(180, 60, 255, 0.25) 0%, transparent 50%),
+          radial-gradient(circle at 50% 50%, rgba(13, 16, 37, 0.95) 0%, #070b1c 100%);
+        transition:
+          opacity 0.4s ease,
+          visibility 0.4s ease;
+      }
 
-        #app-loader.fade-out {
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-        }
+      #app-loader.fade-out {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
 
-        /* 光环动画 */
-        .loader-spinner {
-            position: relative;
-            width: 90px;
-            height: 90px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+      /* 光环动画 */
+      .loader-spinner {
+        position: relative;
+        width: 90px;
+        height: 90px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
 
-        .spinner-outer {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            border: 2px solid transparent;
-            border-top-color: #8A2BE2;
-            border-right-color: #3B82F6;
-            animation: spin 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
-            filter: drop-shadow(0 0 10px rgba(138, 43, 226, 0.6));
-        }
+      .spinner-outer {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        border-top-color: #8a2be2;
+        border-right-color: #3b82f6;
+        animation: spin 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+        filter: drop-shadow(0 0 10px rgba(138, 43, 226, 0.6));
+      }
 
-        .spinner-inner {
-            position: absolute;
-            width: 70%;
-            height: 70%;
-            border-radius: 50%;
-            border: 2px solid transparent;
-            border-bottom-color: #00FF7F;
-            border-left-color: #3B82F6;
-            animation: spin-reverse 0.9s linear infinite;
-            filter: drop-shadow(0 0 8px rgba(0, 255, 127, 0.5));
-        }
+      .spinner-inner {
+        position: absolute;
+        width: 70%;
+        height: 70%;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        border-bottom-color: #00ff7f;
+        border-left-color: #3b82f6;
+        animation: spin-reverse 0.9s linear infinite;
+        filter: drop-shadow(0 0 8px rgba(0, 255, 127, 0.5));
+      }
 
-        .loader-logo-img {
-            width: 42px;
-            height: 42px;
-            object-fit: contain;
-            filter: drop-shadow(0 0 10px rgba(138, 43, 226, 0.7));
-            animation: pulse 1.5s ease-in-out infinite alternate;
-        }
+      .loader-logo-img {
+        width: 42px;
+        height: 42px;
+        object-fit: contain;
+        filter: drop-shadow(0 0 10px rgba(138, 43, 226, 0.7));
+        animation: pulse 1.5s ease-in-out infinite alternate;
+      }
 
-        .loader-title {
-            margin-top: 24px;
-            font-size: 18px;
-            font-weight: 700;
-            letter-spacing: 3px;
-            color: #ffffff;
-            text-shadow: 0 0 12px rgba(138, 43, 226, 0.6);
-            background: linear-gradient(90deg, #ffffff, #a78bfa, #60a5fa);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+      .loader-title {
+        margin-top: 24px;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 3px;
+        color: #ffffff;
+        text-shadow: 0 0 12px rgba(138, 43, 226, 0.6);
+        background: linear-gradient(90deg, #ffffff, #a78bfa, #60a5fa);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
 
-        .loader-sub {
-            margin-top: 8px;
-            font-size: 12px;
-            color: #94a3b8;
-            letter-spacing: 1.5px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
+      .loader-sub {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #94a3b8;
+        letter-spacing: 1.5px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
 
-        .loader-bar {
-            width: 140px;
-            height: 3px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-            margin-top: 16px;
-            overflow: hidden;
-            position: relative;
-        }
+      .loader-bar {
+        width: 140px;
+        height: 3px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        margin-top: 16px;
+        overflow: hidden;
+        position: relative;
+      }
 
-        .loader-progress {
-            position: absolute;
-            left: 0;
-            top: 0;
-            height: 100%;
-            width: 40%;
-            background: linear-gradient(90deg, #8A2BE2, #3B82F6, #00FF7F);
-            border-radius: 3px;
-            animation: progress-move 1.5s ease-in-out infinite;
-        }
+      .loader-progress {
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 40%;
+        background: linear-gradient(90deg, #8a2be2, #3b82f6, #00ff7f);
+        border-radius: 3px;
+        animation: progress-move 1.5s ease-in-out infinite;
+      }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
         }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
 
-        @keyframes spin-reverse {
-            0% { transform: rotate(360deg); }
-            100% { transform: rotate(0deg); }
+      @keyframes spin-reverse {
+        0% {
+          transform: rotate(360deg);
         }
+        100% {
+          transform: rotate(0deg);
+        }
+      }
 
-        @keyframes pulse {
-            0% { transform: scale(0.95); filter: drop-shadow(0 0 10px rgba(138, 43, 226, 0.4)); }
-            100% { transform: scale(1.05); filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.8)); }
+      @keyframes pulse {
+        0% {
+          transform: scale(0.95);
+          filter: drop-shadow(0 0 10px rgba(138, 43, 226, 0.4));
         }
+        100% {
+          transform: scale(1.05);
+          filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.8));
+        }
+      }
 
-        @keyframes progress-move {
-            0% { left: -40%; }
-            100% { left: 100%; }
+      @keyframes progress-move {
+        0% {
+          left: -40%;
         }
+        100% {
+          left: 100%;
+        }
+      }
     </style>
-</head>
+  </head>
 
-<body>
-<div id="app"></div>
+  <body>
+    <div id="app"></div>
 
-<div id="app-loader">
-    <div class="loader-spinner">
+    <div id="app-loader">
+      <div class="loader-spinner">
         <div class="spinner-outer"></div>
         <div class="spinner-inner"></div>
         <img src="/src/assets/icon/icon.png" class="loader-logo-img" alt="Logo" />
-    </div>
-    <div class="loader-title">JIAOLONG CONTROL</div>
-    <div class="loader-sub">SYSTEM INITIALIZING</div>
-    <div class="loader-bar">
+      </div>
+      <div class="loader-title">JIAOLONG CONTROL</div>
+      <div class="loader-sub">SYSTEM INITIALIZING</div>
+      <div class="loader-bar">
         <div class="loader-progress"></div>
+      </div>
     </div>
-</div>
 
-<!--
+    <!--
     注意：这里不能用 <script type="module"> 配合顶层 await window.chrome.webview.ready。
     module 脚本按文档顺序执行，且会阻塞 DOMContentLoaded；而 webview.ready 的
     resolve 时机与 DOMContentLoaded 相关，顶层 await 存在死锁风险，会导致
     main.ts 永远不执行、应用白屏。bridge 的就绪等待统一在 utils/bridge.ts 中
     以「调用时惰性获取 + 超时」的方式处理，绝不阻塞模块加载。
 -->
-<script>
-    // 仅做探测与日志，不阻塞任何后续脚本执行
-    try {
+    <script>
+      // 仅做探测与日志，不阻塞任何后续脚本执行
+      try {
         if (window.chrome && window.chrome.webview) {
-            console.log("WebView2 detected, readyState: " + (document.readyState));
+          console.log('WebView2 detected, readyState: ' + document.readyState)
         } else {
-            console.warn("Not running inside WebView2 (bridge will be unavailable)");
+          console.warn('Not running inside WebView2 (bridge will be unavailable)')
         }
-    } catch (e) {
-        console.warn("WebView2 detection warning", e);
-    }
-</script>
-<script type="module" src="src/main.ts"></script>
-</body>
+      } catch (e) {
+        console.warn('WebView2 detection warning', e)
+      }
+    </script>
+    <script type="module" src="src/main.ts"></script>
+  </body>
 </html>

@@ -377,6 +377,60 @@ public class RyzenSmuController : PawnIO
     #region (Power Telemetry)
     private static LibreHardwareMonitor.Hardware.Computer? _lhmComputer;
     private static readonly object _lhmLock = new();
+    
+    private const uint MsrFidvidStatus = 0xC0010293;
+
+    public double? GetCoreVoltage()
+    {
+        try
+        {
+            IntPtr thread = Native.Kernel32.GetCurrentThread();
+            IntPtr originalMask = Native.Kernel32.SetThreadAffinityMask(thread, new IntPtr(unchecked((long)-1)));
+            if (originalMask == IntPtr.Zero)
+                return ReadVidVoltage();
+
+            try
+            {
+                double? minVolts = null;
+                int coreCount = Environment.ProcessorCount;
+                for (int i = 0; i < coreCount; i++)
+                {
+                    IntPtr prev = Native.Kernel32.SetThreadAffinityMask(thread, new IntPtr(1L << i));
+                    if (prev == IntPtr.Zero)
+                        continue; // 进程亲和性不允许该核心
+
+                    double? volts = ReadVidVoltage();
+                    if (volts.HasValue && (minVolts == null || volts.Value < minVolts.Value))
+                        minVolts = volts.Value;
+                }
+
+                return minVolts;
+            }
+            finally
+            {
+                Native.Kernel32.SetThreadAffinityMask(thread, originalMask);
+            }
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private double? ReadVidVoltage()
+    {
+        try
+        {
+            ulong raw = ReadMsr(MsrFidvidStatus);
+            uint vid = (uint)((raw >> 6) & 0xFF);
+            double volts = 1.550 - vid * 0.00625;
+            return volts is >= 0.4 and <= 1.8 ? volts : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
     private static LibreHardwareMonitor.Hardware.Computer GetOrCreateLhm()
     {

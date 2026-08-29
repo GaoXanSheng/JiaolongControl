@@ -11,7 +11,7 @@
         <Configurations>Debug;Release</Configurations>
         <Platforms>x64</Platforms>
         <SatelliteResourceLanguages>zh-CN</SatelliteResourceLanguages>
-        <AppVersion>10.12.22</AppVersion>
+        <AppVersion>10.12.23</AppVersion>
     </PropertyGroup>
 
     <ItemGroup>
@@ -53,6 +53,9 @@
         </None>
         <None Update="Drivers\PawnIO\RyzenSMU.bin">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Drivers\PawnIO\AMDFamily17.bin">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
         <None Update="Drivers\PawnIO\Nvidia.bin">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

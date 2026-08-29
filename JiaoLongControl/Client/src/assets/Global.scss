@@ -1,12 +1,12 @@
 :root {
-  --color-bg-primary: #0D0E15;
-  --color-bg-secondary: #11121A;
+  --color-bg-primary: #0d0e15;
+  --color-bg-secondary: #11121a;
   --color-card-bg: rgba(26, 27, 38, 0.6);
-  --color-accent-purple: #8A2BE2;
-  --color-accent-blue: #3B82F6;
+  --color-accent-purple: #8a2be2;
+  --color-accent-blue: #3b82f6;
   --color-glow-purple: rgba(138, 43, 226, 0.4);
-  --color-text-main: #FFFFFF;
-  --color-text-muted: #A0AEC0;
+  --color-text-main: #ffffff;
+  --color-text-muted: #a0aec0;
 }
 
 * {
@@ -14,7 +14,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   width: 100%;
   height: 100%;
   background-color: var(--color-bg-primary);
