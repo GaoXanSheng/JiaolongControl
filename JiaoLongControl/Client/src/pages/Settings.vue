@@ -36,6 +36,11 @@ const toggleCards = [
     description: '在软件启动时，自动应用【Ryzen SMU】页面中保存的 Curve Optimizer 全核心负压（降压超频）设定',
     configPath: 'App.BootSetRyzenSumCurveOptimizerAll',
   },
+  {
+    title: '自启动键盘渐变',
+    description: '启用后，开机及睡眠唤醒时自动开启键盘渐变（以启动时键盘当前颜色为锚点循环渐变）',
+    configPath: 'App.BootKeyboardGradient',
+  },
 ]
 </script>
 

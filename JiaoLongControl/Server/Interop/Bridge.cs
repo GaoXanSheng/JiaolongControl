@@ -87,6 +87,7 @@ namespace JiaoLongControl.Server.Interop
         public ConfigController ConfigCtrl { get; } = new();
         public AutoStartController AutoStart { get; } = new();
         public AutoFanControl AutoFan { get; } = new();
+        public KeyboardGradientController KeyboardGradient { get; } = new();
         public PowerController Power { get; } = new();
         public NvidiaGpuController NvidiaGpu { get; } = new();
         public RyzenSmuController RyzenSmu { get; } = new();
@@ -100,6 +101,7 @@ namespace JiaoLongControl.Server.Interop
             CPU.Dispose();
             Fan.Dispose();
             AutoFan.Dispose();
+            KeyboardGradient.Dispose();
             RyzenSmu.Dispose();
             NvidiaGpu.Dispose();
         }

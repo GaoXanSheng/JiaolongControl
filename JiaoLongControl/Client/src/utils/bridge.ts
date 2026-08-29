@@ -155,6 +155,11 @@ export interface BridgeApi {
     Stop(): HostBridgePromise<void>
     IsRunning(): HostBridgePromise<boolean>
   }
+  KeyboardGradient: {
+    Start(): HostBridgePromise<void>
+    Stop(): HostBridgePromise<void>
+    IsRunning(): HostBridgePromise<boolean>
+  }
   NvidiaGpu: {
     GetGpuName(gpuIndex?: number): HostBridgePromise<string>
     GetGpuDriverVersion(gpuIndex?: number): HostBridgePromise<string>
@@ -171,6 +176,7 @@ export interface BridgeApi {
     GetGpuMemoryClockRange(gpuIndex?: number): HostBridgePromise<RangeInfo>
     GetGpuPowerLimitRange(gpuIndex?: number): HostBridgePromise<RangeInfo>
     LockGpuClock(freq: number, gpuIndex?: number): HostBridgePromise<void>
+    LockGpuClock(minFreq: number, maxFreq: number, gpuIndex?: number): HostBridgePromise<void>
     LockGpuClockRange(minFreq: number, maxFreq: number, gpuIndex?: number): HostBridgePromise<void>
     ResetGpuClock(gpuIndex?: number): HostBridgePromise<void>
     LockMemoryClock(freq: number, gpuIndex?: number): HostBridgePromise<void>
@@ -251,7 +257,14 @@ function getBridge(): BridgeApi {
 }
 
 export const raw: BridgeApi = new Proxy({} as BridgeApi, {
-  get: (_target, prop: string | symbol) => getBridge()[prop as keyof BridgeApi],
+  get: (_target, prop: string | symbol) => {
+    const bridge = getBridge()
+    const member = (bridge as unknown as Record<string | symbol, unknown>)[prop]
+    if (member !== undefined) return member as BridgeApi[keyof BridgeApi]
+    // 桥接代理可能缓存了旧的成员列表 (例如新增控制器属性), 重新解析一次桥接对象再取
+    cachedBridge = null
+    return getBridge()[prop as keyof BridgeApi]
+  },
 })
 
 export async function call<T>(promise: HostBridgePromise<T>): Promise<CommandResult<T>> {
@@ -346,6 +359,12 @@ export const AutoFanControl = {
   IsRunning: () => call(raw.AutoFan.IsRunning()),
 }
 
+export const KeyboardGradient = {
+  Start: () => call(raw.KeyboardGradient.Start()),
+  Stop: () => call(raw.KeyboardGradient.Stop()),
+  IsRunning: () => call(raw.KeyboardGradient.IsRunning()),
+}
+
 export const NvidiaGpu = {
   GetGpuName: (gpuIndex?: number) =>
     cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuName(${gpuIndex ?? ''})`, () =>
@@ -406,7 +425,7 @@ export const NvidiaGpu = {
   LockGpuClock: (freq: number, gpuIndex?: number) =>
     call(raw.NvidiaGpu.LockGpuClock(freq, gpuIndex)),
   LockGpuClockRange: (minFreq: number, maxFreq: number, gpuIndex?: number) =>
-    call(raw.NvidiaGpu.LockGpuClockRange(minFreq, maxFreq, gpuIndex)),
+    call(raw.NvidiaGpu.LockGpuClock(minFreq, maxFreq, gpuIndex ?? -1)),
   ResetGpuClock: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetGpuClock(gpuIndex)),
   LockMemoryClock: (freq: number, gpuIndex?: number) =>
     call(raw.NvidiaGpu.LockMemoryClock(freq, gpuIndex)),

@@ -12,6 +12,7 @@ export interface AppSectionType {
   BootAdvancedCPUSystem: boolean
   BootAdvancedGPUSystem: boolean
   BootSetRyzenSumCurveOptimizerAll: boolean
+  BootKeyboardGradient: boolean
 }
 
 export interface CpuProfileDataType {

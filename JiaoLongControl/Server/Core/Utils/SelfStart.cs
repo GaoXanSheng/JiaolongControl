@@ -13,6 +13,7 @@ public class SelfStart
         if (bridge.Config.App.BootAdvancedGPUSystem) GPU();
         if (bridge.Config.App.BootSetRyzenSumCurveOptimizerAll)
             bridge.RyzenSmu.SetCurveOptimizerAll(bridge.Config.Smu.CurveOptimizerAll);
+        if (bridge.Config.App.BootKeyboardGradient) bridge.KeyboardGradient.Start();
     }
 
     private void Fan() { Bridge.Instance.AutoFan.Start(); }
@@ -36,6 +37,6 @@ public class SelfStart
         var bridge = Bridge.Instance;
         bridge.NvidiaGpu.LockGpuClock(bridge.Config.Gpu.GpuClock);
         bridge.NvidiaGpu.LockMemoryClock(bridge.Config.Gpu.MemoryClock);
-        bridge.NvidiaGpu.SetPowerLimit(bridge.Config.Gpu.PowerLimit);
+        // bridge.NvidiaGpu.SetPowerLimit(bridge.Config.Gpu.PowerLimit);
     }
 }

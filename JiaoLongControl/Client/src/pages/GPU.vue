@@ -136,12 +136,22 @@ async function handleApplyNormal() {
   if (!GPUData.value) return
   loading.value = true
   try {
-    await NvidiaGpu.LockGpuClock(GPUData.value.GpuClock)
-    await NvidiaGpu.LockMemoryClock(GPUData.value.MemoryClock)
-    // 功耗限制：笔记本 TGP 由固件/EC 管理，NvAPI 接口在笔记本上不可用，故不启用
-    // await NvidiaGpu.SetPowerLimit(GPUData.value.PowerLimit);
-    await configStore.saveConfig()
-    Message.success('常规设置已应用并保存')
+    const clockRes = await NvidiaGpu.LockGpuClock(GPUData.value.GpuClock)
+    if (!clockRes.Success) {
+      Message.error(clockRes.Message || 'GPU 频率锁定失败')
+      return
+    }
+    const memClockRes = await NvidiaGpu.LockMemoryClock(GPUData.value.MemoryClock)
+    if (!memClockRes.Success) {
+      Message.error(memClockRes.Message || '显存频率锁定失败')
+      return
+    }
+    const saveRes = await configStore.saveConfig()
+    if (saveRes?.Success) {
+      Message.success('常规设置已应用并保存')
+    } else {
+      Message.error(saveRes?.Message || '设置保存失败')
+    }
   } catch {
     Message.error('应用失败，请检查显卡驱动及桥接服务')
   } finally {
@@ -152,16 +162,29 @@ async function handleApplyNormal() {
 async function handleResetNormal() {
   loading.value = true
   try {
-    await NvidiaGpu.ResetGpuClock()
-    await NvidiaGpu.ResetMemoryClock()
+    const clockRes = await NvidiaGpu.ResetGpuClock()
+    if (!clockRes.Success) {
+      Message.error(clockRes.Message || 'GPU 频率重置失败')
+      return
+    }
+    const memClockRes = await NvidiaGpu.ResetMemoryClock()
+    if (!memClockRes.Success) {
+      Message.error(memClockRes.Message || '显存频率重置失败')
+      return
+    }
     if (GPUData.value) {
       GPUData.value.GpuClock = coreClockRange.value.Max
       GPUData.value.MemoryClock = memClockRange.value.Max
       GPUData.value.PowerLimit = powerLimitRange.value.Max
     }
-    Message.info('常规设置已恢复默认')
+    const saveRes = await configStore.saveConfig()
+    if (saveRes?.Success) {
+      Message.info('常规设置已恢复默认')
+    } else {
+      Message.error(saveRes?.Message || '重置值保存失败')
+    }
   } catch {
-    Message.error('重置失败')
+    Message.error('重置失败，请检查显卡驱动及桥接服务')
   } finally {
     loading.value = false
   }
@@ -170,8 +193,12 @@ async function handleResetNormal() {
 async function handleApplyAdvanced() {
   loading.value = true
   try {
-    await configStore.saveConfig()
-    Message.success('高级设置已保存')
+    const saveRes = await configStore.saveConfig()
+    if (saveRes?.Success) {
+      Message.success('高级设置已保存')
+    } else {
+      Message.error(saveRes?.Message || '保存失败')
+    }
   } catch {
     Message.error('保存失败')
   } finally {

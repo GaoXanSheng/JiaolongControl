@@ -1,8 +1,8 @@
+using System.Diagnostics;
 using System.Linq;
 using System.Management;
 using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Models;
-using JiaoLongControl.Server.Core.Native;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
 using NvAPIWrapper;
@@ -252,52 +252,79 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         public CommandResult LockGpuClock(int freq, int gpuIndex = -1)
         {
-            if (!NvapiClockPower.IsAvailable)
-                return new CommandResult(false, "nvapi64.dll 不可用");
-            bool ok = NvapiClockPower.SetGpuClock(freq, gpuIndex);
-            return new CommandResult(ok, ok ? $"GPU 频率已锁定 {freq} MHz" : "GPU 频率锁定失败");
+            return LockGpuClock(freq, freq, gpuIndex);
         }
 
         public CommandResult LockGpuClock(int minFreq, int maxFreq, int gpuIndex = -1)
         {
-            if (!NvapiClockPower.IsAvailable)
-                return new CommandResult(false, "nvapi64.dll 不可用");
-            bool ok = NvapiClockPower.SetGpuClock(maxFreq, gpuIndex);
-            return new CommandResult(ok, ok ? $"GPU 频率范围已锁定 {minFreq}-{maxFreq} MHz" : "GPU 频率锁定失败");
+            var result = RunNvidiaSmi($"-i {ResolveGpuIndex(gpuIndex)} -lgc {minFreq},{maxFreq}");
+            if (!result.Success)
+                return result;
+            string message = minFreq == maxFreq
+                ? $"GPU 频率已锁定 {minFreq} MHz"
+                : $"GPU 频率范围已锁定 {minFreq}-{maxFreq} MHz";
+            return new CommandResult(true, message);
         }
 
         public CommandResult ResetGpuClock(int gpuIndex = -1)
         {
-            if (!NvapiClockPower.IsAvailable)
-                return new CommandResult(false, "nvapi64.dll 不可用");
-            bool ok = NvapiClockPower.ResetGpuClock(gpuIndex);
-            return new CommandResult(ok, ok ? "GPU 频率已重置" : "GPU 频率重置失败");
+            var result = RunNvidiaSmi($"-i {ResolveGpuIndex(gpuIndex)} -rgc");
+            return result.Success ? new CommandResult(true, "GPU 频率已重置") : result;
         }
 
         public CommandResult LockMemoryClock(int freq, int gpuIndex = -1)
         {
-            if (!NvapiClockPower.IsAvailable)
-                return new CommandResult(false, "nvapi64.dll 不可用");
-            bool ok = NvapiClockPower.SetMemoryClock(freq, gpuIndex);
-            return new CommandResult(ok, ok ? $"显存频率已锁定 {freq} MHz" : "显存频率锁定失败");
+            var result = RunNvidiaSmi($"-i {ResolveGpuIndex(gpuIndex)} -lmc {freq},{freq}");
+            return result.Success ? new CommandResult(true, $"显存频率已锁定 {freq} MHz") : result;
         }
 
         public CommandResult ResetMemoryClock(int gpuIndex = -1)
         {
-            if (!NvapiClockPower.IsAvailable)
-                return new CommandResult(false, "nvapi64.dll 不可用");
-            bool ok = NvapiClockPower.ResetMemoryClock(gpuIndex);
-            return new CommandResult(ok, ok ? "显存频率已重置" : "显存频率重置失败");
+            var result = RunNvidiaSmi($"-i {ResolveGpuIndex(gpuIndex)} -rmc");
+            return result.Success ? new CommandResult(true, "显存频率已重置") : result;
         }
 
         public CommandResult SetPowerLimit(int watts, int gpuIndex = -1)
         {
-            if (!NvapiClockPower.IsAvailable)
-                return new CommandResult(false, "nvapi64.dll 不可用");
-            bool ok = NvapiClockPower.SetPowerLimit(watts, gpuIndex);
-            if (ok)
-                return new CommandResult(true, $"功耗限制已设置为 {watts} W");
-            return new CommandResult(false, "功耗限制设置失败：笔记本 GPU 通常不支持通过驱动接口调节功耗墙（TGP 由固件管理）");
+            var result = RunNvidiaSmi($"-i {ResolveGpuIndex(gpuIndex)} -pl {watts}");
+            return result.Success ? new CommandResult(true, $"功耗限制已设置为 {watts} W") : result;
+        }
+
+        private int ResolveGpuIndex(int gpuIndex)
+        {
+            return gpuIndex >= 0 ? gpuIndex : 0;
+        }
+
+        private CommandResult RunNvidiaSmi(string arguments)
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "nvidia-smi",
+                    Arguments = arguments,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
+                using var process = Process.Start(psi);
+                string output = process!.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
+                process.WaitForExit(5000);
+
+                if (process.ExitCode != 0)
+                {
+                    string message = string.IsNullOrWhiteSpace(error) ? output : error;
+                    return new CommandResult(false, $"[NvidiaGpuController] nvidia-smi {arguments} 失败: {message.Trim()}");
+                }
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"[NvidiaGpuController] 执行 nvidia-smi 异常: {ex.Message}");
+            }
+
+            return new CommandResult(true, "执行成功");
         }
 
         public void Dispose()

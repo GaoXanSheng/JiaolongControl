@@ -73,22 +73,50 @@ async function handleApplyAll() {
   loading.value = true
   try {
     // 1. 设置长时功耗限制 (PL1)
-    await CPU.SetCpuLongPower(activeProfile.value.CpuLongPower)
+    const longPowerRes = await CPU.SetCpuLongPower(activeProfile.value.CpuLongPower)
+    if (!longPowerRes.Success) {
+      Message.error(longPowerRes.Message || '长时功耗限制设置失败')
+      return
+    }
     // 2. 设置短时功耗限制 (PL2)
-    await CPU.SetCpuShortPower(activeProfile.value.CpuShortPower)
+    const shortPowerRes = await CPU.SetCpuShortPower(activeProfile.value.CpuShortPower)
+    if (!shortPowerRes.Success) {
+      Message.error(shortPowerRes.Message || '短时功耗限制设置失败')
+      return
+    }
     // 3. 设置温度墙
-    await CPU.SetCPUTempWall(activeProfile.value.CpuTempWall)
+    const tempWallRes = await CPU.SetCPUTempWall(activeProfile.value.CpuTempWall)
+    if (!tempWallRes.Success) {
+      Message.error(tempWallRes.Message || '温度墙设置失败')
+      return
+    }
     // 4. 设置最大频率
-    await Power.SetCPUMaxFrequency(activeProfile.value.CpuMaxFrequency)
+    const maxFreqRes = await Power.SetCPUMaxFrequency(activeProfile.value.CpuMaxFrequency)
+    if (!maxFreqRes.Success) {
+      Message.error(maxFreqRes.Message || '最大频率设置失败')
+      return
+    }
     // 5. 设置睿频开关
     if (activeProfile.value.CpuTurbo) {
-      await Power.EnableTurbo()
+      const turboRes = await Power.EnableTurbo()
+      if (!turboRes.Success) {
+        Message.error(turboRes.Message || '睿频开启失败')
+        return
+      }
     } else {
-      await Power.DisableTurbo()
+      const turboRes = await Power.DisableTurbo()
+      if (!turboRes.Success) {
+        Message.error(turboRes.Message || '睿频关闭失败')
+        return
+      }
     }
     // 6. 设置核心电压偏移 (Curve Optimizer All)
     if (configStore.config?.Smu) {
-      await RyzenSmu.SetCurveOptimizerAll(configStore.config.Smu.CurveOptimizerAll)
+      const curveRes = await RyzenSmu.SetCurveOptimizerAll(configStore.config.Smu.CurveOptimizerAll)
+      if (!curveRes.Success) {
+        Message.error(curveRes.Message || '核心电压偏移设置失败')
+        return
+      }
     }
 
     // 7. 保存主配置（含当前档位块参数与选中档位，供开机自启等使用）
