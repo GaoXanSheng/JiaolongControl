@@ -137,7 +137,7 @@ function handleReset() {
 </script>
 
 <template>
-  <div class="h-full overflow-y-auto text-white p-6 no-scrollbar">
+  <div class="h-full overflow-y-auto text-ink p-6 no-scrollbar">
     <div class="max-w-[1300px] mx-auto flex flex-col lg:flex-row gap-6">
       <!-- ==================== 左侧：键盘控制区 ==================== -->
       <div class="flex-1 space-y-6">
@@ -149,7 +149,7 @@ function handleReset() {
 
         <!-- 1. 键盘灯效可视化预览卡片 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg"
         >
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-[13px] font-semibold text-gray-300">灯效实时预览</h2>
@@ -157,7 +157,7 @@ function handleReset() {
               <span class="text-xs text-gray-400">颜色拾取器:</span>
               <a-color-picker v-model="colorPicker" size="mini" :disabled="gradientRunning">
                 <div
-                  class="w-6 h-6 rounded-md border border-white/20 cursor-pointer shadow-sm transition-transform hover:scale-105"
+                  class="w-6 h-6 rounded-md border border-ink/20 cursor-pointer shadow-sm transition-transform hover:scale-105"
                   :style="{ backgroundColor: colorPicker }"
                 ></div>
               </a-color-picker>
@@ -167,7 +167,7 @@ function handleReset() {
           <!-- 模拟键盘面板 -->
           <div class="w-full flex justify-center py-4">
             <div
-              class="relative w-full max-w-[640px] h-[190px] bg-[#12131e] rounded-xl p-3.5 border border-white/10 overflow-hidden transition-all duration-300"
+              class="relative w-full max-w-[640px] h-[190px] bg-[#12131e] rounded-xl p-3.5 border border-ink/10 overflow-hidden transition-all duration-300"
               :style="{
                 boxShadow: `0 10px 30px rgba(0, 0, 0, 0.6), 0 0 ${LightBrightness * 12}px rgba(${color.red}, ${color.green}, ${color.blue}, ${LightBrightness * 0.25})`,
               }"
@@ -186,7 +186,7 @@ function handleReset() {
                 <div
                   v-for="i in 52"
                   :key="i"
-                  class="bg-[#1a1b2b]/90 border border-white/[0.06] rounded flex items-center justify-center relative overflow-hidden transition-all duration-300"
+                  class="bg-[#1a1b2b]/90 border border-ink/[0.06] rounded flex items-center justify-center relative overflow-hidden transition-all duration-300"
                 >
                   <div
                     class="absolute inset-0 opacity-40 blur-[3px] transition-all duration-300"
@@ -196,7 +196,7 @@ function handleReset() {
                       opacity: LightBrightness > 0 ? (LightBrightness / 3) * 0.6 : 0,
                     }"
                   ></div>
-                  <span class="w-1.5 h-1.5 rounded-full bg-white/20"></span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-ink/20"></span>
                 </div>
               </div>
             </div>
@@ -205,22 +205,22 @@ function handleReset() {
 
         <!-- 2. 快捷配色预设 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg"
         >
           <h2 class="text-[13px] font-semibold text-gray-300 mb-3">快捷预设</h2>
           <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
             <div
               v-for="preset in colorPresets"
               :key="preset.name"
-              class="border border-white/[0.05] hover:border-white/20 bg-[#121320] hover:bg-[#1a182f] rounded-xl p-3 cursor-pointer transition-all duration-300 flex flex-col items-center gap-2 group"
+              class="border border-ink/[0.05] hover:border-ink/20 bg-panel hover:bg-panel-active rounded-xl p-3 cursor-pointer transition-all duration-300 flex flex-col items-center gap-2 group"
               :class="{ 'opacity-40 pointer-events-none': gradientRunning }"
               @click="applyPreset(preset)"
             >
               <div
-                class="w-8 h-8 rounded-full border border-white/20 shadow-md group-hover:scale-110 transition-transform"
+                class="w-8 h-8 rounded-full border border-ink/20 shadow-md group-hover:scale-110 transition-transform"
                 :style="{ backgroundColor: preset.hex, boxShadow: `0 0 10px ${preset.hex}66` }"
               ></div>
-              <span class="text-xs text-gray-300 group-hover:text-white font-medium">{{
+              <span class="text-xs text-gray-300 group-hover:text-ink font-medium">{{
                 preset.name
               }}</span>
             </div>
@@ -229,7 +229,7 @@ function handleReset() {
 
         <!-- 3. 键盘渐变效果 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg"
         >
           <div class="flex items-center justify-between gap-4">
             <div class="space-y-1.5">
@@ -261,7 +261,7 @@ function handleReset() {
 
         <!-- 4. 灯光通道与亮度手动调节 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-6"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-6"
           :class="{ 'opacity-40 pointer-events-none': gradientRunning }"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">RGB 通道与亮度</h2>
@@ -301,7 +301,7 @@ function handleReset() {
             </div>
 
             <!-- 背光亮度 -->
-            <div class="space-y-2 pt-2 border-t border-white/[0.05]">
+            <div class="space-y-2 pt-2 border-t border-ink/[0.05]">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1">背光亮度等级</span>
                 <span class="text-purple-400 font-medium font-mono"
@@ -316,7 +316,7 @@ function handleReset() {
         <!-- 5. 底部动作栏 -->
         <div class="flex justify-between items-center pt-2">
           <button
-            class="flex items-center gap-2 text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.05] px-4 py-2 rounded-lg transition-colors"
+            class="flex items-center gap-2 text-xs text-gray-400 hover:text-ink border border-ink/10 hover:border-ink/20 bg-ink/[0.02] hover:bg-ink/[0.05] px-4 py-2 rounded-lg transition-colors"
             :class="{ 'opacity-40 pointer-events-none': gradientRunning }"
             @click="handleReset"
           >
@@ -345,11 +345,11 @@ function handleReset() {
       <div class="w-full lg:w-[360px] shrink-0 space-y-6 lg:pt-[115px]">
         <!-- 1. 当前颜色色板卡片 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-4"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-4"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">当前配色方案</h2>
           <div
-            class="w-full h-24 rounded-xl border border-white/10 flex flex-col justify-end p-3 transition-all duration-300 shadow-lg relative overflow-hidden"
+            class="w-full h-24 rounded-xl border border-ink/10 flex flex-col justify-end p-3 transition-all duration-300 shadow-lg relative overflow-hidden"
             :style="{ backgroundColor: `rgb(${color.red}, ${color.green}, ${color.blue})` }"
           >
             <div class="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
@@ -363,7 +363,7 @@ function handleReset() {
           </div>
           <div class="flex justify-between items-center text-xs text-gray-400">
             <span>当前亮度级别</span>
-            <span class="text-white font-mono font-bold bg-white/10 px-2 py-0.5 rounded"
+            <span class="text-ink font-mono font-bold bg-ink/10 px-2 py-0.5 rounded"
               >档位 {{ LightBrightness }}</span
             >
           </div>
@@ -371,7 +371,7 @@ function handleReset() {
 
         <!-- 2. 说明卡片 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-2.5"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-2.5"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">使用说明</h2>
           <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">

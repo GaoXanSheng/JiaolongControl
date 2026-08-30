@@ -331,7 +331,7 @@ async function handleResetAdvanced() {
 </script>
 
 <template>
-  <div v-if="GPUData && gpuName" class="h-full overflow-y-auto text-white p-6 no-scrollbar">
+  <div v-if="GPUData && gpuName" class="h-full overflow-y-auto text-ink p-6 no-scrollbar">
     <div class="max-w-[1300px] mx-auto flex flex-col lg:flex-row gap-6">
       <!-- ==================== 左/中：显卡主要设置区 ==================== -->
       <div class="flex-1 space-y-6">
@@ -343,7 +343,7 @@ async function handleResetAdvanced() {
 
         <!-- 1. 选择 GPU 与卡片详情 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg flex flex-col md:flex-row justify-between gap-6"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg flex flex-col md:flex-row justify-between gap-6"
         >
           <div class="space-y-3 md:w-1/2">
             <span class="text-[11px] text-gray-500 font-semibold block uppercase">当前 GPU</span>
@@ -354,56 +354,56 @@ async function handleResetAdvanced() {
           </div>
 
           <div
-            class="grid grid-cols-2 gap-x-6 gap-y-3 text-[11px] text-gray-400 md:w-1/2 md:border-l md:border-white/[0.05] md:pl-6 pt-1"
+            class="grid grid-cols-2 gap-x-6 gap-y-3 text-[11px] text-gray-400 md:w-1/2 md:border-l md:border-ink/[0.05] md:pl-6 pt-1"
           >
             <div>
               <span class="text-gray-600 block mb-0.5">驱动版本</span>
-              <span class="text-white font-medium font-mono">{{ gpuDriverVersion }}</span>
+              <span class="text-ink font-medium font-mono">{{ gpuDriverVersion }}</span>
             </div>
             <div>
               <span class="text-gray-600 block mb-0.5">显存容量</span>
-              <span class="text-white font-medium font-mono">{{ gpuMemoryTotal }}</span>
+              <span class="text-ink font-medium font-mono">{{ gpuMemoryTotal }}</span>
             </div>
             <div>
               <span class="text-gray-600 block mb-0.5">驱动日期</span>
-              <span class="text-white font-medium font-mono">{{ gpuDriverDate }}</span>
+              <span class="text-ink font-medium font-mono">{{ gpuDriverDate }}</span>
             </div>
             <div>
               <span class="text-gray-600 block mb-0.5">总线宽度</span>
-              <span class="text-white font-medium font-mono">{{ gpuBusWidth }}</span>
+              <span class="text-ink font-medium font-mono">{{ gpuBusWidth }}</span>
             </div>
           </div>
         </div>
         <!-- 3. 模式切换按钮 -->
         <div class="flex gap-2">
-          <button
-            @click="showAdvanced = false"
-            :class="[
-              'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',
-              !showAdvanced
-                ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'
-                : 'bg-white/[0.02] text-gray-400 border-white/10 hover:text-white hover:border-white/20',
-            ]"
-          >
-            常规设置
-          </button>
-          <button
-            @click="showAdvanced = true"
-            :class="[
-              'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',
-              showAdvanced
-                ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'
-                : 'bg-white/[0.02] text-gray-400 border-white/10 hover:text-white hover:border-white/20',
-            ]"
-          >
-            高级超频
-          </button>
+<!--          <button-->
+<!--            @click="showAdvanced = false"-->
+<!--            :class="[-->
+<!--              'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',-->
+<!--              !showAdvanced-->
+<!--                ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'-->
+<!--                : 'bg-ink/[0.02] text-gray-400 border-ink/10 hover:text-ink hover:border-ink/20',-->
+<!--            ]"-->
+<!--          >-->
+<!--            常规设置-->
+<!--          </button>-->
+<!--          <button-->
+<!--            @click="showAdvanced = true"-->
+<!--            :class="[-->
+<!--              'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',-->
+<!--              showAdvanced-->
+<!--                ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'-->
+<!--                : 'bg-ink/[0.02] text-gray-400 border-ink/10 hover:text-ink hover:border-ink/20',-->
+<!--            ]"-->
+<!--          >-->
+<!--            高级超频-->
+<!--          </button>-->
         </div>
 
         <!-- 常规设置面板 -->
         <div
           v-if="!showAdvanced"
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-5"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-5"
         >
           <div class="space-y-5">
             <div class="space-y-2">
@@ -452,16 +452,16 @@ async function handleResetAdvanced() {
             </div> -->
           </div>
 
-          <div class="flex justify-between items-center pt-2 border-t border-white/[0.04]">
+          <div class="flex justify-between items-center pt-2 border-t border-ink/[0.04]">
             <button
-              class="flex items-center gap-2 text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.05] px-4 py-2 rounded-lg transition-colors"
+              class="flex items-center gap-2 text-xs text-gray-400 hover:text-ink border border-ink/10 hover:border-ink/20 bg-ink/[0.02] hover:bg-ink/[0.05] px-4 py-2 rounded-lg transition-colors"
               @click="handleResetNormal"
             >
               重置
             </button>
             <button
               :disabled="loading"
-              class="text-xs font-medium text-white bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 disabled:opacity-50 px-6 py-2 rounded-lg transition-all shadow-[0_0_15px_rgba(138,43,226,0.3)]"
+              class="text-xs font-medium text-ink bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 disabled:opacity-50 px-6 py-2 rounded-lg transition-all shadow-[0_0_15px_rgba(138,43,226,0.3)]"
               @click="handleApplyNormal"
             >
               {{ loading ? '应用中...' : '应用' }}
@@ -470,136 +470,136 @@ async function handleResetAdvanced() {
         </div>
 
         <!-- 高级超频面板 -->
-        <div
-          v-if="showAdvanced"
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-5"
-        >
-          <div class="space-y-5">
-            <div
-              v-if="!ocCaps.CoreOffset || !ocCaps.MemoryOffset || !ocCaps.VoltageBoost"
-              class="text-[11px] text-amber-400/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2"
-            >
-              本机驱动已锁定部分超频能力 (OEM 限制)，对应滑条已置灰。可用「常规设置」的锁频拉满睿频代替。
-            </div>
+<!--        <div-->
+<!--          v-if="showAdvanced"-->
+<!--          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-5"-->
+<!--        >-->
+<!--          <div class="space-y-5">-->
+<!--            <div-->
+<!--              v-if="!ocCaps.CoreOffset || !ocCaps.MemoryOffset || !ocCaps.VoltageBoost"-->
+<!--              class="text-[11px] text-amber-400/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2"-->
+<!--            >-->
+<!--              本机驱动已锁定部分超频能力 (OEM 限制)，对应滑条已置灰。可用「常规设置」的锁频拉满睿频代替。-->
+<!--            </div>-->
 
-            <div class="space-y-2">
-              <div class="flex justify-between items-center text-xs">
-                <span class="text-gray-300 flex items-center gap-1"
-                  >核心频率偏移
-                  <span
-                    v-if="!ocCaps.CoreOffset"
-                    class="text-[9px] text-rose-400/90 border border-rose-500/30 rounded px-1"
-                    >驱动已锁定</span
-                  >
-                  <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span
-                >
-                <span class="text-purple-400 font-medium font-mono"
-                  >{{ gpuClockOffset > 0 ? '+' : '' }}{{ gpuClockOffset }} MHz</span
-                >
-              </div>
-              <a-slider
-                v-model="gpuClockOffset"
-                :min="offsetRange.Core.Min"
-                :max="offsetRange.Core.Max"
-                :disabled="!ocCaps.CoreOffset"
-                class="w-full"
-              />
-            </div>
+<!--            <div class="space-y-2">-->
+<!--              <div class="flex justify-between items-center text-xs">-->
+<!--                <span class="text-gray-300 flex items-center gap-1"-->
+<!--                  >核心频率偏移-->
+<!--                  <span-->
+<!--                    v-if="!ocCaps.CoreOffset"-->
+<!--                    class="text-[9px] text-rose-400/90 border border-rose-500/30 rounded px-1"-->
+<!--                    >驱动已锁定</span-->
+<!--                  >-->
+<!--                  <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span-->
+<!--                >-->
+<!--                <span class="text-purple-400 font-medium font-mono"-->
+<!--                  >{{ gpuClockOffset > 0 ? '+' : '' }}{{ gpuClockOffset }} MHz</span-->
+<!--                >-->
+<!--              </div>-->
+<!--              <a-slider-->
+<!--                v-model="gpuClockOffset"-->
+<!--                :min="offsetRange.Core.Min"-->
+<!--                :max="offsetRange.Core.Max"-->
+<!--                :disabled="!ocCaps.CoreOffset"-->
+<!--                class="w-full"-->
+<!--              />-->
+<!--            </div>-->
 
-            <div class="space-y-2">
-              <div class="flex justify-between items-center text-xs">
-                <span class="text-gray-300 flex items-center gap-1"
-                  >显存频率偏移
-                  <span
-                    v-if="!ocCaps.MemoryOffset"
-                    class="text-[9px] text-rose-400/90 border border-rose-500/30 rounded px-1"
-                    >不支持</span
-                  >
-                  <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span
-                >
-                <span class="text-purple-400 font-medium font-mono"
-                  >{{ memClockOffset > 0 ? '+' : '' }}{{ memClockOffset }} MHz</span
-                >
-              </div>
-              <a-slider
-                v-model="memClockOffset"
-                :min="offsetRange.Memory.Min"
-                :max="offsetRange.Memory.Max"
-                :disabled="!ocCaps.MemoryOffset"
-                class="w-full"
-              />
-            </div>
+<!--            <div class="space-y-2">-->
+<!--              <div class="flex justify-between items-center text-xs">-->
+<!--                <span class="text-gray-300 flex items-center gap-1"-->
+<!--                  >显存频率偏移-->
+<!--                  <span-->
+<!--                    v-if="!ocCaps.MemoryOffset"-->
+<!--                    class="text-[9px] text-rose-400/90 border border-rose-500/30 rounded px-1"-->
+<!--                    >不支持</span-->
+<!--                  >-->
+<!--                  <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span-->
+<!--                >-->
+<!--                <span class="text-purple-400 font-medium font-mono"-->
+<!--                  >{{ memClockOffset > 0 ? '+' : '' }}{{ memClockOffset }} MHz</span-->
+<!--                >-->
+<!--              </div>-->
+<!--              <a-slider-->
+<!--                v-model="memClockOffset"-->
+<!--                :min="offsetRange.Memory.Min"-->
+<!--                :max="offsetRange.Memory.Max"-->
+<!--                :disabled="!ocCaps.MemoryOffset"-->
+<!--                class="w-full"-->
+<!--              />-->
+<!--            </div>-->
 
-            <div class="space-y-2">
-              <div class="flex justify-between items-center text-xs">
-                <span class="text-gray-300 flex items-center gap-1"
-                  >核心电压提升
-                  <span
-                    v-if="!ocCaps.VoltageBoost"
-                    class="text-[9px] text-rose-400/90 border border-rose-500/30 rounded px-1"
-                    >驱动已锁定</span
-                  >
-                  <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span
-                >
-                <span class="text-purple-400 font-medium font-mono"
-                  >+{{ voltageBoostPercent }} %</span
-                >
-              </div>
-              <a-slider
-                v-model="voltageBoostPercent"
-                :min="0"
-                :max="100"
-                :disabled="!ocCaps.VoltageBoost"
-                class="w-full"
-              />
-            </div>
+<!--            <div class="space-y-2">-->
+<!--              <div class="flex justify-between items-center text-xs">-->
+<!--                <span class="text-gray-300 flex items-center gap-1"-->
+<!--                  >核心电压提升-->
+<!--                  <span-->
+<!--                    v-if="!ocCaps.VoltageBoost"-->
+<!--                    class="text-[9px] text-rose-400/90 border border-rose-500/30 rounded px-1"-->
+<!--                    >驱动已锁定</span-->
+<!--                  >-->
+<!--                  <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span-->
+<!--                >-->
+<!--                <span class="text-purple-400 font-medium font-mono"-->
+<!--                  >+{{ voltageBoostPercent }} %</span-->
+<!--                >-->
+<!--              </div>-->
+<!--              <a-slider-->
+<!--                v-model="voltageBoostPercent"-->
+<!--                :min="0"-->
+<!--                :max="100"-->
+<!--                :disabled="!ocCaps.VoltageBoost"-->
+<!--                class="w-full"-->
+<!--              />-->
+<!--            </div>-->
 
-            <div class="space-y-2">
-              <div class="flex justify-between items-center text-xs">
-                <span class="text-gray-300 flex items-center gap-1"
-                  >温度墙上限
-                  <span
-                    v-if="!ocCaps.ThermalPolicy"
-                    class="text-[9px] text-rose-400/90 border border-rose-500/30 rounded px-1"
-                    >不支持</span
-                  >
-                  <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span
-                >
-                <span class="text-purple-400 font-medium font-mono">{{ tempWall }} ℃</span>
-              </div>
-              <a-slider
-                v-model="tempWall"
-                :min="thermalPolicy.MinTemp"
-                :max="thermalPolicy.MaxTemp"
-                :disabled="!ocCaps.ThermalPolicy"
-                class="w-full"
-              />
-            </div>
-          </div>
+<!--            <div class="space-y-2">-->
+<!--              <div class="flex justify-between items-center text-xs">-->
+<!--                <span class="text-gray-300 flex items-center gap-1"-->
+<!--                  >温度墙上限-->
+<!--                  <span-->
+<!--                    v-if="!ocCaps.ThermalPolicy"-->
+<!--                    class="text-[9px] text-rose-400/90 border border-rose-500/30 rounded px-1"-->
+<!--                    >不支持</span-->
+<!--                  >-->
+<!--                  <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span-->
+<!--                >-->
+<!--                <span class="text-purple-400 font-medium font-mono">{{ tempWall }} ℃</span>-->
+<!--              </div>-->
+<!--              <a-slider-->
+<!--                v-model="tempWall"-->
+<!--                :min="thermalPolicy.MinTemp"-->
+<!--                :max="thermalPolicy.MaxTemp"-->
+<!--                :disabled="!ocCaps.ThermalPolicy"-->
+<!--                class="w-full"-->
+<!--              />-->
+<!--            </div>-->
+<!--          </div>-->
 
-          <div class="flex justify-between items-center pt-2 border-t border-white/[0.04]">
-            <button
-              class="flex items-center gap-2 text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.05] px-4 py-2 rounded-lg transition-colors"
-              @click="handleResetAdvanced"
-            >
-              重置
-            </button>
-            <button
-              :disabled="loading"
-              class="text-xs font-medium text-white bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 disabled:opacity-50 px-6 py-2 rounded-lg transition-all shadow-[0_0_15px_rgba(138,43,226,0.3)]"
-              @click="handleApplyAdvanced"
-            >
-              {{ loading ? '应用中...' : '应用' }}
-            </button>
-          </div>
-        </div>
+<!--          <div class="flex justify-between items-center pt-2 border-t border-ink/[0.04]">-->
+<!--            <button-->
+<!--              class="flex items-center gap-2 text-xs text-gray-400 hover:text-ink border border-ink/10 hover:border-ink/20 bg-ink/[0.02] hover:bg-ink/[0.05] px-4 py-2 rounded-lg transition-colors"-->
+<!--              @click="handleResetAdvanced"-->
+<!--            >-->
+<!--              重置-->
+<!--            </button>-->
+<!--            <button-->
+<!--              :disabled="loading"-->
+<!--              class="text-xs font-medium text-ink bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 disabled:opacity-50 px-6 py-2 rounded-lg transition-all shadow-[0_0_15px_rgba(138,43,226,0.3)]"-->
+<!--              @click="handleApplyAdvanced"-->
+<!--            >-->
+<!--              {{ loading ? '应用中...' : '应用' }}-->
+<!--            </button>-->
+<!--          </div>-->
+<!--        </div>-->
       </div>
 
       <!-- ==================== 右侧：显卡信息与实时监控栏 ==================== -->
       <div class="w-full lg:w-[360px] shrink-0 space-y-6 lg:pt-[115px]">
         <!-- 2. 实时监控面板 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-4"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-4"
         >
           <div class="flex justify-between items-center">
             <h2 class="text-[13px] font-semibold text-gray-300">实时监控</h2>
@@ -607,11 +607,11 @@ async function handleResetAdvanced() {
           <div class="grid grid-cols-2 gap-3">
             <!-- GPU 使用率 -->
             <div
-              class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between"
+              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
             >
               <div>
                 <span class="text-[10px] text-gray-500 block">GPU 使用率</span>
-                <span class="text-base font-bold text-white font-mono"
+                <span class="text-base font-bold text-ink font-mono"
                   >{{ gpuUtilization }}
                   <span class="text-[10px] text-gray-500 font-bold">%</span></span
                 >
@@ -634,11 +634,11 @@ async function handleResetAdvanced() {
 
             <!-- 显存使用率 -->
             <div
-              class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between"
+              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
             >
               <div>
                 <span class="text-[10px] text-gray-500 block">显存使用率</span>
-                <span class="text-base font-bold text-white font-mono"
+                <span class="text-base font-bold text-ink font-mono"
                   >{{ gpuMemoryUtilization }}
                   <span class="text-[10px] text-gray-500 font-bold">%</span></span
                 >
@@ -661,11 +661,11 @@ async function handleResetAdvanced() {
 
             <!-- 核心频率 -->
             <div
-              class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between"
+              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
             >
               <div>
                 <span class="text-[10px] text-gray-500 block">核心频率</span>
-                <span class="text-base font-bold text-white font-mono"
+                <span class="text-base font-bold text-ink font-mono"
                   >{{ gpuCoreClock }}
                   <span class="text-[9px] text-gray-500 font-bold">MHz</span></span
                 >
@@ -682,11 +682,11 @@ async function handleResetAdvanced() {
 
             <!-- 显存频率 -->
             <div
-              class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between"
+              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
             >
               <div>
                 <span class="text-[10px] text-gray-500 block">显存频率</span>
-                <span class="text-base font-bold text-white font-mono"
+                <span class="text-base font-bold text-ink font-mono"
                   >{{ gpuMemoryClock }}
                   <span class="text-[9px] text-gray-500 font-bold">MHz</span></span
                 >
@@ -703,11 +703,11 @@ async function handleResetAdvanced() {
 
             <!-- GPU 温度 -->
             <div
-              class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between"
+              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
             >
               <div>
                 <span class="text-[10px] text-gray-500 block">GPU 温度</span>
-                <span class="text-base font-bold text-white font-mono"
+                <span class="text-base font-bold text-ink font-mono"
                   >{{ gpuTemp }} <span class="text-[10px] text-gray-500 font-bold">°C</span></span
                 >
               </div>
@@ -729,11 +729,11 @@ async function handleResetAdvanced() {
 
             <!-- 风扇转速 -->
             <div
-              class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between"
+              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
             >
               <div>
                 <span class="text-[10px] text-gray-500 block">风扇转速</span>
-                <span class="text-base font-bold text-white font-mono"
+                <span class="text-base font-bold text-ink font-mono"
                   >{{ gpuFanSpeed }}
                   <span class="text-[9px] text-gray-500 font-bold">RPM</span></span
                 >
@@ -759,7 +759,7 @@ async function handleResetAdvanced() {
 
 <style lang="scss" scoped>
 :deep(.arco-select-view-value) {
-  color: white;
+  color: var(--color-text-main);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -772,9 +772,9 @@ async function handleResetAdvanced() {
 }
 
 :deep(.select-dark .arco-select-view-single) {
-  background-color: #17192a !important;
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
-  color: #ffffff !important;
+  background-color: var(--color-panel-elevated) !important;
+  border: 1px solid var(--color-line-soft) !important;
+  color: var(--color-text-main) !important;
   border-radius: 8px !important;
   height: 32px !important;
 }

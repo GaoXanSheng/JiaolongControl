@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full overflow-y-auto text-white p-6 no-scrollbar">
+  <div class="h-full overflow-y-auto text-ink p-6 no-scrollbar">
     <div class="max-w-[1300px] mx-auto space-y-6">
       <div>
         <h1 class="text-2xl font-bold tracking-wide">风扇曲线编辑器</h1>
@@ -95,7 +95,7 @@
                   )
                 "
                 :y2="height - padding.bottom"
-                stroke="rgba(255, 255, 255, 0.03)"
+                style="stroke: color-mix(in srgb, var(--color-text-main) 3%, transparent)"
                 stroke-dasharray="3"
               />
               <line
@@ -105,7 +105,7 @@
                 :y1="safeMapY(speedRange[0]! + ((i - 1) * (speedRange[1]! - speedRange[0]!)) / 10)"
                 :x2="width - padding.right"
                 :y2="safeMapY(speedRange[0]! + ((i - 1) * (speedRange[1]! - speedRange[0]!)) / 10)"
-                stroke="rgba(255, 255, 255, 0.03)"
+                style="stroke: color-mix(in srgb, var(--color-text-main) 3%, transparent)"
                 stroke-dasharray="3"
               />
             </g>
@@ -122,7 +122,7 @@
                 "
                 :y="height - 12"
                 text-anchor="middle"
-                fill="rgba(255, 255, 255, 0.3)"
+                style="fill: color-mix(in srgb, var(--color-text-main) 30%, transparent)"
                 font-size="9"
                 font-family="monospace"
               >
@@ -141,7 +141,7 @@
                   safeMapY(speedRange[0]! + ((i - 1) * (speedRange[1]! - speedRange[0]!)) / 5) + 3
                 "
                 text-anchor="end"
-                fill="rgba(255, 255, 255, 0.3)"
+                style="fill: color-mix(in srgb, var(--color-text-main) 30%, transparent)"
                 font-size="9"
                 font-family="monospace"
               >
@@ -211,13 +211,13 @@
         >
           <div class="menu-item" @click="onAddNode">在此处右侧添加节点</div>
           <div
-            class="menu-item border-t border-white/[0.03]"
+            class="menu-item border-t border-ink/[0.03]"
             :class="{ disabled: !canDelete }"
             @click="onRemoveNode"
           >
             删除当前节点
           </div>
-          <div class="menu-item border-t border-white/[0.03]" @click="openEditModal">
+          <div class="menu-item border-t border-ink/[0.03]" @click="openEditModal">
             编辑精确数值
           </div>
         </div>
@@ -314,11 +314,11 @@ const {
   height: 400px;
   position: relative;
   user-select: none;
-  background: rgba(18, 19, 32, 0.6) !important;
+  background: var(--color-card-bg) !important;
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--color-line-soft) !important;
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 32px var(--color-shadow-card);
 
   :deep(.arco-card-body) {
     height: 100%;
@@ -330,12 +330,12 @@ const {
 
 .header-info {
   padding: 12px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--color-line-soft);
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.85);
+  color: color-mix(in srgb, var(--color-text-main) 85%, transparent);
   height: 54px;
 
   .info-section {
@@ -353,9 +353,9 @@ const {
     .status-tag {
       display: flex;
       align-items: center;
-      background-color: rgba(255, 255, 255, 0.02) !important;
-      border: 1px solid rgba(255, 255, 255, 0.05) !important;
-      color: rgba(255, 255, 255, 0.6);
+      background-color: color-mix(in srgb, var(--color-text-main) 2%, transparent) !important;
+      border: 1px solid var(--color-line-soft) !important;
+      color: color-mix(in srgb, var(--color-text-main) 60%, transparent);
       height: 24px;
       padding: 0 8px;
     }
@@ -382,7 +382,7 @@ const {
   }
 
   .sub-info {
-    color: rgba(255, 255, 255, 0.4);
+    color: color-mix(in srgb, var(--color-text-main) 40%, transparent);
   }
 }
 
@@ -411,7 +411,7 @@ const {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgba(255, 255, 255, 0.4);
+    color: color-mix(in srgb, var(--color-text-main) 40%, transparent);
     font-size: 13px;
   }
 }
@@ -419,11 +419,11 @@ const {
 .context-menu {
   position: absolute;
   z-index: 999;
-  background: rgba(26, 27, 43, 0.95);
+  background: var(--color-popover-bg);
   backdrop-filter: blur(12px);
   border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 24px var(--color-shadow-pop);
+  border: 1px solid var(--color-line);
   min-width: 140px;
   padding: 4px 0;
 
@@ -431,7 +431,7 @@ const {
     padding: 8px 16px;
     cursor: pointer;
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.8);
+    color: color-mix(in srgb, var(--color-text-main) 80%, transparent);
     transition: all 0.2s;
 
     &:hover {
@@ -440,22 +440,22 @@ const {
     }
 
     &.disabled {
-      color: rgba(255, 255, 255, 0.25);
+      color: color-mix(in srgb, var(--color-text-main) 25%, transparent);
       cursor: not-allowed;
       background: transparent !important;
     }
   }
 }
 :deep(.radio-group-dark.arco-radio-group-button) {
-  background-color: rgba(255, 255, 255, 0.03) !important;
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  background-color: color-mix(in srgb, var(--color-text-main) 3%, transparent) !important;
+  border: 1px solid var(--color-line-soft) !important;
   border-radius: 8px !important;
   padding: 2px !important;
 
   .arco-radio-button {
     background-color: transparent !important;
     border: none !important;
-    color: rgba(255, 255, 255, 0.5) !important;
+    color: color-mix(in srgb, var(--color-text-main) 50%, transparent) !important;
     border-radius: 6px !important;
     font-weight: 500 !important;
     font-size: 11px !important;
@@ -465,8 +465,8 @@ const {
     line-height: 24px !important;
 
     &:not(.arco-radio-button-checked):hover {
-      background-color: rgba(255, 255, 255, 0.05) !important;
-      color: rgba(255, 255, 255, 0.8) !important;
+      background-color: var(--color-line-soft) !important;
+      color: color-mix(in srgb, var(--color-text-main) 80%, transparent) !important;
     }
 
     &.arco-radio-button-checked {
@@ -488,36 +488,36 @@ const {
 }
 
 :deep(.arco-modal) {
-  background-color: #121320 !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background-color: var(--color-panel-bg) !important;
+  border: 1px solid var(--color-line) !important;
   border-radius: 12px !important;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6) !important;
+  box-shadow: 0 12px 36px var(--color-shadow-pop) !important;
 
   .arco-modal-header {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-bottom: 1px solid var(--color-line-soft) !important;
     .arco-modal-title {
-      color: #ffffff !important;
+      color: var(--color-text-main) !important;
       font-size: 13px !important;
     }
   }
 
   .arco-input-number {
-    background-color: #17192a !important;
-    border: 1px solid rgba(255, 255, 255, 0.05) !important;
-    color: #ffffff !important;
+    background-color: var(--color-panel-elevated) !important;
+    border: 1px solid var(--color-line-soft) !important;
+    color: var(--color-text-main) !important;
     border-radius: 8px !important;
     overflow: hidden;
 
     .arco-input-number-prepend {
-      background-color: #121320 !important;
-      border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
-      color: rgba(255, 255, 255, 0.5) !important;
+      background-color: var(--color-panel-bg) !important;
+      border-right: 1px solid var(--color-line-soft) !important;
+      color: color-mix(in srgb, var(--color-text-main) 50%, transparent) !important;
       font-size: 11px !important;
     }
   }
 
   .arco-modal-footer {
-    border-t: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-t: 1px solid var(--color-line-soft) !important;
   }
 }
 </style>

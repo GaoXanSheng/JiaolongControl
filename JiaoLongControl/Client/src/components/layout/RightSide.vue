@@ -32,7 +32,7 @@ function leave(_el: Element, done: () => void) {
           <component :is="currentComponent" :key="store.$state.SwitchPages" />
         </template>
         <template #fallback>
-          <div class="absolute inset-0 flex items-center justify-center bg-[#0D0E15]">
+          <div class="absolute inset-0 flex items-center justify-center bg-page">
             <div class="flex flex-col items-center gap-3">
               <svg
                 class="animate-spin h-8 w-8 text-purple-500"

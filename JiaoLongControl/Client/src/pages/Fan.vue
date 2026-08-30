@@ -61,7 +61,7 @@ async function handleRemoveFanClick() {
 </script>
 
 <template>
-  <div v-if="FanPageStore" class="h-full overflow-y-auto text-white p-6 no-scrollbar">
+  <div v-if="FanPageStore" class="h-full overflow-y-auto text-ink p-6 no-scrollbar">
     <div class="max-w-[1300px] mx-auto flex flex-col lg:flex-row gap-6">
       <!-- ==================== 左侧：手动风扇控制区 ==================== -->
       <div class="flex-1 space-y-6">
@@ -73,7 +73,7 @@ async function handleRemoveFanClick() {
 
         <!-- 转速调节磨砂卡片 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-6 shadow-lg"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-6 shadow-lg"
         >
           <div class="flex flex-col gap-6">
             <div class="flex justify-between items-end">
@@ -84,7 +84,7 @@ async function handleRemoveFanClick() {
                 <h2 class="text-base font-semibold mt-1 text-gray-200">目标转速设定</h2>
               </div>
               <div class="text-right">
-                <span class="text-3xl font-black font-mono text-white leading-none">{{
+                <span class="text-3xl font-black font-mono text-ink leading-none">{{
                   FanPageStore.ManualFanSpeed
                 }}</span>
                 <span class="text-gray-500 text-xs ml-1 font-bold font-mono">RPM</span>
@@ -110,7 +110,7 @@ async function handleRemoveFanClick() {
                 {{ loading ? '应用中...' : '应用设定' }}
               </button>
               <button
-                class="text-xs font-semibold text-gray-300 hover:text-white border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.05] py-2.5 rounded-lg transition-all"
+                class="text-xs font-semibold text-gray-300 hover:text-ink border border-ink/10 hover:border-ink/20 bg-ink/[0.02] hover:bg-ink/[0.05] py-2.5 rounded-lg transition-all"
                 @click="handleRemoveFanClick"
               >
                 移除限制
@@ -127,7 +127,7 @@ async function handleRemoveFanClick() {
 
         <!-- 2. 安全说明卡片 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-2.5 select-none"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-2.5 select-none"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">安全提示</h2>
           <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">
@@ -182,26 +182,26 @@ async function handleRemoveFanClick() {
 
 /* 重构 Arco Modal 的深色磨砂遮罩及按钮样式 */
 :deep(.arco-modal) {
-  background-color: #121320 !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background-color: var(--color-panel-bg) !important;
+  border: 1px solid var(--color-line) !important;
   border-radius: 12px !important;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6) !important;
+  box-shadow: 0 12px 36px var(--color-shadow-pop) !important;
 
   .arco-modal-header {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-bottom: 1px solid var(--color-line-soft) !important;
     .arco-modal-title {
-      color: #ffffff !important;
+      color: var(--color-text-main) !important;
       font-size: 13px !important;
     }
   }
 
   .arco-modal-footer {
-    border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-top: 1px solid var(--color-line-soft) !important;
 
     .arco-btn-secondary {
-      background-color: rgba(255, 255, 255, 0.02) !important;
-      border: 1px solid rgba(255, 255, 255, 0.05) !important;
-      color: rgba(255, 255, 255, 0.6) !important;
+      background-color: color-mix(in srgb, var(--color-text-main) 2%, transparent) !important;
+      border: 1px solid var(--color-line-soft) !important;
+      color: color-mix(in srgb, var(--color-text-main) 60%, transparent) !important;
       border-radius: 6px !important;
       font-size: 11px !important;
     }

@@ -14,7 +14,7 @@ const mainNavItems = HomeCardType.filter((item) => item.num !== 8)
 </script>
 
 <template>
-  <div class="flex flex-col h-screen text-white overflow-hidden select-none">
+  <div class="flex flex-col h-screen text-ink overflow-hidden select-none">
     <!-- 极简标题栏 -->
     <TitleBar class="z-50 bg-transparent" />
 
@@ -31,29 +31,33 @@ const mainNavItems = HomeCardType.filter((item) => item.num !== 8)
                 'w-full flex items-center gap-4 px-5 py-3.5 rounded-[5px] transition-all duration-300',
                 store.SwitchPages === item.num
                   ? 'nav-item-active'
-                  : 'hover:bg-white/[0.03] text-gray-400 hover:text-gray-1000',
+                  : 'hover:bg-ink/[0.03] text-gray-400 hover:text-gray-1000',
               ]"
               @click="onClickMenuItem(Number(item.num))"
             >
-              <!-- 图标容器 -->
-              <div class="w-5 h-5 flex items-center justify-center relative">
+              <!-- 图标容器 (选中时在容器上做 drop-shadow: 滤镜先于遮罩执行, 放在遮罩元素自身会被裁掉) -->
+              <div
+                class="w-5 h-5 flex items-center justify-center relative"
+                :class="
+                  store.SwitchPages === item.num ? 'drop-shadow-[0_0_6px_rgba(59,130,246,0.9)]' : ''
+                "
+              >
                 <!-- 1. 背景氛围炫光 -->
                 <span
                   v-if="store.SwitchPages === item.num"
                   class="absolute w-5 h-5 bg-blue-500/40 rounded-full blur-[8px] animate-pulse pointer-events-none"
                 ></span>
 
-                <!-- 2. 图标本身 -->
-                <img
-                  :src="item.icon"
-                  :class="[
-                    'relative z-10 w-full h-full brightness-0 transition-all duration-300',
+                <!-- 2. 图标本身 (PNG 以 alpha 遮罩 + currentColor 填色: 深色白 / 浅色黑) -->
+                <span
+                  class="icon-mask icon-silhouette relative z-10 w-full h-full transition-all duration-300"
+                  :class="
                     store.SwitchPages === item.num
-                      ? 'invert opacity-100 drop-shadow-[0_0_6px_rgba(59,130,246,0.9)]'
-                      : 'invert opacity-60 group-hover:opacity-100',
-                  ]"
-                  alt="icon"
-                />
+                      ? 'opacity-100'
+                      : 'opacity-75 group-hover:opacity-100'
+                  "
+                  :style="{ WebkitMaskImage: `url(${item.icon})`, maskImage: `url(${item.icon})` }"
+                ></span>
               </div>
               <span class="font-medium text-[13px] tracking-wide">{{ item.title }}</span>
             </button>
@@ -64,7 +68,7 @@ const mainNavItems = HomeCardType.filter((item) => item.num !== 8)
             <button
               :class="[
                 'w-full flex items-center justify-between px-5 py-4 transition-colors',
-                store.SwitchPages === 8 ? 'text-white' : 'text-gray-400 hover:text-white',
+                store.SwitchPages === 8 ? 'text-ink' : 'text-gray-400 hover:text-ink',
               ]"
               @click="onClickMenuItem(8)"
             >

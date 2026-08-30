@@ -11,20 +11,20 @@
         <Configurations>Debug;Release</Configurations>
         <Platforms>x64</Platforms>
         <SatelliteResourceLanguages>zh-CN</SatelliteResourceLanguages>
-        <AppVersion>10.13.24.A</AppVersion>
+        <AppVersion>10.13.24</AppVersion>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
         <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
-        <PackageReference Include="log4net" Version="3.3.0" />
-        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.5" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.5" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.5" />
-        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3800.47" />
+        <PackageReference Include="log4net" Version="3.4.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.11" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.11" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.11" />
+        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" />
         <PackageReference Include="NvAPIWrapper.Net" Version="0.8.1.101" />
-        <PackageReference Include="System.Management" Version="10.0.9" />
-        <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.3" />
+        <PackageReference Include="System.Management" Version="10.0.11" />
+        <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.11" />
         <PackageReference Include="TaskScheduler" Version="2.12.2" />
         <PackageReference Include="YamlDotNet" Version="18.1.0" />
     </ItemGroup>

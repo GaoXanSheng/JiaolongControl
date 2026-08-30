@@ -30,7 +30,6 @@ const useStore = defineStore('store', {
     }
     return {
       SwitchPages: initialPage,
-      theme: 'light',
     }
   },
   actions: {

@@ -51,7 +51,7 @@ function handleMouseDown(e: MouseEvent) {
     }
 
     .title {
-      color: white;
+      color: var(--color-text-main);
       font-size: 12px;
       font-weight: 500;
     }

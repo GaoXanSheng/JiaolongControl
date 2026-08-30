@@ -5,6 +5,7 @@ import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { PieChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
+import { chartTheme } from '@/theme/theme'
 
 use([CanvasRenderer, PieChart, GridComponent, TooltipComponent])
 
@@ -33,7 +34,7 @@ const getRingOption = (
         formatter: () => `${value}${suffix}`,
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#FFFFFF',
+        color: chartTheme.value.label,
       },
       data: [
         {
@@ -55,7 +56,7 @@ const getRingOption = (
         },
         {
           value: 100 - value,
-          itemStyle: { color: 'rgba(255, 255, 255, 0.05)' },
+          itemStyle: { color: chartTheme.value.line },
         },
       ],
     },
@@ -70,7 +71,7 @@ const gpuTempOption = computed(() => getRingOption(props.gpuTemp || 0, '#8A2BE2'
 
 <template>
   <div class="col-span-7 glass-card p-6 flex flex-col">
-    <h2 class="text-[15px] font-medium text-white/90 mb-2">核心监控</h2>
+    <h2 class="text-[15px] font-medium text-ink/90 mb-2">核心监控</h2>
     <div class="flex-1 flex justify-around items-center px-4">
       <!-- CPU 使用率 -->
       <div class="flex flex-col items-center">

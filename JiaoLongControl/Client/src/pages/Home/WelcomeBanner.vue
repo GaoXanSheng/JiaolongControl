@@ -26,7 +26,7 @@ defineProps<{
       ></video>
     </div>
     <div
-      class="absolute inset-0 bg-gradient-to-r from-[#12141D] via-[#12141D]/100 to-transparent z-10 pointer-events-none"
+      class="absolute inset-0 bg-gradient-to-r from-cyber-card via-cyber-card to-transparent z-10 pointer-events-none"
     ></div>
 
     <!-- 文字内容 & 视频 -->
@@ -34,7 +34,7 @@ defineProps<{
       <div class="space-y-2 max-w-xl">
         <p class="text-1xl text-gray-400">欢迎回来</p>
         <h1
-          class="text-2xl font-semibold tracking-wide bg-gradient-to-r from-white via-indigo-400 to-purple-400 bg-clip-text text-transparent"
+          class="text-2xl font-semibold tracking-wide bg-gradient-to-r from-ink via-indigo-400 to-purple-400 bg-clip-text text-transparent"
         >
           JiaoLong Control
         </h1>
@@ -46,14 +46,10 @@ defineProps<{
     <div class="relative z-20 flex gap-12 mt-auto">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
-          <img
-            :src="imgCPU"
-            class="w-6 h-6 object-contain"
-            style="
-              filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(190deg) brightness(118%)
-                contrast(119%);
-            "
-          />
+          <span
+            class="icon-mask icon-tint-blue-bright w-6 h-6"
+            :style="{ WebkitMaskImage: `url(${imgCPU})`, maskImage: `url(${imgCPU})` }"
+          ></span>
         </div>
         <div>
           <div class="text-xs text-gray-400">CPU</div>
@@ -62,14 +58,10 @@ defineProps<{
       </div>
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
-          <img
-            :src="imgGPU"
-            class="w-6 h-6 object-contain"
-            style="
-              filter: invert(57%) sepia(52%) saturate(2859%) hue-rotate(120deg) brightness(100%)
-                contrast(100%);
-            "
-          />
+          <span
+            class="icon-mask icon-tint-green w-6 h-6"
+            :style="{ WebkitMaskImage: `url(${imgGPU})`, maskImage: `url(${imgGPU})` }"
+          ></span>
         </div>
         <div>
           <div class="text-xs text-gray-400">GPU</div>
@@ -77,11 +69,14 @@ defineProps<{
         </div>
       </div>
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
-          <img
-            :src="activeModeIcon"
-            class="w-5 h-5 object-contain brightness-0 invert opacity-90"
-          />
+        <div class="w-10 h-10 rounded-full bg-ink/5 flex items-center justify-center">
+          <span
+            class="icon-mask icon-silhouette w-5 h-5 opacity-90"
+            :style="{
+              WebkitMaskImage: `url(${activeModeIcon})`,
+              maskImage: `url(${activeModeIcon})`,
+            }"
+          ></span>
         </div>
         <div>
           <div class="text-xs text-gray-400">模式</div>

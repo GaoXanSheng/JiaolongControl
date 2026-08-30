@@ -3,6 +3,7 @@ import SettingToggle from '@/components/common/SettingToggle.vue'
 import LogoLight from './Settings/components/LogoLight.vue'
 import GPUDirectConnection from './Settings/components/GPUDirectConnection.vue'
 import PawnIODriverMode from './Settings/components/PawnIODriverMode.vue'
+import ThemeSetting from './Settings/components/ThemeSetting.vue'
 
 // 布尔开关卡片配置: title/description + config JSON 路径, 由 SettingToggle 统一渲染
 const toggleCards = [
@@ -45,7 +46,7 @@ const toggleCards = [
 </script>
 
 <template>
-  <div class="p-6 h-full overflow-y-auto space-y-5 text-white no-scrollbar pb-20">
+  <div class="p-6 h-full overflow-y-auto space-y-5 text-ink no-scrollbar pb-20">
     <!-- Header -->
     <div class="max-w-[1000px] mx-auto">
       <h1 class="text-2xl font-bold tracking-wider">系统设置</h1>
@@ -57,6 +58,7 @@ const toggleCards = [
     <!-- Setting Grid -->
     <div class="max-w-[1000px] mx-auto grid grid-cols-1 gap-4 pt-4">
       <!-- 通用设置 -->
+      <ThemeSetting />
       <LogoLight />
       <GPUDirectConnection />
 

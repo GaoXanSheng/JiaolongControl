@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useSystemInfoStore } from '@/stores/systemInfo'
+import { applyTheme } from '@/theme/theme'
 
 const systemInfoStore = useSystemInfoStore()
 const configStore = useConfigStore()
@@ -29,9 +30,20 @@ function onWebViewMessage(e: MessageEvent) {
   }
 }
 
+// 主题跟随配置(含 config-changed 触发的 refresh); 配置拉取失败时保持
+// index.html 内联脚本按 localStorage 缓存设置的主题
+watch(
+  () => configStore.config?.App.Theme,
+  (mode) => {
+    if (mode) applyTheme(mode)
+  },
+)
+
 onMounted(() => {
   stopPolling = systemInfoStore.startPolling()
   window.chrome?.webview?.addEventListener('message', onWebViewMessage)
+  // 主动拉取一次配置以尽早应用主题(fetchPromise 去重, 不会与页面内请求重复)
+  void configStore.fetchConfig()
   setTimeout(() => {
     hideAppLoader()
   }, 300)
@@ -74,7 +86,7 @@ body {
   justify-content: center;
   align-items: center;
   height: 100vh;
-  color: #fff;
-  background-color: #0d0e15;
+  color: var(--color-text-main);
+  background-color: var(--color-bg-primary);
 }
 </style>

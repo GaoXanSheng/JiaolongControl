@@ -156,7 +156,7 @@ async function handleCancel() {
 </script>
 
 <template>
-  <div v-if="CPUData" class="h-full overflow-y-auto text-white p-6 no-scrollbar">
+  <div v-if="CPUData" class="h-full overflow-y-auto text-ink p-6 no-scrollbar">
     <div class="max-w-[1300px] mx-auto flex flex-col lg:flex-row gap-6">
       <!-- ==================== 左/中：CPU 设置区域 ==================== -->
       <div class="flex-1 space-y-6">
@@ -168,7 +168,7 @@ async function handleCancel() {
 
         <!-- 1. CPU 配置文件 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg"
         >
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-[13px] font-semibold text-gray-300">CPU 配置文件</h2>
@@ -181,14 +181,14 @@ async function handleCancel() {
               :class="[
                 'border rounded-xl p-4 cursor-pointer transition-all duration-300 flex flex-col justify-between h-[96px]',
                 selectedProfile === p.key
-                  ? 'border-cyber-purple bg-[#1a182f] shadow-[0_0_15px_rgba(138,43,226,0.25)]'
-                  : 'border-white/[0.05] bg-[#121320] hover:border-white/10',
+                  ? 'profile-active border-cyber-purple bg-panel-active shadow-[0_0_15px_rgba(138,43,226,0.25)]'
+                  : 'border-ink/[0.05] bg-panel hover:border-ink/10',
               ]"
               @click="selectProfile(p.key)"
             >
               <span
                 class="text-xs font-semibold"
-                :class="selectedProfile === p.key ? 'text-white' : 'text-gray-300'"
+                :class="selectedProfile === p.key ? 'text-ink' : 'text-gray-300'"
                 >{{ p.title }}</span
               >
               <span class="text-[11px] text-gray-500">{{ p.desc }}</span>
@@ -198,7 +198,7 @@ async function handleCancel() {
 
         <!-- 2. 核心设置 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-6"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-6"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">核心设置</h2>
 
@@ -299,7 +299,7 @@ async function handleCancel() {
         <!-- 4. 底部全局控制栏 -->
         <div class="flex justify-between items-center pt-2">
           <button
-            class="flex items-center gap-2 text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.05] px-4 py-2 rounded-lg transition-colors"
+            class="flex items-center gap-2 text-xs text-gray-400 hover:text-ink border border-ink/10 hover:border-ink/20 bg-ink/[0.02] hover:bg-ink/[0.05] px-4 py-2 rounded-lg transition-colors"
             @click="handleReset"
           >
             <!-- 刷新旋转小图标 -->
@@ -316,7 +316,7 @@ async function handleCancel() {
 
           <div class="flex gap-3">
             <button
-              class="text-xs text-gray-400 hover:text-white border border-white/5 bg-transparent hover:bg-white/[0.03] px-5 py-2 rounded-lg transition-colors"
+              class="text-xs text-gray-400 hover:text-ink border border-ink/5 bg-transparent hover:bg-ink/[0.03] px-5 py-2 rounded-lg transition-colors"
               @click="handleCancel"
             >
               取消
@@ -336,19 +336,19 @@ async function handleCancel() {
       <div class="w-full lg:w-[360px] shrink-0 space-y-6 lg:pt-[115px]">
         <!-- 1. CPU 信息卡片 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg"
         >
           <h2 class="text-[13px] font-semibold text-gray-300 mb-4">CPU 信息</h2>
           <div class="flex items-center gap-4 h-[96px]">
             <!-- 高保真 3D 芯片矢量线稿 (CpuDie) -->
             <div
-              class="w-16 h-16 bg-white/[0.02] border border-white/[0.05] rounded-xl flex items-center justify-center relative"
+              class="w-16 h-16 bg-ink/[0.02] border border-ink/[0.05] rounded-xl flex items-center justify-center relative"
             >
                             <CpuDie />
             </div>
 
             <div class="space-y-1 text-[11px] text-gray-400">
-              <div class="text-[13px] font-bold text-white">
+              <div class="text-[13px] font-bold text-ink">
                 {{ cpuInfo?.Name || 'Unknown CPU' }}
               </div>
               <div>{{ cpuInfo?.Cores || 0 }} 核心 / {{ cpuInfo?.Threads || 0 }} 线程</div>
@@ -362,7 +362,7 @@ async function handleCancel() {
 
         <!-- 2. 实时状态卡片 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-4"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-4"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">实时状态</h2>
 
@@ -371,14 +371,14 @@ async function handleCancel() {
             <div class="space-y-1.5">
               <div class="flex justify-between text-[11px]">
                 <span class="text-gray-400">频率</span>
-                <span class="text-white font-mono font-medium"
+                <span class="text-ink font-mono font-medium"
                   >{{
                     cpuStats?.FrequencyMhz ? (cpuStats.FrequencyMhz / 1000).toFixed(2) : '0.00'
                   }}
                   GHz</span
                 >
               </div>
-              <div class="h-1.5 bg-white/[0.03] rounded-full overflow-hidden">
+              <div class="h-1.5 bg-ink/[0.03] rounded-full overflow-hidden">
                 <div
                   class="h-full bg-cyber-purple"
                   :style="{
@@ -392,11 +392,11 @@ async function handleCancel() {
             <div class="space-y-1.5">
               <div class="flex justify-between text-[11px]">
                 <span class="text-gray-400">电压</span>
-                <span class="text-white font-mono font-medium"
+                <span class="text-ink font-mono font-medium"
                   >{{ cpuStats?.Voltage ? cpuStats.Voltage.toFixed(3) : '0.000' }} V</span
                 >
               </div>
-              <div class="h-1.5 bg-white/[0.03] rounded-full overflow-hidden">
+              <div class="h-1.5 bg-ink/[0.03] rounded-full overflow-hidden">
                 <div
                   class="h-full bg-cyber-purple"
                   :style="{ width: `${Math.min(((cpuStats?.Voltage || 0) / 1.5) * 100, 100)}%` }"
@@ -408,9 +408,9 @@ async function handleCancel() {
             <div class="space-y-1.5">
               <div class="flex justify-between text-[11px]">
                 <span class="text-gray-400">使用率</span>
-                <span class="text-white font-mono font-medium">{{ cpuStats?.Usage || 0 }} %</span>
+                <span class="text-ink font-mono font-medium">{{ cpuStats?.Usage || 0 }} %</span>
               </div>
-              <div class="h-1.5 bg-white/[0.03] rounded-full overflow-hidden">
+              <div class="h-1.5 bg-ink/[0.03] rounded-full overflow-hidden">
                 <div
                   class="h-full bg-[#3B82F6]"
                   :style="{ width: `${cpuStats?.Usage || 0}%` }"
@@ -422,11 +422,11 @@ async function handleCancel() {
             <div class="space-y-1.5">
               <div class="flex justify-between text-[11px]">
                 <span class="text-gray-400">温度</span>
-                <span class="text-white font-mono font-medium"
+                <span class="text-ink font-mono font-medium"
                   >{{ cpuStats?.Temperature || 0 }} °C</span
                 >
               </div>
-              <div class="h-1.5 bg-white/[0.03] rounded-full overflow-hidden">
+              <div class="h-1.5 bg-ink/[0.03] rounded-full overflow-hidden">
                 <div
                   class="h-full bg-cyber-purple"
                   :style="{ width: `${Math.min(cpuStats?.Temperature || 0, 100)}%` }"
@@ -438,12 +438,12 @@ async function handleCancel() {
 
         <!-- 3. 核心分布卡片 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-3.5"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-3.5"
         >
           <div class="flex justify-between items-center">
             <h2 class="text-[13px] font-semibold text-gray-300">核心分布</h2>
             <!-- <button
-              class="bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-[10px] text-gray-400 hover:text-white px-2 py-0.5 rounded transition"
+              class="bg-ink/[0.04] border border-ink/10 hover:bg-ink/[0.08] text-[10px] text-gray-400 hover:text-ink px-2 py-0.5 rounded transition"
             >
               详情
             </button> -->
@@ -455,7 +455,7 @@ async function handleCancel() {
               <div
                 v-for="i in cpuInfo?.Cores || 0"
                 :key="'core' + i"
-                class="bg-purple-950/20 border border-purple-500/25 rounded-lg py-2 text-center"
+                class="core-tile bg-purple-950/20 border border-purple-500/25 rounded-lg py-2 text-center"
               >
                 <div class="text-[8px] text-purple-400 leading-none">C</div>
                 <div class="text-xs text-purple-300 font-bold font-mono mt-0.5">
@@ -468,7 +468,7 @@ async function handleCancel() {
 
         <!-- 4. 说明卡片 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-2.5"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-2.5"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">说明</h2>
           <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">
@@ -500,6 +500,24 @@ async function handleCancel() {
   scrollbar-width: none;
 }
 
+/* 浅色下选中配置卡片: 淡灰底 + 灰边框, 不发光(深色保持紫调, 见模板类) */
+[data-theme='light'] .profile-active {
+  border-color: rgba(13, 14, 21, 0.16);
+  box-shadow: none;
+}
+
+/* 浅色下核心分布磁贴: 淡灰底 + 灰边框 + 灰字(深色保持紫调) */
+[data-theme='light'] .core-tile {
+  background-color: rgba(13, 14, 21, 0.04);
+  border-color: rgba(13, 14, 21, 0.1);
+}
+[data-theme='light'] .core-tile .text-purple-400 {
+  color: #64708a;
+}
+[data-theme='light'] .core-tile .text-purple-300 {
+  color: #454d61;
+}
+
 /* 深度重写 Arco Slider 为高透炫光紫色 */
 
 
@@ -510,9 +528,9 @@ async function handleCancel() {
 
 /* 重写下拉菜单为深色模式样式 */
 :deep(.select-dark .arco-select-view-single) {
-  background-color: #17192a !important;
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
-  color: #ffffff !important;
+  background-color: var(--color-panel-elevated) !important;
+  border: 1px solid var(--color-line-soft) !important;
+  color: var(--color-text-main) !important;
   border-radius: 8px !important;
   height: 32px !important;
 }
