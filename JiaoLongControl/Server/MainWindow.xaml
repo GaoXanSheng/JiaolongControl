@@ -7,8 +7,7 @@
         WindowStyle="None"
         ResizeMode="CanResize"
         Width="1300" Height="820"
-        MinWidth="1300" MinHeight="820"
-        Background="#070b1c">
+        MinWidth="1300" MinHeight="820">
 
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="0" 

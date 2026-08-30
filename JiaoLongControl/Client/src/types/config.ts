@@ -6,6 +6,8 @@ export interface FanPoint {
   speed: number
 }
 
+export type ThemeMode = 'light' | 'dark' | 'system'
+
 export interface AppSectionType {
   BootMinimized: boolean
   BootAdvancedFanControlSystem: boolean
@@ -13,6 +15,7 @@ export interface AppSectionType {
   BootAdvancedGPUSystem: boolean
   BootSetRyzenSumCurveOptimizerAll: boolean
   BootKeyboardGradient: boolean
+  Theme: ThemeMode
 }
 
 export interface CpuProfileDataType {

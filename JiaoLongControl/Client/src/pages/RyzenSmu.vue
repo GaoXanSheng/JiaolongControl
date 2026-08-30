@@ -300,7 +300,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-if="smuData" class="h-full overflow-y-auto text-white p-6 no-scrollbar">
+  <div v-if="smuData" class="h-full overflow-y-auto text-ink p-6 no-scrollbar">
     <div class="max-w-[1300px] mx-auto flex flex-col lg:flex-row gap-6">
       <!-- ==================== 左/中：高级电源、频率微调区 ==================== -->
       <div class="flex-1 space-y-6">
@@ -317,7 +317,7 @@ onUnmounted(() => {
           <div
             v-for="group in CONFIG_GROUPS"
             :key="group.title"
-            class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg flex flex-col justify-between"
+            class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg flex flex-col justify-between"
           >
             <div>
               <h3
@@ -330,7 +330,7 @@ onUnmounted(() => {
                 <div v-for="item in group.items" :key="item.key" class="space-y-1.5">
                   <div class="flex justify-between items-center text-[11px]">
                     <span class="text-gray-400">{{ item.label }}</span>
-                    <span class="text-white font-mono font-medium"
+                    <span class="text-ink font-mono font-medium"
                       >{{ smuData[item.key] }} {{ item.unit }}</span
                     >
                   </div>
@@ -361,7 +361,7 @@ onUnmounted(() => {
             <!-- 仅在时钟与超频面板底部显示 OC 开关 -->
             <div
               v-if="group.title.includes('Clocks')"
-              class="mt-6 flex gap-3 pt-5 border-t border-white/[0.03]"
+              class="mt-6 flex gap-3 pt-5 border-t border-ink/[0.03]"
             >
               <a-button
                 type="primary"
@@ -385,7 +385,7 @@ onUnmounted(() => {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
           <!-- Curve Optimizer 面板 -->
           <div
-            class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg flex flex-col justify-between"
+            class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg flex flex-col justify-between"
           >
             <div>
               <div class="flex justify-between items-center mb-4">
@@ -401,14 +401,14 @@ onUnmounted(() => {
                     :min="1"
                     :max="64"
                     size="mini"
-                    class="!w-12 !bg-white/5 !border-white/10 !text-white rounded-md"
+                    class="!w-12 !bg-ink/5 !border-ink/10 !text-ink rounded-md"
                     hide-button
                   />
                 </div>
               </div>
 
               <!-- 全核偏移调节块 -->
-              <div class="bg-white/[0.02] border border-white/[0.04] p-3.5 rounded-lg mb-4">
+              <div class="bg-ink/[0.02] border border-ink/[0.04] p-3.5 rounded-lg mb-4">
                 <div class="flex justify-between items-center mb-1 text-[11px]">
                   <span class="font-bold text-gray-300">All Core Offset (全核心偏移量)</span>
                   <span class="font-mono text-orange-400 font-semibold">{{
@@ -438,7 +438,7 @@ onUnmounted(() => {
                 <div
                   v-for="(_, index) in perCoreCurve"
                   :key="index"
-                  class="bg-white/[0.02] p-2.5 rounded-lg border border-white/[0.03] flex items-center justify-between"
+                  class="bg-ink/[0.02] p-2.5 rounded-lg border border-ink/[0.03] flex items-center justify-between"
                 >
                   <span class="text-[9px] font-bold text-gray-500 uppercase">CORE {{ index }}</span>
                   <div class="flex items-center gap-1.5">
@@ -447,7 +447,7 @@ onUnmounted(() => {
                       :min="-50"
                       :max="50"
                       size="mini"
-                      class="!w-10 !bg-transparent !border-none !text-white p-0 text-center font-mono"
+                      class="!w-10 !bg-transparent !border-none !text-ink p-0 text-center font-mono"
                       hide-button
                     />
                     <button
@@ -466,7 +466,7 @@ onUnmounted(() => {
 
           <!-- Per Core OC Clocks 面板 -->
           <div
-            class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg flex flex-col justify-between"
+            class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg flex flex-col justify-between"
           >
             <div>
               <h3
@@ -479,7 +479,7 @@ onUnmounted(() => {
                 <div
                   v-for="(_, index) in perCoreOcClk"
                   :key="index"
-                  class="bg-white/[0.02] p-2.5 rounded-lg border border-white/[0.03] flex items-center justify-between"
+                  class="bg-ink/[0.02] p-2.5 rounded-lg border border-ink/[0.03] flex items-center justify-between"
                 >
                   <span class="text-[9px] font-bold text-gray-500 uppercase">CORE {{ index }}</span>
                   <div class="flex items-center gap-1.5">
@@ -489,7 +489,7 @@ onUnmounted(() => {
                       :max="1000"
                       :step="25"
                       size="mini"
-                      class="!w-12 !bg-transparent !border-none !text-white p-0 text-center font-mono"
+                      class="!w-12 !bg-transparent !border-none !text-ink p-0 text-center font-mono"
                       hide-button
                     />
                     <button
@@ -510,19 +510,19 @@ onUnmounted(() => {
       <div class="w-full lg:w-[360px] shrink-0 space-y-6 lg:pt-[115px]">
         <!-- 1. AMD Ryzen 处理器芯片详情 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg"
         >
           <h2 class="text-[13px] font-semibold text-gray-300 mb-4">Ryzen 芯片架构</h2>
           <div class="flex items-center gap-4">
             <!-- AM5 Socket 异形芯片 SVG 绘制 -->
             <div
-              class="w-16 h-16 bg-white/[0.02] border border-white/[0.05] rounded-xl flex items-center justify-center relative shrink-0"
+              class="w-16 h-16 bg-ink/[0.02] border border-ink/[0.05] rounded-xl flex items-center justify-center relative shrink-0"
             >
                             <CpuDie />
             </div>
 
             <div class="space-y-1 text-[11px] text-gray-400">
-              <div class="text-[13px] font-bold text-white">
+              <div class="text-[13px] font-bold text-ink">
                 <span v-if="cpuName">{{ cpuName }}</span>
                 <span v-else class="text-gray-600 animate-pulse">检测中...</span>
               </div>
@@ -541,12 +541,12 @@ onUnmounted(() => {
 
         <!-- 2. 电源实时监视器（遥测 PPT / TDC / EDC 波形图） -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-4"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-4"
         >
           <div class="flex items-center justify-between">
             <h2 class="text-[13px] font-semibold text-gray-300">SMU 电源遥测</h2>
             <span
-              class="text-[10px] text-gray-600 bg-white/[0.03] border border-white/[0.05] px-2 py-0.5 rounded-full"
+              class="text-[10px] text-gray-600 bg-ink/[0.03] border border-ink/[0.05] px-2 py-0.5 rounded-full"
               >{{ telemetry.FreqMhz }} MHz · {{ telemetry.Usage }}% 负载</span
             >
           </div>
@@ -554,11 +554,11 @@ onUnmounted(() => {
           <div class="grid grid-cols-2 gap-3">
             <!-- PPT 功耗 -->
             <div
-              class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between"
+              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
             >
               <div>
                 <span class="text-[10px] text-gray-500 block">PPT 封装功耗</span>
-                <span class="text-base font-bold text-white font-mono"
+                <span class="text-base font-bold text-ink font-mono"
                   >{{ telemetry.Ppt.toFixed(1) }}
                   <span class="text-[10px] text-gray-500 font-bold">W</span></span
                 >
@@ -587,11 +587,11 @@ onUnmounted(() => {
 
             <!-- TDC 长期电流 -->
             <div
-              class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between"
+              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
             >
               <div>
                 <span class="text-[10px] text-gray-500 block">TDC 供电电流</span>
-                <span class="text-base font-bold text-white font-mono"
+                <span class="text-base font-bold text-ink font-mono"
                   >{{ (telemetry.Tdc ?? 0).toFixed(1) }}
                   <span class="text-[10px] text-gray-500 font-bold">A</span></span
                 >
@@ -620,11 +620,11 @@ onUnmounted(() => {
 
             <!-- EDC 瞬间电流 -->
             <div
-              class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between"
+              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
             >
               <div>
                 <span class="text-[10px] text-gray-500 block">EDC 峰值电流</span>
-                <span class="text-base font-bold text-white font-mono"
+                <span class="text-base font-bold text-ink font-mono"
                   >{{ (telemetry.Edc ?? 0).toFixed(1) }}
                   <span class="text-[10px] text-gray-500 font-bold">A</span></span
                 >
@@ -653,7 +653,7 @@ onUnmounted(() => {
 
             <!-- 核心温度 -->
             <div
-              class="bg-white/[0.02] border border-white/[0.04] p-3 rounded-lg flex flex-col justify-between"
+              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
             >
               <div>
                 <span class="text-[10px] text-gray-500 block">核心温度</span>
@@ -664,7 +664,7 @@ onUnmounted(() => {
                       ? 'text-red-400'
                       : telemetry.Temp > 75
                         ? 'text-orange-400'
-                        : 'text-white'
+                        : 'text-ink'
                   "
                   >{{ telemetry.Temp.toFixed(1) }}
                   <span class="text-[10px] text-gray-500 font-bold">°C</span></span
@@ -696,7 +696,7 @@ onUnmounted(() => {
 
         <!-- 3. 技术名释说明 -->
         <div
-          class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-2.5"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-2.5"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">名词解释</h2>
           <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">
@@ -782,9 +782,9 @@ onUnmounted(() => {
 
 /* 深色模式下拉选择框 */
 :deep(.arco-select-view-single) {
-  background-color: #17192a !important;
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
-  color: #ffffff !important;
+  background-color: var(--color-panel-elevated) !important;
+  border: 1px solid var(--color-line-soft) !important;
+  color: var(--color-text-main) !important;
   border-radius: 6px !important;
   height: 28px !important;
 }

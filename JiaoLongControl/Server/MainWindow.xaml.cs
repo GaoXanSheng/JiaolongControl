@@ -33,12 +33,17 @@ namespace JiaoLongControl.Server
         private int _recreateCount;
         private Grid? _loadingOverlay;
         private Grid? _errorOverlay;
+        // 当前是否浅色主题: 由配置(App.Theme)解析, 前端切换主题时经 theme-changed 消息同步
+        private bool _isLight;
         // ProcessFailed 处理器引用：ConfigureWebView 订阅、DestroyWebView 注销，保证重建后旧回调不再触发
         private EventHandler<CoreWebView2ProcessFailedEventArgs>? _processFailedHandler;
 
         public MainWindow()
         {
             InitializeComponent();
+            // 配置已在 App.OnStartup 初始化完成, 此处解析主题并先于 WebView 创建着色, 避免启动闪色
+            _isLight = UiTheme.IsLight(Bridge.Instance.Config.App.Theme);
+            ApplyThemeColors();
             InitializePaths();
             InitializeTray();
             CreateWebView();
@@ -127,7 +132,7 @@ namespace JiaoLongControl.Server
 
             _webView = new WebView2
             {
-                DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 7, 11, 28)
+                DefaultBackgroundColor = DrawingColorFrom(UiTheme.Background(_isLight))
             };
             WebViewHost.Children.Clear();
             WebViewHost.Children.Add(_webView);
@@ -434,14 +439,14 @@ namespace JiaoLongControl.Server
             {
                 var overlay = new Grid
                 {
-                    Background = new SolidColorBrush(Color.FromRgb(7, 11, 28)),
+                    Background = new SolidColorBrush(UiTheme.Background(_isLight)),
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     VerticalAlignment = VerticalAlignment.Stretch
                 };
                 var text = new TextBlock
                 {
                     Text = "正在加载界面…",
-                    Foreground = Brushes.White,
+                    Foreground = new SolidColorBrush(UiTheme.OverlayText(_isLight)),
                     FontSize = 14,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
@@ -490,7 +495,7 @@ namespace JiaoLongControl.Server
 
                 var overlay = new Grid
                 {
-                    Background = new SolidColorBrush(Color.FromRgb(7, 11, 28)),
+                    Background = new SolidColorBrush(UiTheme.Background(_isLight)),
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     VerticalAlignment = VerticalAlignment.Stretch
                 };
@@ -502,7 +507,7 @@ namespace JiaoLongControl.Server
                 var text = new TextBlock
                 {
                     Text = message,
-                    Foreground = Brushes.White,
+                    Foreground = new SolidColorBrush(UiTheme.OverlayText(_isLight)),
                     FontSize = 14,
                     TextWrapping = TextWrapping.Wrap,
                     TextAlignment = TextAlignment.Center,
@@ -660,10 +665,69 @@ namespace JiaoLongControl.Server
                 {
                     Close();
                 }
+                else if (message.StartsWith("theme-changed:", StringComparison.Ordinal))
+                {
+                    // 前端切换主题后同步窗口/WebView 底色
+                    bool isLight = message.EndsWith(":light", StringComparison.Ordinal);
+                    if (_isLight != isLight)
+                    {
+                        _isLight = isLight;
+                        ApplyThemeColors();
+                    }
+                }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"处理前端窗口控制消息时发生错误: {ex.Message}");
+            }
+        }
+
+        /// <summary>按当前主题刷新窗口/WebView/遮罩配色(启动与 theme-changed 时调用)</summary>
+        private void ApplyThemeColors()
+        {
+            Background = new SolidColorBrush(UiTheme.Background(_isLight));
+            if (_webView != null)
+            {
+                _webView.DefaultBackgroundColor = DrawingColorFrom(UiTheme.Background(_isLight));
+            }
+            if (_loadingOverlay != null)
+            {
+                _loadingOverlay.Background = new SolidColorBrush(UiTheme.Background(_isLight));
+            }
+            if (_errorOverlay != null)
+            {
+                _errorOverlay.Background = new SolidColorBrush(UiTheme.Background(_isLight));
+                foreach (var textBlock in FindVisualChildren<TextBlock>(_errorOverlay))
+                {
+                    textBlock.Foreground = new SolidColorBrush(UiTheme.OverlayText(_isLight));
+                }
+            }
+        }
+
+        private static System.Drawing.Color DrawingColorFrom(System.Windows.Media.Color color)
+        {
+            return System.Drawing.Color.FromArgb(color.A, color.R, color.G, color.B);
+        }
+
+        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject? root)
+            where T : DependencyObject
+        {
+            if (root == null)
+            {
+                yield break;
+            }
+            int count = VisualTreeHelper.GetChildrenCount(root);
+            for (int i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(root, i);
+                if (child is T typed)
+                {
+                    yield return typed;
+                }
+                foreach (var descendant in FindVisualChildren<T>(child))
+                {
+                    yield return descendant;
+                }
             }
         }
 

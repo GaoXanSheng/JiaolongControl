@@ -1,12 +1,112 @@
+/* ============================================================
+ * 主题变量
+ * 深色为主题默认值(:root), 浅色通过 [data-theme='light'] 覆盖。
+ * data-theme 由 index.html 内联脚本(启动防闪烁)与 src/theme/theme.ts 维护。
+ * ============================================================ */
 :root {
   --color-bg-primary: #0d0e15;
   --color-bg-secondary: #11121a;
+  --color-bg-grad-top: #0d1025;
+  --color-bg-grad-bottom: #070b1c;
   --color-card-bg: rgba(26, 27, 38, 0.6);
+  --color-card-solid: #12141d;
+  --color-panel-bg: #121320;
+  --color-panel-raised: #1a1c23;
+  --color-panel-active: #1a182f;
+  --color-panel-elevated: #17192a;
+  --color-popover-bg: rgba(26, 27, 43, 0.95);
+  --color-shadow-pop: rgba(0, 0, 0, 0.5);
   --color-accent-purple: #8a2be2;
   --color-accent-blue: #3b82f6;
+  --color-accent-green: #00ff7f;
   --color-glow-purple: rgba(138, 43, 226, 0.4);
   --color-text-main: #ffffff;
   --color-text-muted: #a0aec0;
+  --color-line: rgba(255, 255, 255, 0.08);
+  --color-line-soft: rgba(255, 255, 255, 0.04);
+  --color-overlay: rgba(255, 255, 255, 0.04);
+  --color-overlay-strong: rgba(255, 255, 255, 0.08);
+  --color-scroll-thumb: rgba(255, 255, 255, 0.12);
+  --color-shadow-card: rgba(0, 0, 0, 0.3);
+
+  /* 背景光晕(深色下更亮) */
+  --glow-blue: rgba(40, 90, 255, 0.28);
+  --glow-blue-soft: rgba(40, 90, 255, 0.12);
+  --glow-purple: rgba(180, 60, 255, 0.25);
+  --glow-purple-soft: rgba(180, 60, 255, 0.1);
+  --glow-center: rgba(0, 80, 255, 0.15);
+
+  /* Tailwind 默认灰阶的主题化取值(深色 = 原生灰阶, 零回归) */
+  --jl-gray-200: #e5e7eb;
+  --jl-gray-300: #d1d5db;
+  --jl-gray-400: #9ca3af;
+  --jl-gray-500: #6b7280;
+  --jl-gray-600: #4b5563;
+
+  /* 语义色 300/400 档(深色 = 原生亮色) */
+  --jl-purple-300: #d8b4fe;
+  --jl-purple-400: #c084fc;
+  --jl-rose-400: #fb7185;
+  --jl-blue-300: #93c5fd;
+  --jl-blue-400: #60a5fa;
+  --jl-orange-400: #fb923c;
+  --jl-red-400: #f87171;
+  --jl-green-400: #4ade80;
+  --jl-emerald-400: #34d399;
+  --jl-amber-400: #fbbf24;
+}
+
+[data-theme='light'] {
+  --color-bg-primary: #f2f4f9;
+  --color-bg-secondary: #ffffff;
+  --color-bg-grad-top: #f7f9fd;
+  --color-bg-grad-bottom: #e9edf5;
+  --color-card-bg: rgba(255, 255, 255, 0.85);
+  --color-card-solid: #ffffff;
+  --color-panel-bg: #ffffff;
+  --color-panel-raised: #ffffff;
+  --color-panel-active: #ede4fb;
+  --color-panel-elevated: #f5f6fa;
+  --color-popover-bg: rgba(255, 255, 255, 0.95);
+  --color-shadow-pop: rgba(31, 38, 60, 0.18);
+  --color-accent-purple: #8a2be2;
+  --color-accent-blue: #2563eb;
+  --color-accent-green: #059669;
+  --color-glow-purple: rgba(138, 43, 226, 0.16);
+  --color-text-main: #1a1b26;
+  --color-text-muted: #5a6478;
+  --color-line: rgba(13, 14, 21, 0.1);
+  --color-line-soft: rgba(13, 14, 21, 0.06);
+  --color-overlay: rgba(13, 14, 21, 0.045);
+  --color-overlay-strong: rgba(13, 14, 21, 0.08);
+  --color-scroll-thumb: rgba(13, 14, 21, 0.15);
+  --color-shadow-card: rgba(31, 38, 60, 0.08);
+
+  /* 浅色下光晕收敛为淡彩 */
+  --glow-blue: rgba(40, 90, 255, 0.1);
+  --glow-blue-soft: rgba(40, 90, 255, 0.04);
+  --glow-purple: rgba(180, 60, 255, 0.08);
+  --glow-purple-soft: rgba(180, 60, 255, 0.03);
+  --glow-center: rgba(0, 80, 255, 0.06);
+
+  /* 浅色灰阶: 序号越大越浅(对比越弱), 与深色序号语义一致 */
+  --jl-gray-200: #454d61;
+  --jl-gray-300: #525a6e;
+  --jl-gray-400: #64708a;
+  --jl-gray-500: #7b86a0;
+  --jl-gray-600: #98a1b5;
+
+  /* 语义色 300/400 档映射到 600/700 档, 保证白底可读 */
+  --jl-purple-300: #7e22ce;
+  --jl-purple-400: #9333ea;
+  --jl-rose-400: #e11d48;
+  --jl-blue-300: #1d4ed8;
+  --jl-blue-400: #2563eb;
+  --jl-orange-400: #ea580c;
+  --jl-red-400: #dc2626;
+  --jl-green-400: #16a34a;
+  --jl-emerald-400: #059669;
+  --jl-amber-400: #d97706;
 }
 
 * {
@@ -33,14 +133,14 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-scroll-thumb);
   border-radius: 10px;
 }
 
 .glowing-card {
   background: var(--color-card-bg);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-line-soft);
   border-radius: 24px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -58,8 +158,8 @@ body {
 }
 
 .cyber-button {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--color-overlay);
+  border: 1px solid var(--color-line-soft);
   border-radius: 12px;
   padding: 12px 24px;
   color: var(--color-text-muted);
@@ -68,13 +168,107 @@ body {
   transition: all 0.2s;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: white;
+    background: var(--color-overlay-strong);
+    color: var(--color-text-main);
   }
 
   &.active {
     border-color: var(--color-accent-purple);
-    color: white;
+    color: var(--color-text-main);
     box-shadow: 0 0 10px var(--color-glow-purple);
   }
+}
+
+/* 单色剪影图标: 遮罩填色机制(不依赖 filter 反转), 深色白剪影, 浅色黑剪影。
+ * 配合 .icon-mask 基类与内联 mask-image 使用 */
+.icon-silhouette {
+  color: #ffffff;
+}
+
+[data-theme='light'] .icon-silhouette {
+  color: #1a1b26;
+}
+
+/* 强调色剪影(选中态图标): 遮罩填色, 深色白剪影, 浅色品牌紫剪影 */
+.icon-silhouette-accent {
+  color: #ffffff;
+}
+
+[data-theme='light'] .icon-silhouette-accent {
+  color: var(--color-accent-purple);
+}
+
+/* 着色图标: 以 PNG alpha 为遮罩、currentColor 填色, 两个主题都能精确给到语义色。
+ * 配合 .icon-mask 基类与内联 mask-image 使用 */
+.icon-mask {
+  display: inline-block;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.icon-tint-blue {
+  color: #2898f8;
+}
+
+[data-theme='light'] .icon-tint-blue {
+  color: #2563eb;
+}
+
+.icon-tint-blue-bright {
+  color: #28b8f8;
+}
+
+[data-theme='light'] .icon-tint-blue-bright {
+  color: #2563eb;
+}
+
+.icon-tint-green {
+  color: #08c888;
+}
+
+[data-theme='light'] .icon-tint-green {
+  color: #059669;
+}
+
+/* 彩色圆形徽章底: 深色用 900 系深蒙层(对应 Tailwind *-900/30), 浅色用同色系浅蒙层;
+ * 浅色下同时覆盖 currentColor, 让容器内的 Arco 图标跟随加深 */
+.badge-blue {
+  background: rgba(30, 58, 138, 0.3);
+}
+
+[data-theme='light'] .badge-blue {
+  background: rgba(59, 130, 246, 0.14);
+  color: #2563eb;
+}
+
+.badge-green {
+  background: rgba(20, 83, 45, 0.3);
+}
+
+[data-theme='light'] .badge-green {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+}
+
+.badge-yellow {
+  background: rgba(113, 63, 18, 0.3);
+}
+
+[data-theme='light'] .badge-yellow {
+  background: rgba(234, 179, 8, 0.18);
+  color: #ca8a04;
+}
+
+.badge-red {
+  background: rgba(127, 29, 29, 0.3);
+}
+
+[data-theme='light'] .badge-red {
+  background: rgba(239, 68, 68, 0.14);
+  color: #dc2626;
 }

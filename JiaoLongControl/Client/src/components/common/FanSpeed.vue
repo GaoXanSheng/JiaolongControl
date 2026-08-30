@@ -162,7 +162,7 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-4"
+    class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-4"
   >
     <!-- 图表顶栏标题 -->
     <div class="flex justify-between items-center select-none">
@@ -189,7 +189,7 @@ onUnmounted(() => {
         </defs>
 
         <!-- 1. 背景网格横线 (CPU 区间) -->
-        <g stroke="rgba(255, 255, 255, 0.02)" stroke-width="1">
+        <g style="stroke: color-mix(in srgb, var(--color-text-main) 2%, transparent)" stroke-width="1">
           <line :x1="PADDING_X" :x2="width - PADDING_X" :y1="PADDING_Y" :y2="PADDING_Y" />
           <line
             :x1="PADDING_X"
@@ -211,13 +211,13 @@ onUnmounted(() => {
           :x2="width - PADDING_X"
           :y1="PADDING_Y + chartH * 0.5"
           :y2="PADDING_Y + chartH * 0.5"
-          stroke="rgba(255, 255, 255, 0.08)"
+          style="stroke: color-mix(in srgb, var(--color-text-main) 8%, transparent)"
           stroke-width="1"
           stroke-dasharray="4,4"
         />
 
         <!-- 3. 背景网格横线 (GPU 区间) -->
-        <g stroke="rgba(255, 255, 255, 0.02)" stroke-width="1">
+        <g style="stroke: color-mix(in srgb, var(--color-text-main) 2%, transparent)" stroke-width="1">
           <line
             :x1="PADDING_X"
             :x2="width - PADDING_X"
@@ -243,7 +243,7 @@ onUnmounted(() => {
           :x="PADDING_X - 12"
           :y="PADDING_Y + chartH * 0.25"
           font-size="9"
-          fill="rgba(255,255,255,0.25)"
+          style="fill: color-mix(in srgb, var(--color-text-main) 25%, transparent)"
           text-anchor="end"
           font-weight="bold"
         >
@@ -253,7 +253,7 @@ onUnmounted(() => {
           :x="PADDING_X - 12"
           :y="PADDING_Y + chartH * 0.8"
           font-size="9"
-          fill="rgba(255,255,255,0.25)"
+          style="fill: color-mix(in srgb, var(--color-text-main) 25%, transparent)"
           text-anchor="end"
           font-weight="bold"
         >
@@ -332,7 +332,7 @@ onUnmounted(() => {
             :x2="xs[hoverIndex]"
             :y1="PADDING_Y"
             :y2="height - PADDING_Y"
-            stroke="rgba(255, 255, 255, 0.12)"
+            style="stroke: color-mix(in srgb, var(--color-text-main) 12%, transparent)"
             stroke-width="1"
             stroke-dasharray="3"
           />
@@ -387,18 +387,17 @@ onUnmounted(() => {
               width="180"
               height="124"
               rx="8"
-              fill="rgba(18, 19, 32, 0.95)"
-              stroke="rgba(255, 255, 255, 0.08)"
+              style="fill: var(--color-popover-bg); stroke: color-mix(in srgb, var(--color-text-main) 8%, transparent)"
               stroke-width="1"
             />
-            <text x="15" y="24" font-size="11" font-weight="bold" fill="#ffffff">
+            <text x="15" y="24" font-size="11" font-weight="bold" style="fill: var(--color-text-main)">
               时间切片: {{ hoverIndex + 1 }} / 10
             </text>
             <g transform="translate(15, 46)">
               <circle r="3.5" :fill="COLOR_CPU_FAN" cy="-3.5" />
-              <text x="14" font-size="11" fill="rgba(255,255,255,0.7)">
+              <text x="14" font-size="11" style="fill: color-mix(in srgb, var(--color-text-main) 70%, transparent)">
                 CPU风扇:
-                <tspan font-weight="bold" fill="#ffffff" font-family="monospace">
+                <tspan font-weight="bold" style="fill: var(--color-text-main)" font-family="monospace">
                   {{ cpuFan[hoverIndex] }}
                 </tspan>
                 RPM
@@ -406,9 +405,9 @@ onUnmounted(() => {
             </g>
             <g transform="translate(15, 66)">
               <circle r="3.5" :fill="COLOR_GPU_FAN" cy="-3.5" />
-              <text x="14" font-size="11" fill="rgba(255,255,255,0.7)">
+              <text x="14" font-size="11" style="fill: color-mix(in srgb, var(--color-text-main) 70%, transparent)">
                 GPU风扇:
-                <tspan font-weight="bold" fill="#ffffff" font-family="monospace">
+                <tspan font-weight="bold" style="fill: var(--color-text-main)" font-family="monospace">
                   {{ gpuFan[hoverIndex] }}
                 </tspan>
                 RPM
@@ -416,9 +415,9 @@ onUnmounted(() => {
             </g>
             <g transform="translate(15, 86)">
               <circle r="3.5" :fill="COLOR_CPU_TEMP" cy="-3.5" />
-              <text x="14" font-size="11" fill="rgba(255,255,255,0.7)">
+              <text x="14" font-size="11" style="fill: color-mix(in srgb, var(--color-text-main) 70%, transparent)">
                 CPU温度:
-                <tspan font-weight="bold" fill="#ffffff" font-family="monospace">
+                <tspan font-weight="bold" style="fill: var(--color-text-main)" font-family="monospace">
                   {{ cpuTemp[hoverIndex] }}
                 </tspan>
                 °C
@@ -426,9 +425,9 @@ onUnmounted(() => {
             </g>
             <g transform="translate(15, 106)">
               <circle r="3.5" :fill="COLOR_GPU_TEMP" cy="-3.5" />
-              <text x="14" font-size="11" fill="rgba(255,255,255,0.7)">
+              <text x="14" font-size="11" style="fill: color-mix(in srgb, var(--color-text-main) 70%, transparent)">
                 GPU温度:
-                <tspan font-weight="bold" fill="#ffffff" font-family="monospace">
+                <tspan font-weight="bold" style="fill: var(--color-text-main)" font-family="monospace">
                   {{ gpuTemp[hoverIndex] }}
                 </tspan>
                 °C

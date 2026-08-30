@@ -1,44 +1,68 @@
 @import 'tailwindcss';
 
-@theme {
-  --color-cyber-purple: #8a2be2;
-  --color-cyber-blue: #3b82f6;
-  --color-cyber-green: #00ff7f;
-  --color-cyber-bg: #090a0f;
-  --color-cyber-card: #12141d;
+/* 令牌映射到运行时主题变量。
+ * inline: 工具类直接引用变量本体, 随 <html data-theme> 实时切换。
+ * 灰阶覆盖 Tailwind 默认值(--jl-* 见 Global.scss), 深色取原生值零回归。 */
+@theme inline {
+  --color-cyber-purple: var(--color-accent-purple);
+  --color-cyber-blue: var(--color-accent-blue);
+  --color-cyber-green: var(--color-accent-green);
+  --color-cyber-bg: var(--color-bg-grad-bottom);
+  --color-cyber-card: var(--color-card-solid);
+  --color-page: var(--color-bg-primary);
+  --color-panel: var(--color-panel-bg);
+  --color-panel-raised: var(--color-panel-raised);
+  --color-panel-active: var(--color-panel-active);
+  --color-ink: var(--color-text-main);
+  --color-muted: var(--color-text-muted);
+  --color-gray-200: var(--jl-gray-200);
+  --color-gray-300: var(--jl-gray-300);
+  --color-gray-400: var(--jl-gray-400);
+  --color-gray-500: var(--jl-gray-500);
+  --color-gray-600: var(--jl-gray-600);
+  --color-purple-300: var(--jl-purple-300);
+  --color-purple-400: var(--jl-purple-400);
+  --color-rose-400: var(--jl-rose-400);
+  --color-blue-300: var(--jl-blue-300);
+  --color-blue-400: var(--jl-blue-400);
+  --color-orange-400: var(--jl-orange-400);
+  --color-red-400: var(--jl-red-400);
+  --color-green-400: var(--jl-green-400);
+  --color-emerald-400: var(--jl-emerald-400);
+  --color-amber-400: var(--jl-amber-400);
   --radius-cyber: 32px;
 }
 
 @layer base {
   body {
-    @apply text-white antialiased overflow-hidden;
+    @apply text-ink antialiased overflow-hidden;
     font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
     min-height: 100vh;
     background:
         /* 左上蓝光 */
       radial-gradient(
         circle at 15% 10%,
-        rgba(40, 90, 255, 0.28) 0%,
-        rgba(40, 90, 255, 0.12) 20%,
+        var(--glow-blue) 0%,
+        var(--glow-blue-soft) 20%,
         transparent 50%
       ),
       /* 右上紫光 */
         radial-gradient(
           circle at 85% 15%,
-          rgba(180, 60, 255, 0.25) 0%,
-          rgba(180, 60, 255, 0.1) 25%,
+          var(--glow-purple) 0%,
+          var(--glow-purple-soft) 25%,
           transparent 55%
         ),
-      /* 中央蓝光 */ radial-gradient(circle at 50% 0%, rgba(0, 80, 255, 0.15) 0%, transparent 60%),
-      /* 主背景 */ linear-gradient(180deg, #0d1025 0%, #070b1c 100%);
+      /* 中央蓝光 */ radial-gradient(circle at 50% 0%, var(--glow-center) 0%, transparent 60%),
+      /* 主背景 */ linear-gradient(180deg, var(--color-bg-grad-top) 0%, var(--color-bg-grad-bottom) 100%);
   }
 }
 
 @layer components {
   /* 严格对标图中 32px 圆角的卡片 */
   .glass-card {
-    @apply bg-cyber-card/60 backdrop-blur-3xl border border-white/[0.04] rounded-[32px];
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    @apply bg-cyber-card/60 backdrop-blur-3xl border border-ink/[0.04] rounded-[32px];
+    box-shadow: 0 20px 50px var(--color-shadow-card);
   }
 
   /* 霓虹发光文字 */
@@ -53,7 +77,7 @@
 
   /* 侧边栏激活项 */
   .nav-item-active {
-    @apply bg-cyber-purple/10 text-white relative;
+    @apply bg-cyber-purple/10 text-ink relative;
   }
   .nav-item-active::before {
     content: '';
@@ -66,16 +90,21 @@
   display: none;
 }
 
-/* Arco Slider 深色主题基础样式 (各页面共用; 页面级配色变体如 .slider-purple 保留在组件内) */
+/* Arco Slider 基础样式 (各页面共用; 页面级配色变体如 .slider-purple 保留在组件内) */
 .arco-slider-bar {
   background: linear-gradient(90deg, #6366f1 0%, var(--color-accent-purple) 100%) !important;
   height: 5px !important;
   border-radius: 99px;
 }
 .arco-slider-track {
-  background-color: rgba(255, 255, 255, 0.04) !important;
   height: 5px !important;
   border-radius: 99px;
+}
+/* 深色下的轨道底色; 浅色使用 Arco 原生浅色轨道。
+ * 同时写 :not 与显式 dark 两种选择器, 确保任意 data-theme 状态下深色规则都命中 */
+html:not([data-theme='light']) .arco-slider-track,
+html[data-theme='dark'] .arco-slider-track {
+  background-color: rgba(255, 255, 255, 0.04) !important;
 }
 .arco-slider-button {
   background-color: #ffffff !important;
@@ -84,4 +113,3 @@
   height: 13px !important;
   box-shadow: 0 0 10px rgba(138, 43, 226, 0.7) !important;
 }
-

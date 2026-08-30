@@ -3,7 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <title>JiaoLong Control Console</title>
+    <script>
+      // 启动防闪烁: 必须先于任何样式/渲染执行, 按 localStorage 缓存恢复主题
+      // (由 src/theme/theme.ts 在每次解析结果变化时写入; 无缓存默认深色)
+      try {
+        var __jlTheme = localStorage.getItem('jl-theme')
+        document.documentElement.dataset.theme = __jlTheme === 'light' ? 'light' : 'dark'
+      } catch (e) {
+        document.documentElement.dataset.theme = 'dark'
+      }
+    </script>
     <style>
+      :root {
+        --loader-bg: #070b1c;
+        --loader-bg-mid: rgba(13, 16, 37, 0.95);
+        --loader-title: #ffffff;
+        --loader-sub: #94a3b8;
+        --loader-bar: rgba(255, 255, 255, 0.1);
+      }
+
+      [data-theme='light'] {
+        --loader-bg: #e9edf5;
+        --loader-bg-mid: rgba(255, 255, 255, 0.95);
+        --loader-title: #1a1b26;
+        --loader-sub: #5a6478;
+        --loader-bar: rgba(13, 14, 21, 0.1);
+      }
+
       body,
       html {
         margin: 0;
@@ -11,7 +37,7 @@
         width: 100%;
         height: 100%;
         overflow: hidden;
-        background-color: #070b1c;
+        background-color: var(--loader-bg);
         font-family:
           'Inter',
           'Segoe UI',
@@ -35,7 +61,7 @@
         background:
           radial-gradient(circle at 15% 10%, rgba(40, 90, 255, 0.3) 0%, transparent 50%),
           radial-gradient(circle at 85% 15%, rgba(180, 60, 255, 0.25) 0%, transparent 50%),
-          radial-gradient(circle at 50% 50%, rgba(13, 16, 37, 0.95) 0%, #070b1c 100%);
+          radial-gradient(circle at 50% 50%, var(--loader-bg-mid) 0%, var(--loader-bg) 100%);
         transition:
           opacity 0.4s ease,
           visibility 0.4s ease;
@@ -94,9 +120,9 @@
         font-size: 18px;
         font-weight: 700;
         letter-spacing: 3px;
-        color: #ffffff;
+        color: var(--loader-title);
         text-shadow: 0 0 12px rgba(138, 43, 226, 0.6);
-        background: linear-gradient(90deg, #ffffff, #a78bfa, #60a5fa);
+        background: linear-gradient(90deg, var(--loader-title), #a78bfa, #60a5fa);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
       }
@@ -104,7 +130,7 @@
       .loader-sub {
         margin-top: 8px;
         font-size: 12px;
-        color: #94a3b8;
+        color: var(--loader-sub);
         letter-spacing: 1.5px;
         display: flex;
         align-items: center;
@@ -114,7 +140,7 @@
       .loader-bar {
         width: 140px;
         height: 3px;
-        background: rgba(255, 255, 255, 0.1);
+        background: var(--loader-bar);
         border-radius: 3px;
         margin-top: 16px;
         overflow: hidden;

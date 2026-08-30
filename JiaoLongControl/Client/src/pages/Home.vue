@@ -7,6 +7,7 @@ import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { PerformanceMode, SystemInfo, SystemPerMode } from '@/utils/bridge'
 import { useSystemInfoStore } from '@/stores/systemInfo'
+import { chartTheme } from '@/theme/theme'
 import { storeToRefs } from 'pinia'
 import imgCPU from '@/assets/icon/iconCPU.png'
 import imgGPU from '@/assets/icon/gpu2.png'
@@ -179,7 +180,7 @@ const lineChartOption = computed(() => ({
     icon: 'roundRect',
     itemWidth: 12,
     itemHeight: 4,
-    textStyle: { color: '#A0AEC0', fontSize: 10 },
+    textStyle: { color: chartTheme.value.legend, fontSize: 10 },
     top: 0,
   },
   xAxis: {
@@ -187,15 +188,15 @@ const lineChartOption = computed(() => ({
     data: Array(10).fill(''),
     axisLine: { show: false },
     axisTick: { show: false },
-    axisLabel: { color: '#6B7280', fontSize: 10, margin: 12 },
+    axisLabel: { color: chartTheme.value.axis, fontSize: 10, margin: 12 },
   },
   yAxis: {
     type: 'value',
     min: 0,
     max: 100,
     interval: 25,
-    splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.05)' } },
-    axisLabel: { color: '#6B7280', fontSize: 10, formatter: '{value}°C' },
+    splitLine: { lineStyle: { color: chartTheme.value.line } },
+    axisLabel: { color: chartTheme.value.axis, fontSize: 10, formatter: '{value}°C' },
   },
   series: [
     {
@@ -223,7 +224,7 @@ const lineChartOption = computed(() => ({
 </script>
 
 <template>
-  <div class="p-6 h-full overflow-y-auto space-y-6 text-white no-scrollbar">
+  <div class="p-6 h-full overflow-y-auto space-y-6 text-ink no-scrollbar">
     <!-- Row 1: 顶部 Banner -->
     <WelcomeBannerComp
       :cpu-temp="cpuTemp"
@@ -247,57 +248,55 @@ const lineChartOption = computed(() => ({
     <div class="grid grid-cols-12 gap-6 h-[280px]">
       <!-- 系统概览 -->
       <div class="col-span-4 glass-card p-6 flex flex-col">
-        <h2 class="text-[15px] font-medium text-white/90 mb-4">系统概览</h2>
+        <h2 class="text-[15px] font-medium text-ink/90 mb-4">系统概览</h2>
         <div class="flex-1 flex flex-col justify-between">
           <div class="flex items-center gap-4">
             <div
-              class="w-8 h-8 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-500"
+              class="badge-blue w-8 h-8 rounded-full flex items-center justify-center text-blue-500"
             >
-              <img
-                :src="imgCPU"
-                class="w-4 h-4"
-                style="filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(190deg)"
-              />
+              <span
+                class="icon-mask icon-tint-blue w-4 h-4"
+                :style="{ WebkitMaskImage: `url(${imgCPU})`, maskImage: `url(${imgCPU})` }"
+              ></span>
             </div>
             <div>
-              <div class="text-xs text-white/90">CPU</div>
+              <div class="text-xs text-ink/90">CPU</div>
               <div class="text-xs text-gray-500 mt-0.5">{{ sysCpuName }}</div>
             </div>
           </div>
           <div class="flex items-center gap-4">
             <div
-              class="w-8 h-8 rounded-full bg-green-900/30 flex items-center justify-center text-green-500"
+              class="badge-green w-8 h-8 rounded-full flex items-center justify-center text-green-500"
             >
-              <img
-                :src="imgGPU"
-                class="w-4 h-4"
-                style="filter: invert(57%) sepia(52%) saturate(2859%) hue-rotate(120deg)"
-              />
+              <span
+                class="icon-mask icon-tint-green w-4 h-4"
+                :style="{ WebkitMaskImage: `url(${imgGPU})`, maskImage: `url(${imgGPU})` }"
+              ></span>
             </div>
             <div>
-              <div class="text-xs text-white/90">GPU</div>
+              <div class="text-xs text-ink/90">GPU</div>
               <div class="text-xs text-gray-500 mt-0.5">{{ sysGpuName }}</div>
             </div>
           </div>
           <div class="flex items-center gap-4">
             <div
-              class="w-8 h-8 rounded-full bg-yellow-900/30 flex items-center justify-center text-yellow-500"
+              class="badge-yellow w-8 h-8 rounded-full flex items-center justify-center text-yellow-500"
             >
               <icon-storage />
             </div>
             <div>
-              <div class="text-xs text-white/90">内存</div>
+              <div class="text-xs text-ink/90">内存</div>
               <div class="text-xs text-gray-500 mt-0.5">{{ sysMemory }}</div>
             </div>
           </div>
           <div class="flex items-center gap-4">
             <div
-              class="w-8 h-8 rounded-full bg-red-900/30 flex items-center justify-center text-red-500"
+              class="badge-red w-8 h-8 rounded-full flex items-center justify-center text-red-500"
             >
               <icon-computer />
             </div>
             <div>
-              <div class="text-xs text-white/90">系统</div>
+              <div class="text-xs text-ink/90">系统</div>
               <div class="text-xs text-gray-500 mt-0.5">{{ sysOs }}</div>
             </div>
           </div>
@@ -306,21 +305,17 @@ const lineChartOption = computed(() => ({
 
       <!-- 风扇与噪音 -->
       <div class="col-span-4 glass-card p-6 flex flex-col">
-        <h2 class="text-[15px] font-medium text-white/90 mb-4">风扇与噪音</h2>
+        <h2 class="text-[15px] font-medium text-ink/90 mb-4">风扇与噪音</h2>
 
         <div class="flex items-center gap-4 mb-6">
           <div
             class="w-12 h-12 rounded-full bg-blue-600/20 flex items-center justify-center overflow-hidden"
           >
-            <img
-              :src="imgFan"
-              class="w-7 h-7 object-contain animate-spin"
-              style="
-                animation-duration: 3s;
-                filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(190deg) brightness(118%)
-                  contrast(119%);
-              "
-            />
+            <span
+              class="icon-mask icon-tint-blue-bright w-7 h-7 animate-spin"
+              style="animation-duration: 3s"
+              :style="{ WebkitMaskImage: `url(${imgFan})`, maskImage: `url(${imgFan})` }"
+            ></span>
           </div>
           <div>
             <div class="flex items-baseline gap-1">
@@ -375,7 +370,7 @@ const lineChartOption = computed(() => ({
 
       <!-- 温度曲线 -->
       <div class="col-span-4 glass-card p-6 flex flex-col">
-        <h2 class="text-[15px] font-medium text-white/90 mb-2">温度曲线</h2>
+        <h2 class="text-[15px] font-medium text-ink/90 mb-2">温度曲线</h2>
         <div class="flex-1">
           <VChart :option="lineChartOption" autoresize />
         </div>

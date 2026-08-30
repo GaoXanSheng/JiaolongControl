@@ -31,6 +31,9 @@ public class AppSection
 
     [ConfigComment("开机自动开启键盘渐变")]
     public bool BootKeyboardGradient { get; set; }
+
+    [ConfigComment("界面主题: light / dark / system")]
+    public string Theme { get; set; } = "dark";
 }
 
 public class CpuSection
