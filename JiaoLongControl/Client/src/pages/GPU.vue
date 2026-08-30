@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, type Ref, watch } from 'vue'
 import { Message } from '@arco-design/web-vue'
-import { NvidiaGpu } from '@/utils/bridge.ts'
+import {
+  NvidiaGpu,
+  type CommandResult,
+  type OverclockCapabilities,
+} from '@/utils/bridge'
 import { buildSparkline } from '@/utils/chart'
 import { useConfigStore } from '@/stores/config'
 import { useSystemInfoStore } from '@/stores/systemInfo'
@@ -84,20 +88,38 @@ const fanChart = computed(() => generateSvgPath(fanSpeedHistory.value, 40)) // C
 
 // --- Settings and Presets Logic ---
 const GPUData = computed(() => configStore.config?.Gpu)
-const gpuVoltageOffset = ref(0)
-const gpuClockOffset = ref(120)
-const memClockOffset = ref(500)
+const gpuClockOffset = ref(0)
+const memClockOffset = ref(0)
+const voltageBoostPercent = ref(0)
+const tempWall = ref(87)
 const coreClockRange = ref({ Min: 0, Max: 500 })
 const memClockRange = ref({ Min: 0, Max: 1500 })
 const powerLimitRange = ref({ Min: 50, Max: 140 })
+const offsetRange = ref({ Core: { Min: -1000, Max: 1000 }, Memory: { Min: -1000, Max: 3000 } })
+const thermalPolicy = ref({ CurrentTemp: 87, MinTemp: 65, DefaultTemp: 83, MaxTemp: 90 })
+const ocCaps = ref<OverclockCapabilities>({
+  CoreOffset: true,
+  MemoryOffset: true,
+  VoltageBoost: true,
+  ThermalPolicy: true,
+  PowerPolicy: true,
+})
 
 async function fetchGpuRanges() {
   try {
-    const [core, mem, power] = await Promise.all([
+    const [core, mem, power, ocRange, ocOffsets, thermal, caps] = await Promise.all([
       NvidiaGpu.GetGpuCoreClockRange(),
       NvidiaGpu.GetGpuMemoryClockRange(),
       NvidiaGpu.GetGpuPowerLimitRange(),
+      NvidiaGpu.GetClockOffsetRange(),
+      NvidiaGpu.GetClockOffsets().catch(() => null),
+      NvidiaGpu.GetGpuThermalPolicy().catch(() => null),
+      NvidiaGpu.GetOverclockCapabilities().catch(() => null),
     ])
+
+    if (caps && caps.Success && caps.Data) {
+      ocCaps.value = caps.Data
+    }
 
     if (core.Success && core.Data) {
       const min = core.Data.Min ?? 0
@@ -124,6 +146,27 @@ async function fetchGpuRanges() {
       if (GPUData.value && (GPUData.value.PowerLimit < min || GPUData.value.PowerLimit > max)) {
         GPUData.value.PowerLimit = max
       }
+    }
+
+    if (ocRange.Success && ocRange.Data) {
+      offsetRange.value = {
+        Core: { Min: ocRange.Data.Core?.Min ?? -1000, Max: ocRange.Data.Core?.Max ?? 1000 },
+        Memory: { Min: ocRange.Data.Memory?.Min ?? -1000, Max: ocRange.Data.Memory?.Max ?? 3000 },
+      }
+    }
+
+    // 偏移量以驱动当前实际值为准, 读取失败时回落到配置持久化值
+    if (ocOffsets && ocOffsets.Success && ocOffsets.Data) {
+      gpuClockOffset.value = ocOffsets.Data.CoreMhz
+      memClockOffset.value = ocOffsets.Data.MemoryMhz
+    } else if (GPUData.value) {
+      gpuClockOffset.value = GPUData.value.CoreClockOffset ?? 0
+      memClockOffset.value = GPUData.value.MemoryClockOffset ?? 0
+    }
+
+    if (thermal && thermal.Success && thermal.Data) {
+      thermalPolicy.value = thermal.Data
+      tempWall.value = thermal.Data.CurrentTemp
     }
   } catch (err) {
     console.error('Failed to fetch GPU ranges', err)
@@ -191,26 +234,86 @@ async function handleResetNormal() {
 }
 
 async function handleApplyAdvanced() {
+  if (!GPUData.value) return
   loading.value = true
   try {
+    const coreRes = await NvidiaGpu.SetCoreClockOffset(gpuClockOffset.value)
+    if (!coreRes.Success) {
+      Message.error(coreRes.Message || '核心频率偏移失败')
+      return
+    }
+    const memRes = await NvidiaGpu.SetMemoryClockOffset(memClockOffset.value)
+    if (!memRes.Success) {
+      Message.error(memRes.Message || '显存频率偏移失败')
+      return
+    }
+    const voltRes = await NvidiaGpu.SetVoltageBoostPercent(voltageBoostPercent.value)
+    if (!voltRes.Success) {
+      Message.error(voltRes.Message || '核心电压提升设置失败')
+      return
+    }
+    if (tempWall.value !== thermalPolicy.value.CurrentTemp) {
+      const tempRes = await NvidiaGpu.SetGpuThermalPolicy(tempWall.value)
+      if (!tempRes.Success) {
+        Message.error(tempRes.Message || '温度墙设置失败')
+        return
+      }
+      thermalPolicy.value.CurrentTemp = tempWall.value
+    }
+    GPUData.value.CoreClockOffset = gpuClockOffset.value
+    GPUData.value.MemoryClockOffset = memClockOffset.value
+    GPUData.value.VoltageBoostPercent = voltageBoostPercent.value
     const saveRes = await configStore.saveConfig()
     if (saveRes?.Success) {
-      Message.success('高级设置已保存')
+      Message.success('高级超频已应用并保存')
     } else {
-      Message.error(saveRes?.Message || '保存失败')
+      Message.error(saveRes?.Message || '设置保存失败')
     }
   } catch {
-    Message.error('保存失败')
+    Message.error('应用失败，请检查显卡驱动及桥接服务')
   } finally {
     loading.value = false
   }
 }
 
 async function handleResetAdvanced() {
-  gpuClockOffset.value = 0
-  memClockOffset.value = 0
-  gpuVoltageOffset.value = 0
-  Message.info('高级设置已恢复默认')
+  loading.value = true
+  try {
+    const res = await NvidiaGpu.ResetClockOffsets()
+    if (!res.Success) {
+      Message.error(res.Message || '超频重置失败')
+      return
+    }
+    const voltRes = await NvidiaGpu.SetVoltageBoostPercent(0)
+    if (!voltRes.Success) {
+      Message.error(voltRes.Message || '电压提升重置失败')
+      return
+    }
+    if (tempWall.value !== thermalPolicy.value.DefaultTemp) {
+      // 温度墙恢复默认失败不阻塞整体重置
+      const tempRes = await NvidiaGpu.SetGpuThermalPolicy(thermalPolicy.value.DefaultTemp)
+      if (tempRes.Success) thermalPolicy.value.CurrentTemp = thermalPolicy.value.DefaultTemp
+    }
+    gpuClockOffset.value = 0
+    memClockOffset.value = 0
+    voltageBoostPercent.value = 0
+    tempWall.value = thermalPolicy.value.DefaultTemp
+    if (GPUData.value) {
+      GPUData.value.CoreClockOffset = 0
+      GPUData.value.MemoryClockOffset = 0
+      GPUData.value.VoltageBoostPercent = 0
+    }
+    const saveRes = await configStore.saveConfig()
+    if (saveRes?.Success) {
+      Message.info('高级超频已重置为默认')
+    } else {
+      Message.error(saveRes?.Message || '重置值保存失败')
+    }
+  } catch {
+    Message.error('重置失败，请检查显卡驱动及桥接服务')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -259,26 +362,30 @@ async function handleResetAdvanced() {
           </div>
         </div>
         <!-- 3. 模式切换按钮 -->
-        <!--        <div class="flex gap-2">-->
-        <!--          <button @click="showAdvanced = false"-->
-        <!--                  :class="[-->
-        <!--                    'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',-->
-        <!--                    !showAdvanced-->
-        <!--                      ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'-->
-        <!--                      : 'bg-white/[0.02] text-gray-400 border-white/10 hover:text-white hover:border-white/20'-->
-        <!--                  ]">-->
-        <!--            常规设置-->
-        <!--          </button>-->
-        <!--          <button @click="showAdvanced = true"-->
-        <!--                  :class="[-->
-        <!--                    'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',-->
-        <!--                    showAdvanced-->
-        <!--                      ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'-->
-        <!--                      : 'bg-white/[0.02] text-gray-400 border-white/10 hover:text-white hover:border-white/20'-->
-        <!--                  ]">-->
-        <!--            高级超频-->
-        <!--          </button>-->
-        <!--        </div>-->
+        <div class="flex gap-2">
+          <button
+            @click="showAdvanced = false"
+            :class="[
+              'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',
+              !showAdvanced
+                ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'
+                : 'bg-white/[0.02] text-gray-400 border-white/10 hover:text-white hover:border-white/20',
+            ]"
+          >
+            常规设置
+          </button>
+          <button
+            @click="showAdvanced = true"
+            :class="[
+              'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',
+              showAdvanced
+                ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'
+                : 'bg-white/[0.02] text-gray-400 border-white/10 hover:text-white hover:border-white/20',
+            ]"
+          >
+            高级超频
+          </button>
+        </div>
 
         <!-- 常规设置面板 -->
         <div
@@ -361,9 +468,16 @@ async function handleResetAdvanced() {
                   >核心频率偏移
                   <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span
                 >
-                <span class="text-purple-400 font-medium font-mono">+{{ gpuClockOffset }} MHz</span>
+                <span class="text-purple-400 font-medium font-mono"
+                  >{{ gpuClockOffset > 0 ? '+' : '' }}{{ gpuClockOffset }} MHz</span
+                >
               </div>
-              <a-slider v-model="gpuClockOffset" :min="0" :max="500" class="w-full" />
+              <a-slider
+                v-model="gpuClockOffset"
+                :min="offsetRange.Core.Min"
+                :max="offsetRange.Core.Max"
+                class="w-full"
+              />
             </div>
 
             <div class="space-y-2">
@@ -372,20 +486,45 @@ async function handleResetAdvanced() {
                   >显存频率偏移
                   <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span
                 >
-                <span class="text-purple-400 font-medium font-mono">+{{ memClockOffset }} MHz</span>
+                <span class="text-purple-400 font-medium font-mono"
+                  >{{ memClockOffset > 0 ? '+' : '' }}{{ memClockOffset }} MHz</span
+                >
               </div>
-              <a-slider v-model="memClockOffset" :min="0" :max="1500" class="w-full" />
+              <a-slider
+                v-model="memClockOffset"
+                :min="offsetRange.Memory.Min"
+                :max="offsetRange.Memory.Max"
+                class="w-full"
+              />
             </div>
 
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1"
-                  >核心电压偏移
+                  >核心电压提升
                   <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span
                 >
-                <span class="text-purple-400 font-medium font-mono">{{ gpuVoltageOffset }} mV</span>
+                <span class="text-purple-400 font-medium font-mono"
+                  >+{{ voltageBoostPercent }} %</span
+                >
               </div>
-              <a-slider v-model="gpuVoltageOffset" :min="-100" :max="100" class="w-full" />
+              <a-slider v-model="voltageBoostPercent" :min="0" :max="100" class="w-full" />
+            </div>
+
+            <div class="space-y-2">
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-gray-300 flex items-center gap-1"
+                  >温度墙上限
+                  <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span
+                >
+                <span class="text-purple-400 font-medium font-mono">{{ tempWall }} ℃</span>
+              </div>
+              <a-slider
+                v-model="tempWall"
+                :min="thermalPolicy.MinTemp"
+                :max="thermalPolicy.MaxTemp"
+                class="w-full"
+              />
             </div>
           </div>
 
