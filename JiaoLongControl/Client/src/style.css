@@ -75,10 +75,14 @@
     @apply border-cyber-purple/50 shadow-[0_0_20px_rgba(138,43,226,0.2)];
   }
 
-  /* 侧边栏激活项 */
-  .nav-item-active {
-    @apply bg-cyber-purple/10 text-ink relative;
-  }
+/* 侧边栏激活项 */
+.nav-item-active {
+  @apply bg-cyber-purple/10 text-ink relative;
+}
+/* 浅色下选中底色用淡灰(深色保持紫色调) */
+[data-theme='light'] .nav-item-active {
+  background-color: rgba(13, 14, 21, 0.06);
+}
   .nav-item-active::before {
     content: '';
     @apply absolute left-0 inset-y-4 w-1 bg-cyber-purple rounded-r-full shadow-[2px_0_10px_var(--color-accent-purple)];

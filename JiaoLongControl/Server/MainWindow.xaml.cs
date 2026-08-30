@@ -188,6 +188,21 @@ namespace JiaoLongControl.Server
 
                     ConfigureWebView(view, generation);
                     Bridge.Instance.InitWebView(SafeCore(view)!);
+
+                    // 升级安装会整目录替换 WebRoot 且资源文件名带内容哈希, 先清磁盘缓存,
+                    // 避免虚拟域名命中旧版 index.html 而引用到已不存在的旧资源;
+                    // 只清 DiskCache, 不动 localStorage(主题缓存)与 Cookie。失败不阻断启动。
+                    try
+                    {
+                        var clearTask = SafeCore(view)!.Profile.ClearBrowsingDataAsync(
+                            CoreWebView2BrowsingDataKinds.DiskCache);
+                        await Task.WhenAny(clearTask, Task.Delay(TimeSpan.FromSeconds(3)));
+                    }
+                    catch (Exception cacheEx)
+                    {
+                        Logger.Error($"清理 WebView2 磁盘缓存失败: {cacheEx.Message}");
+                    }
+
                     envReady = true;
                 }
                 catch (Exception ex)

@@ -309,7 +309,7 @@ const lineChartOption = computed(() => ({
 
         <div class="flex items-center gap-4 mb-6">
           <div
-            class="w-12 h-12 rounded-full bg-blue-600/20 flex items-center justify-center overflow-hidden"
+            class="badge-neutral w-12 h-12 rounded-full flex items-center justify-center overflow-hidden"
           >
             <span
               class="icon-mask icon-tint-blue-bright w-7 h-7 animate-spin"

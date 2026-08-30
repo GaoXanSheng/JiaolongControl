@@ -181,7 +181,7 @@ async function handleCancel() {
               :class="[
                 'border rounded-xl p-4 cursor-pointer transition-all duration-300 flex flex-col justify-between h-[96px]',
                 selectedProfile === p.key
-                  ? 'border-cyber-purple bg-panel-active shadow-[0_0_15px_rgba(138,43,226,0.25)]'
+                  ? 'profile-active border-cyber-purple bg-panel-active shadow-[0_0_15px_rgba(138,43,226,0.25)]'
                   : 'border-ink/[0.05] bg-panel hover:border-ink/10',
               ]"
               @click="selectProfile(p.key)"
@@ -455,7 +455,7 @@ async function handleCancel() {
               <div
                 v-for="i in cpuInfo?.Cores || 0"
                 :key="'core' + i"
-                class="bg-purple-950/20 border border-purple-500/25 rounded-lg py-2 text-center"
+                class="core-tile bg-purple-950/20 border border-purple-500/25 rounded-lg py-2 text-center"
               >
                 <div class="text-[8px] text-purple-400 leading-none">C</div>
                 <div class="text-xs text-purple-300 font-bold font-mono mt-0.5">
@@ -498,6 +498,24 @@ async function handleCancel() {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* 浅色下选中配置卡片: 淡灰底 + 灰边框, 不发光(深色保持紫调, 见模板类) */
+[data-theme='light'] .profile-active {
+  border-color: rgba(13, 14, 21, 0.16);
+  box-shadow: none;
+}
+
+/* 浅色下核心分布磁贴: 淡灰底 + 灰边框 + 灰字(深色保持紫调) */
+[data-theme='light'] .core-tile {
+  background-color: rgba(13, 14, 21, 0.04);
+  border-color: rgba(13, 14, 21, 0.1);
+}
+[data-theme='light'] .core-tile .text-purple-400 {
+  color: #64708a;
+}
+[data-theme='light'] .core-tile .text-purple-300 {
+  color: #454d61;
 }
 
 /* 深度重写 Arco Slider 为高透炫光紫色 */

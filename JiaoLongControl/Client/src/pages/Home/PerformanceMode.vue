@@ -49,14 +49,15 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-/* 选中模式按钮: 深色紫 500 边框 + 发光; 浅色边框减淡、光晕收敛 */
+/* 选中模式按钮: 深色紫 500 边框 + 发光; 浅色为淡灰底 + 灰边框, 不发光 */
 .mode-btn-active {
   border-color: #a855f7;
   box-shadow: 0 0 15px rgba(138, 43, 226, 0.3);
 }
 
 [data-theme='light'] .mode-btn-active {
-  border-color: rgba(138, 43, 226, 0.4);
-  box-shadow: 0 0 10px rgba(138, 43, 226, 0.12);
+  border-color: rgba(13, 14, 21, 0.16);
+  background-color: rgba(13, 14, 21, 0.05);
+  box-shadow: none;
 }
 </style>

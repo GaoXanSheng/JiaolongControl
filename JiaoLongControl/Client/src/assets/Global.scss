@@ -65,7 +65,7 @@
   --color-card-solid: #ffffff;
   --color-panel-bg: #ffffff;
   --color-panel-raised: #ffffff;
-  --color-panel-active: #ede4fb;
+  --color-panel-active: #edeff4;
   --color-panel-elevated: #f5f6fa;
   --color-popover-bg: rgba(255, 255, 255, 0.95);
   --color-shadow-pop: rgba(31, 38, 60, 0.18);
@@ -112,6 +112,16 @@
 * {
   user-select: none;
   box-sizing: border-box;
+}
+
+/* 桌面应用风格: 去除点击后按钮/链接获得的系统聚焦框 */
+button:focus,
+button:focus-visible,
+a:focus,
+a:focus-visible,
+[role='button']:focus,
+[role='button']:focus-visible {
+  outline: none;
 }
 
 html,
@@ -271,4 +281,13 @@ body {
 [data-theme='light'] .badge-red {
   background: rgba(239, 68, 68, 0.14);
   color: #dc2626;
+}
+
+/* 中性徽章底(风扇转速圆标): 深色蓝调, 浅色淡灰 */
+.badge-neutral {
+  background: rgba(37, 99, 235, 0.2);
+}
+
+[data-theme='light'] .badge-neutral {
+  background: rgba(13, 14, 21, 0.05);
 }
