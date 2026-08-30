@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Linq;
 using System.Management;
 using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Models;
@@ -45,7 +44,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             var res = MethodServices.SetValue(MethodName.CPUPower, new byte[2]
             {
-                (byte)CPUPower.SPLState,
+                (byte)CPUPower.ShortPower,
                 sp
             });
             return new CommandResult(res, res ? "设置成功" : "设置失败");
@@ -55,7 +54,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             var res = MethodServices.SetValue(MethodName.CPUPower, new byte[2]
             {
-                (byte)CPUPower.SPPTState,
+                (byte)CPUPower.LongPower,
                 lp
             });
             return new CommandResult(res, res ? "设置成功" : "设置失败");
@@ -72,6 +71,15 @@ namespace JiaoLongControl.Server.Core.Controllers
             {
                 res = MethodServices.SetValue(MethodName.CPUPower, CPUPower.CloseState);
             }
+            return new CommandResult(res, res ? "设置成功" : "设置失败");
+        }
+        public CommandResult SetCPUTempWall(byte tw)
+        {
+            var res = MethodServices.SetValue(MethodName.CPUPower, new byte[2]
+            {
+                (byte)CPUPower.CpuTempWallState,
+                tw
+            });
             return new CommandResult(res, res ? "设置成功" : "设置失败");
         }
 
@@ -272,15 +280,6 @@ namespace JiaoLongControl.Server.Core.Controllers
             }
         }
 
-        public CommandResult SetCPUTempWall(byte tw)
-        {
-            var res = MethodServices.SetValue(MethodName.CPUPower, new byte[2]
-            {
-                (byte)CPUPower.CpuTempWallState,
-                tw
-            });
-            return new CommandResult(res, res ? "设置成功" : "设置失败");
-        }
 
         public CommandResult GetPhysicalCoreCount()
         {

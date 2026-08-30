@@ -4,8 +4,8 @@
     {
         CloseState = 0,
         OpenState,
-        SPLState,
-        SPPTState,
+        LongPower,
+        ShortPower,
         CpuTempWallState,
         Unknow = 255
     }

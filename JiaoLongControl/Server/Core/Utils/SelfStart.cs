@@ -34,8 +34,13 @@ public class SelfStart
     private void GPU()
     {
         var bridge = Bridge.Instance;
-        bridge.NvidiaGpu.LockGpuClock(bridge.Config.Gpu.GpuClock);
-        bridge.NvidiaGpu.LockMemoryClock(bridge.Config.Gpu.MemoryClock);
-        // bridge.NvidiaGpu.SetPowerLimit(bridge.Config.Gpu.PowerLimit);
+        var gpu = bridge.Config.Gpu;
+        bridge.NvidiaGpu.LockGpuClock(gpu.GpuClock);
+        bridge.NvidiaGpu.LockMemoryClock(gpu.MemoryClock);
+        // bridge.NvidiaGpu.SetPowerLimit(gpu.PowerLimit);
+        // if (gpu.CoreClockOffset != 0 || gpu.MemoryClockOffset != 0)
+            // bridge.NvidiaGpu.ApplyClockOffsets(gpu.CoreClockOffset, gpu.MemoryClockOffset);
+        // if (gpu.VoltageBoostPercent > 0)
+            // bridge.NvidiaGpu.SetVoltageBoostPercent(gpu.VoltageBoostPercent);
     }
 }

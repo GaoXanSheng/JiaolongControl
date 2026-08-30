@@ -35,6 +35,9 @@ export interface GpuSectionType {
   GpuClock: number
   MemoryClock: number
   PowerLimit: number
+  CoreClockOffset: number
+  MemoryClockOffset: number
+  VoltageBoostPercent: number
 }
 
 export interface FanSectionType {

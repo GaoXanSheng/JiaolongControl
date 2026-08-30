@@ -3,6 +3,7 @@ using System.Linq;
 using System.Management;
 using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Models;
+using JiaoLongControl.Server.Core.Native;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
 using NvAPIWrapper;
@@ -152,10 +153,10 @@ namespace JiaoLongControl.Server.Core.Controllers
             try
             {
                 var gpu = GetGPU(gpuIndex);
-                int clock = (int)(gpu.BoostClockFrequencies.GraphicsClock.Frequency / 1000);
+                int clock = (int)(gpu.CurrentClockFrequencies.GraphicsClock.Frequency / 1000);
                 if (clock == 0)
                 {
-                    clock = (int)(gpu.CurrentClockFrequencies.GraphicsClock.Frequency / 1000);
+                    clock = (int)(gpu.BoostClockFrequencies.GraphicsClock.Frequency / 1000);
                 }
                 return new CommandResult(true, "获取成功", clock);
             }
@@ -167,10 +168,11 @@ namespace JiaoLongControl.Server.Core.Controllers
             try
             {
                 var gpu = GetGPU(gpuIndex);
-                int clock = (int)(gpu.BoostClockFrequencies.MemoryClock.Frequency / 1000);
+                // BoostClockFrequencies 是标称睿频规格值(恒非零)，只能作读不到当前频率时的兜底
+                int clock = (int)(gpu.CurrentClockFrequencies.MemoryClock.Frequency / 1000);
                 if (clock == 0)
                 {
-                    clock = (int)(gpu.CurrentClockFrequencies.MemoryClock.Frequency / 1000);
+                    clock = (int)(gpu.BoostClockFrequencies.MemoryClock.Frequency / 1000);
                 }
                 return new CommandResult(true, "获取成功", clock);
             }
@@ -289,6 +291,321 @@ namespace JiaoLongControl.Server.Core.Controllers
             var result = RunNvidiaSmi("-i", ResolveGpuIndex(gpuIndex).ToString(), "-pl", watts.ToString());
             return result.Success ? new CommandResult(true, $"功耗限制已设置为 {watts} W") : result;
         }
+
+        #region 超频 (NVAPI 私有接口, Afterburner 同款路径)
+
+        public CommandResult GetClockOffsetRange(int gpuIndex = -1)
+        {
+            try
+            {
+                var range = NvApiOverclock.GetClockOffsetRange(NvApiOverclock.GetGpuHandle(ResolveGpuIndex(gpuIndex)));
+                return new CommandResult(true, "获取成功", new
+                {
+                    Core = new { Min = range.CoreMinMhz, Max = range.CoreMaxMhz },
+                    Memory = new { Min = range.MemoryMinMhz, Max = range.MemoryMaxMhz }
+                });
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"获取频率偏移范围失败: {ex.Message}");
+            }
+        }
+
+        public CommandResult GetClockOffsets(int gpuIndex = -1)
+        {
+            try
+            {
+                var offsets = NvApiOverclock.GetClockOffsets(NvApiOverclock.GetGpuHandle(ResolveGpuIndex(gpuIndex)));
+                return new CommandResult(true, "获取成功", new { CoreMhz = offsets.CoreMhz, MemoryMhz = offsets.MemoryMhz });
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"获取频率偏移失败: {ex.Message}");
+            }
+        }
+
+        public CommandResult SetCoreClockOffset(int mhz, int gpuIndex = -1)
+        {
+            return ApplyClockOffsetsInternal(mhz, null, ResolveGpuIndex(gpuIndex));
+        }
+
+        public CommandResult SetMemoryClockOffset(int mhz, int gpuIndex = -1)
+        {
+            return ApplyClockOffsetsInternal(null, mhz, ResolveGpuIndex(gpuIndex));
+        }
+
+        public CommandResult ApplyClockOffsets(int coreMhz, int memoryMhz, int gpuIndex = -1)
+        {
+            return ApplyClockOffsetsInternal(coreMhz, memoryMhz, ResolveGpuIndex(gpuIndex));
+        }
+
+        public CommandResult ResetClockOffsets(int gpuIndex = -1)
+        {
+            return ApplyClockOffsetsInternal(0, 0, ResolveGpuIndex(gpuIndex));
+        }
+
+        private CommandResult ApplyClockOffsetsInternal(int? coreMhz, int? memoryMhz, int gpuIndex)
+        {
+            try
+            {
+                var gpu = NvApiOverclock.GetGpuHandle(gpuIndex);
+                var current = NvApiOverclock.GetClockOffsets(gpu);
+                int core = coreMhz ?? current.CoreMhz;
+                int memory = memoryMhz ?? current.MemoryMhz;
+
+                // 范围读取成功时做夹取, 读取失败(全 0)则交给驱动校验
+                var range = NvApiOverclock.GetClockOffsetRange(gpu);
+                if (range.CoreMaxMhz > range.CoreMinMhz)
+                    core = Math.Clamp(core, range.CoreMinMhz, range.CoreMaxMhz);
+                if (range.MemoryMaxMhz > range.MemoryMinMhz)
+                    memory = Math.Clamp(memory, range.MemoryMinMhz, range.MemoryMaxMhz);
+
+                NvApiOverclock.SetClockOffsets(gpu, core, memory);
+
+                // 写入后读回验证: 本机驱动可能静默忽略偏移 (OEM 锁定), 不做假成功
+                var verify = NvApiOverclock.GetClockOffsets(gpu);
+                if (core != 0 && verify.CoreMhz != core)
+                    return new CommandResult(false,
+                        $"驱动未应用核心偏移 (写入 {core} MHz, 读回 {verify.CoreMhz} MHz)——本机驱动可能已锁定超频");
+                return new CommandResult(true, $"核心偏移 {core:+0;-0} MHz 已应用");
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"应用频率偏移失败: {ex.Message}");
+            }
+        }
+
+        public CommandResult GetVoltageBoostPercent(int gpuIndex = -1)
+        {
+            try
+            {
+                int percent = NvApiOverclock.GetVoltageBoostPercent(NvApiOverclock.GetGpuHandle(ResolveGpuIndex(gpuIndex)));
+                return new CommandResult(true, "获取成功", percent);
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"获取电压提升失败: {ex.Message}");
+            }
+        }
+
+        public CommandResult SetVoltageBoostPercent(int percent, int gpuIndex = -1)
+        {
+            try
+            {
+                var gpu = NvApiOverclock.GetGpuHandle(ResolveGpuIndex(gpuIndex));
+                NvApiOverclock.SetVoltageBoostPercent(gpu, percent);
+                return new CommandResult(true, $"核心电压提升已设置为 {Math.Clamp(percent, 0, 100)}%");
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"设置电压提升失败: {ex.Message}");
+            }
+        }
+
+        public CommandResult GetGpuPowerPolicy(int gpuIndex = -1)
+        {
+            try
+            {
+                var policy = NvApiOverclock.GetPowerPolicy(NvApiOverclock.GetGpuHandle(ResolveGpuIndex(gpuIndex)));
+                return new CommandResult(true, "获取成功", new
+                {
+                    policy.CurrentWatts, policy.MinWatts, policy.DefaultWatts, policy.MaxWatts
+                });
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"获取功耗策略失败: {ex.Message}");
+            }
+        }
+
+        public CommandResult SetGpuPowerPolicy(int watts, int gpuIndex = -1)
+        {
+            try
+            {
+                var gpu = NvApiOverclock.GetGpuHandle(ResolveGpuIndex(gpuIndex));
+                NvApiOverclock.SetPowerPolicy(gpu, watts);
+                var policy = NvApiOverclock.GetPowerPolicy(gpu);
+                return new CommandResult(true, $"功耗墙已设置为 {policy.CurrentWatts} W");
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"设置功耗墙失败: {ex.Message}");
+            }
+        }
+
+        public CommandResult GetGpuThermalPolicy(int gpuIndex = -1)
+        {
+            try
+            {
+                var policy = NvApiOverclock.GetThermalPolicy(NvApiOverclock.GetGpuHandle(ResolveGpuIndex(gpuIndex)));
+                return new CommandResult(true, "获取成功", new
+                {
+                    policy.CurrentTemp, policy.MinTemp, policy.DefaultTemp, policy.MaxTemp
+                });
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"获取温度策略失败: {ex.Message}");
+            }
+        }
+
+        public CommandResult SetGpuThermalPolicy(int tempCelsius, int gpuIndex = -1)
+        {
+            try
+            {
+                var gpu = NvApiOverclock.GetGpuHandle(ResolveGpuIndex(gpuIndex));
+                NvApiOverclock.SetThermalPolicy(gpu, tempCelsius);
+                var policy = NvApiOverclock.GetThermalPolicy(gpu);
+                return new CommandResult(true, $"温度墙已设置为 {policy.CurrentTemp} ℃");
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"设置温度墙失败: {ex.Message}");
+            }
+        }
+
+        public CommandResult GetGpuFanControl(int gpuIndex = -1)
+        {
+            try
+            {
+                var fan = NvApiOverclock.GetFanControl(NvApiOverclock.GetGpuHandle(ResolveGpuIndex(gpuIndex)));
+                return new CommandResult(true, "获取成功", new
+                {
+                    fan.CoolerCount, fan.CoolerId, fan.ControlMode, fan.Level, fan.Rpm, fan.MaxRpm
+                });
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"获取 GPU 风扇控制失败: {ex.Message}");
+            }
+        }
+
+        public CommandResult SetGpuFanLevel(int percent, int gpuIndex = -1)
+        {
+            try
+            {
+                NvApiOverclock.SetFanControl(NvApiOverclock.GetGpuHandle(ResolveGpuIndex(gpuIndex)), percent);
+                return new CommandResult(true, $"GPU 风扇已设置为手动 {Math.Clamp(percent, 0, 100)}%");
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"设置 GPU 风扇转速失败: {ex.Message}");
+            }
+        }
+
+        public CommandResult SetGpuFanAuto(int gpuIndex = -1)
+        {
+            try
+            {
+                NvApiOverclock.SetFanControl(NvApiOverclock.GetGpuHandle(ResolveGpuIndex(gpuIndex)), -1);
+                return new CommandResult(true, "GPU 风扇已恢复自动调速");
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"恢复 GPU 风扇自动调速失败: {ex.Message}");
+            }
+        }
+
+        private CommandResult? _capabilitiesCache;
+
+        /// <summary>
+        /// 探测本机驱动实际支持哪些超频能力 (部分 OEM 驱动会静默忽略偏移写入, 只能实测定论)。
+        /// 结果按进程缓存, 更换驱动后需重启应用。
+        /// </summary>
+        public CommandResult GetOverclockCapabilities(int gpuIndex = -1)
+        {
+            if (_capabilitiesCache != null)
+                return _capabilitiesCache;
+
+            CommandResult result;
+            try
+            {
+                result = new CommandResult(true, "获取成功", new
+                {
+                    CoreOffset = ProbeCoreOffsetSupported(),
+                    // 现驱动 V/F 偏移表不提供显存通道, 锁频走 nvidia-smi -lmc
+                    MemoryOffset = false,
+                    VoltageBoost = ProbeVoltageBoostSupported(),
+                    ThermalPolicy = ProbeThermalPolicySupported(),
+                    PowerPolicy = ProbePowerPolicySupported(),
+                });
+            }
+            catch (Exception ex)
+            {
+                result = new CommandResult(false, $"能力探测失败: {ex.Message}");
+            }
+            _capabilitiesCache = result;
+            return result;
+        }
+
+        private bool ProbeCoreOffsetSupported()
+        {
+            try
+            {
+                var gpu = NvApiOverclock.GetGpuHandle(ResolveGpuIndex(-1));
+                var points = NvApiOverclock.GetActiveCurvePoints(gpu);
+                if (points.Length == 0)
+                    return false;
+
+                // 用 +100MHz 的单点探测写入区分"驱动忽略"与温度步进噪声 (±30MHz)
+                int point = points[points.Length / 2];
+                int before = NvApiOverclock.GetCurvePointFrequencyMhz(gpu, point);
+                NvApiOverclock.SetClockPointOffset(gpu, point, 100000);
+                System.Threading.Thread.Sleep(80);
+                int after = NvApiOverclock.GetCurvePointFrequencyMhz(gpu, point);
+                NvApiOverclock.SetClockPointOffset(gpu, point, 0);
+                return after - before > 60;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool ProbeVoltageBoostSupported()
+        {
+            try
+            {
+                var gpu = NvApiOverclock.GetGpuHandle(ResolveGpuIndex(-1));
+                int current = NvApiOverclock.GetVoltageBoostPercent(gpu);
+                NvApiOverclock.SetVoltageBoostPercent(gpu, current); // 写回原值, 仅探测接口可用性
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool ProbeThermalPolicySupported()
+        {
+            try
+            {
+                var gpu = NvApiOverclock.GetGpuHandle(ResolveGpuIndex(-1));
+                var policy = NvApiOverclock.GetThermalPolicy(gpu);
+                NvApiOverclock.SetThermalPolicy(gpu, policy.CurrentTemp); // 写回当前值
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool ProbePowerPolicySupported()
+        {
+            try
+            {
+                NvApiOverclock.GetPowerPolicy(NvApiOverclock.GetGpuHandle(ResolveGpuIndex(-1)));
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        #endregion
 
         private int ResolveGpuIndex(int gpuIndex)
         {

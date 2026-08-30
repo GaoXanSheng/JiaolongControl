@@ -146,7 +146,7 @@ const CONFIG_GROUPS: ConfigGroup[] = [
         label: 'PBO 倍率上限选择',
         key: 'PboScalar',
         min: 1,
-        max: 100,
+        max: 10,
         unit: 'x',
         sliderClass: 'slider-purple',
       },

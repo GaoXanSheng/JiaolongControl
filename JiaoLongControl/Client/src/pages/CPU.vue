@@ -442,11 +442,11 @@ async function handleCancel() {
         >
           <div class="flex justify-between items-center">
             <h2 class="text-[13px] font-semibold text-gray-300">核心分布</h2>
-            <button
+            <!-- <button
               class="bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-[10px] text-gray-400 hover:text-white px-2 py-0.5 rounded transition"
             >
               详情
-            </button>
+            </button> -->
           </div>
 
           <div class="space-y-2">

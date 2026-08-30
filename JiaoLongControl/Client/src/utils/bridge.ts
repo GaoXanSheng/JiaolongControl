@@ -84,6 +84,47 @@ export interface RangeInfo {
   Max: number
 }
 
+export interface ClockOffsetRangeInfo {
+  Core: RangeInfo
+  Memory: RangeInfo
+}
+
+export interface ClockOffsetsInfo {
+  CoreMhz: number
+  MemoryMhz: number
+}
+
+export interface PowerPolicyInfo {
+  CurrentWatts: number
+  MinWatts: number
+  DefaultWatts: number
+  MaxWatts: number
+}
+
+export interface ThermalPolicyInfo {
+  CurrentTemp: number
+  MinTemp: number
+  DefaultTemp: number
+  MaxTemp: number
+}
+
+export interface GpuFanControlInfo {
+  CoolerCount: number
+  CoolerId: number
+  ControlMode: number
+  Level: number
+  Rpm: number
+  MaxRpm: number
+}
+
+export interface OverclockCapabilities {
+  CoreOffset: boolean
+  MemoryOffset: boolean
+  VoltageBoost: boolean
+  ThermalPolicy: boolean
+  PowerPolicy: boolean
+}
+
 export interface SmuTelemetry {
   Ppt: number
   Tdc: number | null
@@ -182,6 +223,22 @@ export interface BridgeApi {
     LockMemoryClock(freq: number, gpuIndex?: number): HostBridgePromise<void>
     ResetMemoryClock(gpuIndex?: number): HostBridgePromise<void>
     SetPowerLimit(watts: number, gpuIndex?: number): HostBridgePromise<void>
+    GetClockOffsetRange(gpuIndex?: number): HostBridgePromise<ClockOffsetRangeInfo>
+    GetClockOffsets(gpuIndex?: number): HostBridgePromise<ClockOffsetsInfo>
+    ApplyClockOffsets(coreMhz: number, memoryMhz: number, gpuIndex?: number): HostBridgePromise<void>
+    SetCoreClockOffset(mhz: number, gpuIndex?: number): HostBridgePromise<void>
+    SetMemoryClockOffset(mhz: number, gpuIndex?: number): HostBridgePromise<void>
+    ResetClockOffsets(gpuIndex?: number): HostBridgePromise<void>
+    GetVoltageBoostPercent(gpuIndex?: number): HostBridgePromise<number>
+    SetVoltageBoostPercent(percent: number, gpuIndex?: number): HostBridgePromise<void>
+    GetGpuPowerPolicy(gpuIndex?: number): HostBridgePromise<PowerPolicyInfo>
+    SetGpuPowerPolicy(watts: number, gpuIndex?: number): HostBridgePromise<void>
+    GetGpuThermalPolicy(gpuIndex?: number): HostBridgePromise<ThermalPolicyInfo>
+    SetGpuThermalPolicy(tempCelsius: number, gpuIndex?: number): HostBridgePromise<void>
+    GetGpuFanControl(gpuIndex?: number): HostBridgePromise<GpuFanControlInfo>
+    SetGpuFanLevel(percent: number, gpuIndex?: number): HostBridgePromise<void>
+    SetGpuFanAuto(gpuIndex?: number): HostBridgePromise<void>
+    GetOverclockCapabilities(gpuIndex?: number): HostBridgePromise<OverclockCapabilities>
   }
   Power: {
     SetCPUMaxFrequency(mhz: number): HostBridgePromise<void>
@@ -261,7 +318,6 @@ export const raw: BridgeApi = new Proxy({} as BridgeApi, {
     const bridge = getBridge()
     const member = (bridge as unknown as Record<string | symbol, unknown>)[prop]
     if (member !== undefined) return member as BridgeApi[keyof BridgeApi]
-    // 桥接代理可能缓存了旧的成员列表 (例如新增控制器属性), 重新解析一次桥接对象再取
     cachedBridge = null
     return getBridge()[prop as keyof BridgeApi]
   },
@@ -271,7 +327,7 @@ export async function call<T>(promise: HostBridgePromise<T>): Promise<CommandRes
   return JSON.parse(await promise.toJson())
 }
 const CACHE_TTL_MS = 1000 // 动态监控类：1 秒内复用，保证实时性
-const STATIC_TTL_MS = 30 * 1000 // 静态信息类（硬件名/驱动版本等）：30S 内复用
+const STATIC_TTL_MS = 30 * 1000 // 静态信息类：30S 内复用
 
 const readCache = new Map<string, { result: unknown; ts: number }>()
 
@@ -432,6 +488,36 @@ export const NvidiaGpu = {
   ResetMemoryClock: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetMemoryClock(gpuIndex)),
   SetPowerLimit: (watts: number, gpuIndex?: number) =>
     call(raw.NvidiaGpu.SetPowerLimit(watts, gpuIndex)),
+  GetClockOffsetRange: (gpuIndex?: number) =>
+    cached(STATIC_TTL_MS, `NvidiaGpu.GetClockOffsetRange(${gpuIndex ?? ''})`, () =>
+      call(raw.NvidiaGpu.GetClockOffsetRange(gpuIndex)),
+    ),
+  GetClockOffsets: (gpuIndex?: number) => call(raw.NvidiaGpu.GetClockOffsets(gpuIndex)),
+  ApplyClockOffsets: (coreMhz: number, memoryMhz: number, gpuIndex?: number) =>
+    call(raw.NvidiaGpu.ApplyClockOffsets(coreMhz, memoryMhz, gpuIndex ?? -1)),
+  SetCoreClockOffset: (mhz: number, gpuIndex?: number) =>
+    call(raw.NvidiaGpu.SetCoreClockOffset(mhz, gpuIndex)),
+  SetMemoryClockOffset: (mhz: number, gpuIndex?: number) =>
+    call(raw.NvidiaGpu.SetMemoryClockOffset(mhz, gpuIndex)),
+  ResetClockOffsets: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetClockOffsets(gpuIndex)),
+  GetVoltageBoostPercent: (gpuIndex?: number) =>
+    call(raw.NvidiaGpu.GetVoltageBoostPercent(gpuIndex)),
+  SetVoltageBoostPercent: (percent: number, gpuIndex?: number) =>
+    call(raw.NvidiaGpu.SetVoltageBoostPercent(percent, gpuIndex)),
+  GetGpuPowerPolicy: (gpuIndex?: number) => call(raw.NvidiaGpu.GetGpuPowerPolicy(gpuIndex)),
+  SetGpuPowerPolicy: (watts: number, gpuIndex?: number) =>
+    call(raw.NvidiaGpu.SetGpuPowerPolicy(watts, gpuIndex)),
+  GetGpuThermalPolicy: (gpuIndex?: number) => call(raw.NvidiaGpu.GetGpuThermalPolicy(gpuIndex)),
+  SetGpuThermalPolicy: (tempCelsius: number, gpuIndex?: number) =>
+    call(raw.NvidiaGpu.SetGpuThermalPolicy(tempCelsius, gpuIndex)),
+  GetGpuFanControl: (gpuIndex?: number) => call(raw.NvidiaGpu.GetGpuFanControl(gpuIndex)),
+  SetGpuFanLevel: (percent: number, gpuIndex?: number) =>
+    call(raw.NvidiaGpu.SetGpuFanLevel(percent, gpuIndex)),
+  SetGpuFanAuto: (gpuIndex?: number) => call(raw.NvidiaGpu.SetGpuFanAuto(gpuIndex)),
+  GetOverclockCapabilities: (gpuIndex?: number) =>
+    cached(STATIC_TTL_MS, `NvidiaGpu.GetOverclockCapabilities(${gpuIndex ?? ''})`, () =>
+      call(raw.NvidiaGpu.GetOverclockCapabilities(gpuIndex)),
+    ),
 }
 
 export const SystemInfo = {
