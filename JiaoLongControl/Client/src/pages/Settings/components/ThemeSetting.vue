@@ -14,8 +14,8 @@ const options: Array<{ value: ThemeMode; label: string }> = [
   { value: 'system', label: '跟随系统' },
 ]
 
-// 配置未加载完成前按默认深色展示
-const current = computed(() => configStore.config?.App.Theme ?? 'dark')
+// 配置未加载完成前按默认"跟随系统"展示
+const current = computed(() => configStore.config?.App.Theme ?? 'system')
 
 function select(mode: ThemeMode) {
   if (!configStore.config || current.value === mode) return
@@ -29,7 +29,7 @@ function select(mode: ThemeMode) {
 <template>
   <setting-card-component
     title="界面主题"
-    description="选择软件界面配色：白色主题、深色主题（当前默认），或跟随 Windows 系统深浅色模式自动切换，切换后立即生效。"
+    description="选择软件界面配色：白色主题、深色主题，或跟随 Windows 系统深浅色模式自动切换（默认），切换后立即生效。"
   >
     <template #extra>
       <div class="flex items-center gap-1 p-1 rounded-xl bg-ink/[0.04] border border-ink/[0.06]">

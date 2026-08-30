@@ -5,10 +5,16 @@
     <title>JiaoLong Control Console</title>
     <script>
       // 启动防闪烁: 必须先于任何样式/渲染执行, 按 localStorage 缓存恢复主题
-      // (由 src/theme/theme.ts 在每次解析结果变化时写入; 无缓存默认深色)
+      // (由 src/theme/theme.ts 在每次解析结果变化时写入); 无缓存时跟随系统深浅色
       try {
         var __jlTheme = localStorage.getItem('jl-theme')
-        document.documentElement.dataset.theme = __jlTheme === 'light' ? 'light' : 'dark'
+        if (__jlTheme !== 'light' && __jlTheme !== 'dark') {
+          __jlTheme =
+            window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light'
+        }
+        document.documentElement.dataset.theme = __jlTheme
       } catch (e) {
         document.documentElement.dataset.theme = 'dark'
       }

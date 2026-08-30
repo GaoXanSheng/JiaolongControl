@@ -66,8 +66,8 @@ function onSystemChange() {
 }
 
 // 模块加载时先用缓存恢复一次(与 index.html 内联脚本设置的 data-theme 保持一致),
-// 保证 canvas 绘图等 JS 逻辑在首帧前就能拿到正确的主题
-applyResolved(readStoredTheme() ?? 'dark')
+// 无缓存时跟随系统深浅色; 保证 canvas 绘图等 JS 逻辑在首帧前就能拿到正确的主题
+applyResolved(readStoredTheme() ?? resolve('system'))
 
 export function applyTheme(mode: ThemeMode) {
   currentMode = mode
