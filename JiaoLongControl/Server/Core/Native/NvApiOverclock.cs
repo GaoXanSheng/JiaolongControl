@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 namespace JiaoLongControl.Server.Core.Native
 {
     /// <summary>
-    /// NVIDIA 超频私有 NVAPI 接口封装（Afterburner 同款路径，全程用户态，无需内核驱动）。
+    /// NVIDIA 超频私有 NVAPI 接口封装。
     /// 结构体布局与 NvAPIWrapper (falahati, MIT) 反汇编布局一致，函数 ID 为 NVAPI 私有 ID。
     /// </summary>
     internal static class NvApiOverclock

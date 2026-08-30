@@ -237,22 +237,28 @@ async function handleApplyAdvanced() {
   if (!GPUData.value) return
   loading.value = true
   try {
-    const coreRes = await NvidiaGpu.SetCoreClockOffset(gpuClockOffset.value)
-    if (!coreRes.Success) {
-      Message.error(coreRes.Message || '核心频率偏移失败')
-      return
+    if (ocCaps.value.CoreOffset) {
+      const coreRes = await NvidiaGpu.SetCoreClockOffset(gpuClockOffset.value)
+      if (!coreRes.Success) {
+        Message.error(coreRes.Message || '核心频率偏移失败')
+        return
+      }
     }
-    const memRes = await NvidiaGpu.SetMemoryClockOffset(memClockOffset.value)
-    if (!memRes.Success) {
-      Message.error(memRes.Message || '显存频率偏移失败')
-      return
+    if (ocCaps.value.MemoryOffset) {
+      const memRes = await NvidiaGpu.SetMemoryClockOffset(memClockOffset.value)
+      if (!memRes.Success) {
+        Message.error(memRes.Message || '显存频率偏移失败')
+        return
+      }
     }
-    const voltRes = await NvidiaGpu.SetVoltageBoostPercent(voltageBoostPercent.value)
-    if (!voltRes.Success) {
-      Message.error(voltRes.Message || '核心电压提升设置失败')
-      return
+    if (ocCaps.value.VoltageBoost) {
+      const voltRes = await NvidiaGpu.SetVoltageBoostPercent(voltageBoostPercent.value)
+      if (!voltRes.Success) {
+        Message.error(voltRes.Message || '核心电压提升设置失败')
+        return
+      }
     }
-    if (tempWall.value !== thermalPolicy.value.CurrentTemp) {
+    if (ocCaps.value.ThermalPolicy && tempWall.value !== thermalPolicy.value.CurrentTemp) {
       const tempRes = await NvidiaGpu.SetGpuThermalPolicy(tempWall.value)
       if (!tempRes.Success) {
         Message.error(tempRes.Message || '温度墙设置失败')
@@ -279,17 +285,24 @@ async function handleApplyAdvanced() {
 async function handleResetAdvanced() {
   loading.value = true
   try {
-    const res = await NvidiaGpu.ResetClockOffsets()
-    if (!res.Success) {
-      Message.error(res.Message || '超频重置失败')
-      return
+    if (ocCaps.value.CoreOffset || ocCaps.value.MemoryOffset) {
+      const res = await NvidiaGpu.ResetClockOffsets()
+      if (!res.Success) {
+        Message.error(res.Message || '超频重置失败')
+        return
+      }
     }
-    const voltRes = await NvidiaGpu.SetVoltageBoostPercent(0)
-    if (!voltRes.Success) {
-      Message.error(voltRes.Message || '电压提升重置失败')
-      return
+    if (ocCaps.value.VoltageBoost) {
+      const voltRes = await NvidiaGpu.SetVoltageBoostPercent(0)
+      if (!voltRes.Success) {
+        Message.error(voltRes.Message || '电压提升重置失败')
+        return
+      }
     }
-    if (tempWall.value !== thermalPolicy.value.DefaultTemp) {
+    if (
+      ocCaps.value.ThermalPolicy &&
+      tempWall.value !== thermalPolicy.value.DefaultTemp
+    ) {
       // 温度墙恢复默认失败不阻塞整体重置
       const tempRes = await NvidiaGpu.SetGpuThermalPolicy(thermalPolicy.value.DefaultTemp)
       if (tempRes.Success) thermalPolicy.value.CurrentTemp = thermalPolicy.value.DefaultTemp
@@ -462,10 +475,22 @@ async function handleResetAdvanced() {
           class="bg-[#121320]/60 backdrop-blur-md border border-white/[0.05] rounded-xl p-5 shadow-lg space-y-5"
         >
           <div class="space-y-5">
+            <div
+              v-if="!ocCaps.CoreOffset || !ocCaps.MemoryOffset || !ocCaps.VoltageBoost"
+              class="text-[11px] text-amber-400/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2"
+            >
+              本机驱动已锁定部分超频能力 (OEM 限制)，对应滑条已置灰。可用「常规设置」的锁频拉满睿频代替。
+            </div>
+
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1"
                   >核心频率偏移
+                  <span
+                    v-if="!ocCaps.CoreOffset"
+                    class="text-[9px] text-rose-400/90 border border-rose-500/30 rounded px-1"
+                    >驱动已锁定</span
+                  >
                   <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span
                 >
                 <span class="text-purple-400 font-medium font-mono"
@@ -476,6 +501,7 @@ async function handleResetAdvanced() {
                 v-model="gpuClockOffset"
                 :min="offsetRange.Core.Min"
                 :max="offsetRange.Core.Max"
+                :disabled="!ocCaps.CoreOffset"
                 class="w-full"
               />
             </div>
@@ -484,6 +510,11 @@ async function handleResetAdvanced() {
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1"
                   >显存频率偏移
+                  <span
+                    v-if="!ocCaps.MemoryOffset"
+                    class="text-[9px] text-rose-400/90 border border-rose-500/30 rounded px-1"
+                    >不支持</span
+                  >
                   <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span
                 >
                 <span class="text-purple-400 font-medium font-mono"
@@ -494,6 +525,7 @@ async function handleResetAdvanced() {
                 v-model="memClockOffset"
                 :min="offsetRange.Memory.Min"
                 :max="offsetRange.Memory.Max"
+                :disabled="!ocCaps.MemoryOffset"
                 class="w-full"
               />
             </div>
@@ -502,19 +534,35 @@ async function handleResetAdvanced() {
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1"
                   >核心电压提升
+                  <span
+                    v-if="!ocCaps.VoltageBoost"
+                    class="text-[9px] text-rose-400/90 border border-rose-500/30 rounded px-1"
+                    >驱动已锁定</span
+                  >
                   <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span
                 >
                 <span class="text-purple-400 font-medium font-mono"
                   >+{{ voltageBoostPercent }} %</span
                 >
               </div>
-              <a-slider v-model="voltageBoostPercent" :min="0" :max="100" class="w-full" />
+              <a-slider
+                v-model="voltageBoostPercent"
+                :min="0"
+                :max="100"
+                :disabled="!ocCaps.VoltageBoost"
+                class="w-full"
+              />
             </div>
 
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1"
                   >温度墙上限
+                  <span
+                    v-if="!ocCaps.ThermalPolicy"
+                    class="text-[9px] text-rose-400/90 border border-rose-500/30 rounded px-1"
+                    >不支持</span
+                  >
                   <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span
                 >
                 <span class="text-purple-400 font-medium font-mono">{{ tempWall }} ℃</span>
@@ -523,6 +571,7 @@ async function handleResetAdvanced() {
                 v-model="tempWall"
                 :min="thermalPolicy.MinTemp"
                 :max="thermalPolicy.MaxTemp"
+                :disabled="!ocCaps.ThermalPolicy"
                 class="w-full"
               />
             </div>
