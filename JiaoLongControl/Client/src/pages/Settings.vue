@@ -4,14 +4,10 @@ import LogoLight from './Settings/components/LogoLight.vue'
 import GPUDirectConnection from './Settings/components/GPUDirectConnection.vue'
 import PawnIODriverMode from './Settings/components/PawnIODriverMode.vue'
 import ThemeSetting from './Settings/components/ThemeSetting.vue'
+import BootAutoStart from './Settings/components/BootAutoStart.vue'
 
 // 布尔开关卡片配置: title/description + config JSON 路径, 由 SettingToggle 统一渲染
 const toggleCards = [
-  {
-    title: '开机自启',
-    description: '允许 JiaoLongControl 随 Windows 操作系统启动而自动运行，确保各类硬件优化策略与自定义风扇曲线实时生效。',
-    configPath: 'App.BootMinimized',
-  },
   {
     title: '自启动高级风扇控制系统',
     description: '启用后，软件将在后台实时监控硬件温度，并依据【风扇曲线】页面中用户自定义的策略来动态调整风扇转速',
@@ -63,6 +59,7 @@ const toggleCards = [
       <GPUDirectConnection />
 
       <!-- 自启动与自动应用策略 -->
+      <BootAutoStart />
       <SettingToggle
         v-for="card in toggleCards"
         :key="card.configPath"
