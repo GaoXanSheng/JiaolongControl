@@ -208,6 +208,14 @@ namespace JiaoLongControl.Server
                 catch (Exception ex)
                 {
                     Logger.Error($"WebView2 初始化失败（第 {attempt} 次）: {ex.Message}");
+                    
+                    if (IsWebView2RuntimeMissing(ex))
+                    {
+                        if (generation == _webViewGeneration && !_webViewDestroyed)
+                            PromptWebView2RuntimeMissing();
+                        return;
+                    }
+
                     if (attempt < 3)
                     {
                         await Task.Delay(1500 * attempt); // 1.5s / 3s / 5s
@@ -228,6 +236,54 @@ namespace JiaoLongControl.Server
 
             // 阶段二：页面导航 + 失败重试（最多 3 次）
             await RetryNavigationAsync(view, generation);
+        }
+        
+        private static bool IsWebView2RuntimeMissing(Exception ex)
+        {
+            for (Exception? e = ex; e != null; e = e.InnerException)
+            {
+                if (e is WebView2RuntimeNotFoundException)
+                    return true;
+            }
+            return false;
+        }
+        
+        private void PromptWebView2RuntimeMissing()
+        {
+            var result = MessageBox.Show(
+                this,
+                "未检测到 Microsoft Edge WebView2 Runtime，JiaoLongControl 的界面需要它才能显示。\n\n" +
+                "是否立即前往微软官网下载并安装？\n（安装完成后回到本窗口点击「重新加载」即可继续，无需重启软件）",
+                "缺少 WebView2 Runtime",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning
+            );
+
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo(
+                        "https://go.microsoft.com/fwlink/p/?LinkId=2124703")
+                    {
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("打开 WebView2 Runtime 下载页失败", ex);
+                }
+                ShowWebViewError(
+                    "未检测到 Microsoft Edge WebView2 Runtime。\n请在浏览器中完成下载与安装，之后点击「重新加载」继续。");
+            }
+            else
+            {
+                _allowClose = true;
+                _isShuttingDown = true;
+                _taskbarIcon.Dispose();
+                DestroyWebView();
+                Application.Current.Shutdown();
+            }
         }
 
         /// <summary>导航并等待 NavigationCompleted，返回是否成功</summary>
