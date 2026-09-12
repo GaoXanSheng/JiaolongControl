@@ -16,36 +16,36 @@ public enum FanType
 [ClassInterface(ClassInterfaceType.AutoDual)]
 public class AutoFanControl : IDisposable
 {
-    private volatile bool _isRunning;
-    private readonly ILog Logger = LogManager.GetLogger(typeof(AutoFanControl));
-    private CancellationTokenSource? _cts;
-    private Task? _controlTask;
     private const int IntervalMs = 1000;
-    
+
     private const int RPM_UNIT_DIVISOR = 100; // 1 unit = 100 RPM
     private const int MAX_FAN_BYTE = 68;      // 68 * 100 = 6800 RPM
     private const int MIN_FAN_BYTE = 0;       // 0 RPM
-    
-    private const float AlphaUp = 0.35f;   
-    private const float AlphaDown = 0.05f; 
-    private const double MaxRampUpRpmPerSec = 800.0;  
-    private const double MaxRampDownRpmPerSec = 150.0; 
+
+    private const float AlphaUp = 0.35f;
+    private const float AlphaDown = 0.05f;
+    private const double MaxRampUpRpmPerSec = 800.0;
+    private const double MaxRampDownRpmPerSec = 150.0;
     private const double MaxRampUpBytePerSec = MaxRampUpRpmPerSec / RPM_UNIT_DIVISOR;
     private const double MaxRampDownBytePerSec = MaxRampDownRpmPerSec / RPM_UNIT_DIVISOR;
-    private const double SharedHeatPipeSyncRatio = 0.85; 
+    private const double SharedHeatPipeSyncRatio = 0.85;
+    private readonly ILog Logger = LogManager.GetLogger(typeof(AutoFanControl));
 
-    private class FanState
-    {
-        public float SmoothedTemp { get; set; } = -1f;
-        public double CurrentSpeedByte { get; set; } = -1f;
-        public int LastAppliedByte { get; set; } = -1;
-    }
-    
     private readonly Dictionary<FanType, FanState> _states = new()
     {
         { FanType.CPU, new FanState() },
         { FanType.GPU, new FanState() }
     };
+
+    private Task? _controlTask;
+    private CancellationTokenSource? _cts;
+    private volatile bool _isRunning;
+
+    public void Dispose()
+    {
+        Stop();
+        _cts?.Dispose();
+    }
 
     public CommandResult IsRunning()
     {
@@ -149,7 +149,7 @@ public class AutoFanControl : IDisposable
             Logger.Info("Auto Fan Control stopped.");
         }
     }
-    
+
     private float UpdateSmoothedTemp(FanType type, float rawTemp)
     {
         FanState state;
@@ -166,6 +166,7 @@ public class AutoFanControl : IDisposable
         }
         return state.SmoothedTemp;
     }
+
     private void ProcessAndApplyFanSpeed(FanType type, int targetSpeedByte)
     {
         FanState state;
@@ -204,15 +205,15 @@ public class AutoFanControl : IDisposable
 
         state.LastAppliedByte = finalSpeedByte;
     }
+
     private int CalculateFanSpeed(float currentTemp, FanType type)
     {
         var config = Bridge.Instance.Config.Fan;
-        if (config == null) return 25; 
-        
         List<FanPoint> configPoints = type == FanType.CPU ? config.CpuFanCurve : config.GpuFanCurve;
-        if (configPoints == null || configPoints.Count == 0)
+        if (configPoints.Count == 0)
+        {
             return 25; 
-            
+        }
         var sortedPoints = configPoints.OrderBy(p => p.temp).ToList();
         double targetRpm;
         if (currentTemp <= sortedPoints.First().temp)
@@ -243,9 +244,10 @@ public class AutoFanControl : IDisposable
         return Math.Clamp(targetByte, MIN_FAN_BYTE, MAX_FAN_BYTE);
     }
 
-    public void Dispose()
+    private class FanState
     {
-        Stop();
-        _cts?.Dispose();
+        public float SmoothedTemp { get; set; } = -1f;
+        public double CurrentSpeedByte { get; set; } = -1f;
+        public int LastAppliedByte { get; set; } = -1;
     }
 }

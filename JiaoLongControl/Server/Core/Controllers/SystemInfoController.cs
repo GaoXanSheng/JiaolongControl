@@ -6,20 +6,12 @@ namespace JiaoLongControl.Server.Core.Controllers
 {
     public class SystemInfoController
     {
-        public class SystemOverview
-        {
-            public string CpuName { get; set; } = "Unknown CPU";
-            public string GpuName { get; set; } = "Unknown GPU";
-            public string OsVersion { get; set; } = "Unknown OS";
-            public string MemoryInfo { get; set; } = "Unknown Memory";
-        }
-
         /// <summary>使用系统默认浏览器打开外部链接（仅允许 http/https）</summary>
         public CommandResult OpenUrl(string url)
         {
             try
             {
-                url = url?.Trim() ?? "";
+                url = url.Trim() ?? "";
                 if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
                     (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
                 {
@@ -116,6 +108,14 @@ namespace JiaoLongControl.Server.Core.Controllers
             {
                 return new CommandResult(false, $"Failed to get system info: {ex.Message}");
             }
+        }
+
+        public class SystemOverview
+        {
+            public string CpuName { get; set; } = "Unknown CPU";
+            public string GpuName { get; set; } = "Unknown GPU";
+            public string OsVersion { get; set; } = "Unknown OS";
+            public string MemoryInfo { get; set; } = "Unknown Memory";
         }
     }
 }

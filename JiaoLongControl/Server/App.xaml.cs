@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Windows;
-using JiaoLongControl.Server.Interop;
 using JiaoLongControl.Server.Core.Utils;
+using JiaoLongControl.Server.Interop;
 using log4net;
 using log4net.Config;
 
@@ -42,7 +42,7 @@ namespace JiaoLongControl.Server
             AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             {
                 Logger.Fatal("AppDomain 未处理异常（应用即将终止）: " +
-                             (args.ExceptionObject as Exception)?.ToString(), args.ExceptionObject as Exception);
+                             (args.ExceptionObject as Exception), args.ExceptionObject as Exception);
                 Cleanup();
             };
 

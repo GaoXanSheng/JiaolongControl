@@ -1,6 +1,4 @@
-﻿using System;
-using System.ComponentModel;
-using System.IO;
+﻿using System.IO;
 using System.Net.Http;
 using System.Windows;
 
@@ -14,9 +12,6 @@ namespace JiaoLongControl.Server
             SkipVersion,
             Later
         }
-
-        public UpdateChoice Result { get; private set; } = UpdateChoice.Later;
-        public string DownloadedFilePath { get; private set; } = "";
 
         private readonly string _downloadUrl;
         private CancellationTokenSource? _cts;
@@ -32,6 +27,9 @@ namespace JiaoLongControl.Server
                 ? "此版本无更新日志。"
                 : releaseNotes;
         }
+
+        public UpdateChoice Result { get; private set; } = UpdateChoice.Later;
+        public string DownloadedFilePath { get; private set; } = "";
 
         private async void BtnUpdate_Click(object sender, RoutedEventArgs e)
         {
