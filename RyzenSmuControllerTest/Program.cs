@@ -108,6 +108,28 @@ try
                 break;
             }
 
+            case "--smu-cmd-read":
+            {
+                if (!TryParseHexArg(args, ref i, out uint cmdHexR)) break;
+                i--; // 同 --smu-cmd：回退一位让下一次调用读到 arg
+                if (!TryParseHexArg(args, ref i, out uint argHexR)) break;
+                if (i >= args.Length) { LogError("参数 --smu-cmd-read 缺少邮箱类型 (mp1/rsmu)"); break; }
+                bool isMp1R = args[i].Equals("mp1", StringComparison.OrdinalIgnoreCase);
+                if (!isMp1R && !args[i].Equals("rsmu", StringComparison.OrdinalIgnoreCase))
+                {
+                    LogError($"参数 --smu-cmd-read 邮箱类型无效: '{args[i]}' (应为 mp1 或 rsmu)");
+                    break;
+                }
+                i++;
+                string rawNameR = $"SMU Raw 0x{cmdHexR:X2} {(isMp1R ? "MP1" : "RSMU")}";
+                exitCode |= RunCommand(controller,
+                    () => controller.SendRaw(cmdHexR, argHexR, isMp1R, rawNameR),
+                    $"SendRaw(cmd=0x{cmdHexR:X}, arg=0x{argHexR:X}, {(isMp1R ? "MP1" : "RSMU")})");
+                ulong[] retArgs = controller.ReadMailboxArgs(isMp1R);
+                Log("      返回参数槽: " + string.Join(" ", retArgs.Select(a => $"0x{a:X}")));
+                break;
+            }
+
             case "--stapm":
                 if (!TryParseDoubleArg(args, ref i, out double stapmW, 0, 200)) break;
                 exitCode |= RunCommand(controller,
@@ -639,6 +661,8 @@ SMU 命令行测试工具 — 支持所有 RyzenSmuController 操作
   --curve-core <idx> <val> 单核 Curve Optimizer (例: --curve-core 0 -15)
   --smu-cmd <cmd> <arg> <mp1|rsmu>
                            调试: 发送原始 SMU 邮箱命令 (hex, 例: --smu-cmd 6 FFFEC rsmu)
+  --smu-cmd-read <cmd> <arg> <mp1|rsmu>
+                           调试: 发送命令并回读邮箱参数槽 (例: GetDldoPsmMargin: --smu-cmd-read D5 1000000 rsmu)
 
 === 功耗限制 ===
   --stapm <watts>          STAPM Limit (W)
