@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -63,6 +62,11 @@ namespace JiaoLongControl.Server
         // 悬停柔光状态: 光斑位置为胶囊归一化坐标, 轮询中做指数平滑
         private Point _lightPos = new(0.5, 0.5);
         private Point _lightTarget = new(0.5, 0.5);
+
+        // ===== 标题平移: 媒体 OSD 长曲名超出可视区时整体前移, 末字完整显示后停止 =====
+
+        // 入场/恢复动画期间的延迟测量计时器 (过早测量可视区宽度不正确)
+        private DispatcherTimer? _marqueeDelayTimer;
 
         // 按住/拖动交互控件期间不触发退场 (光标可能暂时离开胶囊判定区)
         private bool _pressing;
@@ -154,6 +158,7 @@ namespace JiaoLongControl.Server
                 IconGlyph.Text = item.IconGlyph;
                 TitleText.Text = item.Title;
                 SubtitleText.Text = item.Subtitle;
+                StopTitleMarquee(); // 新内容先复位标题平移, 避免带着上一首的偏移/动画显示
 
                 // PNG 图标优先 (强调色遮罩渲染), 加载失败回退字形
                 var iconSource = TryLoadIconImage(item.IconImage);
@@ -184,31 +189,34 @@ namespace JiaoLongControl.Server
                         break;
                 }
 
+                int marqueeDelayMs;
                 if (!IsVisible)
                 {
                     // 从隐藏状态首次显示: 播放完整进场动画
                     Show();
                     ReassertTopmost();
                     PlayEntry();
+                    // 胶囊宽度由入场动画从圆形展开到满宽, 必须等展开结束再测可视区
+                    marqueeDelayMs = (int)_animMs + 150;
                 }
                 else if (wasExiting)
                 {
                     // 退场动画进行中再次触发: 从当前形态快速恢复驻留
                     ReassertTopmost();
                     RecoverFromExit();
+                    marqueeDelayMs = 350; // 恢复动画约 200ms
                 }
                 else
                 {
                     // 已处于驻留状态: 仅刷新内容与计时, 不重播进场动画 (避免闪烁)
                     ReassertTopmost();
+                    marqueeDelayMs = 0;
                 }
 
                 // 穿透切换放在 Show 之后: 首次显示时窗口句柄此时才存在
                 SetClickThrough(!interactive);
                 StartHoverTracking();
-
-                // 标题跑马灯需等布局完成拿到可视区宽度 (Loaded 优先级在布局后执行)
-                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, UpdateTitleMarquee);
+                ScheduleTitleMarquee(marqueeDelayMs);
 
                 // 驻留计时 = 入场时长 + 显示时长: 显示时长为完全展开后的纯驻留时间,
                 // 到点后播放与入场等长的出场动画 (悬停挂起, 离开后按显示时长重新计时)
@@ -252,6 +260,7 @@ namespace JiaoLongControl.Server
             IconImage.Width = 18 * scale;
             IconImage.Height = 18 * scale;
             TitleText.FontSize = 12 * scale;
+            TitleCanvas.Height = Math.Ceiling(TitleText.FontSize * 1.5); // Canvas 不自动撑开, 需显式行高
             SubtitleText.FontSize = 10 * scale;
             SubtitleText.Margin = new Thickness(0, 2 * scale, 0, 0);
 
@@ -469,6 +478,7 @@ namespace JiaoLongControl.Server
                 {
                     StopHoverTracking();
                     SetClickThrough(true); // 隐藏后恢复穿透, 避免空窗口残留挡鼠标
+                    _marqueeDelayTimer?.Stop();
                     StopTitleMarquee(); // 停掉跑马灯, 避免隐藏后空转动画
                     Hide();
                 }
@@ -851,9 +861,30 @@ namespace JiaoLongControl.Server
             Dispatcher.BeginInvoke(() => SubtitleText.Text = subtitle);
         }
 
-        // ===== 标题跑马灯: 媒体 OSD 长曲名超出可视区时往返滚动 (替代省略号截断) =====
+        /// <summary>等布局/展开动画稳定后测量标题: 仅媒体 OSD 且溢出时启用平移。
+        /// delayMs=0 表示布局已稳定, 排一次 Loaded 优先级即可。</summary>
+        private void ScheduleTitleMarquee(int delayMs)
+        {
+            _marqueeDelayTimer?.Stop();
+            if (delayMs > 0)
+            {
+                _marqueeDelayTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(delayMs) };
+                _marqueeDelayTimer.Tick += (_, _) =>
+                {
+                    _marqueeDelayTimer?.Stop();
+                    UpdateTitleMarquee();
+                };
+                _marqueeDelayTimer.Start();
+            }
+            else
+            {
+                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, UpdateTitleMarquee);
+            }
+        }
 
-        /// <summary>布局完成后测量标题: 仅媒体 OSD 且溢出时启用滚动, 其余情况恢复省略号。</summary>
+        /// <summary>初始化时检测歌名是否超过显示区域: 超过则整体向前平移,
+        /// 直到最后一个字符完整显示后停止 (FillBehavior.HoldEnd 钉在终点)。
+        /// TitleText 在 Canvas 中不受宽度约束, ActualWidth 即自然全宽, 无测量偏差。</summary>
         private void UpdateTitleMarquee()
         {
             StopTitleMarquee();
@@ -861,53 +892,30 @@ namespace JiaoLongControl.Server
             var viewport = TitleClip.ActualWidth;
             if (viewport <= 1) return;
 
-            var textWidth = MeasureTitleWidth();
+            var textWidth = TitleText.ActualWidth;
             var overflow = textWidth - viewport;
-            if (overflow <= 4) return; // 未溢出: 保持省略号方案 (不滚动)
+            if (overflow <= 2) return; // 未超过显示区域: 静止完整显示
 
-            TitleText.TextTrimming = TextTrimming.None;
-            TitleText.Width = textWidth + 2; // 显式全宽让文本可滚出裁剪区, +2 防末字符被裁
-            StartTitleMarquee(overflow + 2);
-        }
-
-        /// <summary>按当前字体测量标题全宽 (DIP)。FormattedText 与布局排版无关, 可在裁剪容器外测量。</summary>
-        private double MeasureTitleWidth()
-        {
-            var typeface = new Typeface(
-                TitleText.FontFamily, TitleText.FontStyle, TitleText.FontWeight, TitleText.FontStretch);
-            var formatted = new FormattedText(
-                TitleText.Text,
-                CultureInfo.CurrentCulture,
-                FlowDirection.LeftToRight,
-                typeface,
-                TitleText.FontSize,
-                Brushes.Black,
-                VisualTreeHelper.GetDpi(this).PixelsPerDip);
-            return formatted.Width;
-        }
-
-        /// <summary>往返滚动: 滚到末尾 → 停顿 → 滚回开头 → 停顿, 无限循环。</summary>
-        private void StartTitleMarquee(double overflow)
-        {
-            var scrollMs = Math.Max(1000, (int)(overflow / 25.0 * 1000)); // 约 25 DIP/s 的从容速度
-            const int holdMs = 700;
-            var ease = new SineEase { EasingMode = EasingMode.EaseInOut };
-            var anim = new DoubleAnimationUsingKeyFrames { RepeatBehavior = RepeatBehavior.Forever };
-            anim.KeyFrames.Add(new LinearDoubleKeyFrame(0, TimeSpan.Zero));
-            anim.KeyFrames.Add(new EasingDoubleKeyFrame(-overflow, TimeSpan.FromMilliseconds(scrollMs), ease));
-            anim.KeyFrames.Add(new DiscreteDoubleKeyFrame(-overflow, TimeSpan.FromMilliseconds(scrollMs + holdMs)));
-            anim.KeyFrames.Add(new EasingDoubleKeyFrame(0, TimeSpan.FromMilliseconds(scrollMs * 2 + holdMs), ease));
-            anim.KeyFrames.Add(new DiscreteDoubleKeyFrame(0, TimeSpan.FromMilliseconds(scrollMs * 2 + holdMs * 2)));
+            // 平移终点: 最后一个字符完整进入可视区; 12px 余量抵消 Display 模式逐字取整的累计变宽
+            var target = -(overflow + 12);
+            var scrollMs = Math.Max(1200, (int)((overflow + 12) / 30.0 * 1000));
+            var anim = new DoubleAnimation(0, target, TimeSpan.FromMilliseconds(scrollMs))
+            {
+                FillBehavior = FillBehavior.HoldEnd, // 播完停在终点, 不回弹不循环
+            };
             TitleTranslate.BeginAnimation(TranslateTransform.XProperty, anim);
+
+            // 驻留覆盖: 平移完成 + 结尾停留可读, 之后按正常节奏退场 (悬停仍会挂起)
+            _hideTimer.Stop();
+            _hideTimer.Interval = TimeSpan.FromMilliseconds(scrollMs + 900 + Math.Max(800, _dwellMs * 0.5));
+            _hideTimer.Start();
         }
 
-        /// <summary>停止滚动并恢复省略号截断与自动宽度。</summary>
+        /// <summary>停止平移并复位到自然位置。</summary>
         private void StopTitleMarquee()
         {
             TitleTranslate.BeginAnimation(TranslateTransform.XProperty, null);
             TitleTranslate.X = 0;
-            TitleText.Width = double.NaN;
-            TitleText.TextTrimming = TextTrimming.CharacterEllipsis;
         }
 
         protected override void OnClosed(EventArgs e)

@@ -145,22 +145,24 @@
                             </Rectangle.OpacityMask>
                         </Rectangle>
                     </Grid>
-
-                    <!-- 两行文本: 主标题 + 副标题 (长曲名截断省略) -->
+                    
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <!-- 标题裁剪容器: 媒体 OSD 长曲名时经 TitleTranslate 做跑马灯滚动 -->
+                        <!-- 标题裁剪容器: Canvas 不约束子元素宽度, TitleText 始终保持自然全宽
+                             (无省略号截断), 媒体 OSD 长曲名超出时经 TitleTranslate 整体平移 -->
                         <Grid x:Name="TitleClip" ClipToBounds="True">
-                            <TextBlock x:Name="TitleText"
-                                       Text="音量"
-                                       FontSize="12"
-                                       FontWeight="SemiBold"
-                                       TextTrimming="CharacterEllipsis"
-                                       HorizontalAlignment="Left"
-                                       Foreground="#F2FFFFFF">
-                                <TextBlock.RenderTransform>
-                                    <TranslateTransform x:Name="TitleTranslate" />
-                                </TextBlock.RenderTransform>
-                            </TextBlock>
+                            <Canvas x:Name="TitleCanvas" VerticalAlignment="Center">
+                                <TextBlock x:Name="TitleText"
+                                           Canvas.Left="0"
+                                           Canvas.Top="0"
+                                           Text="音量"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="#F2FFFFFF">
+                                    <TextBlock.RenderTransform>
+                                        <TranslateTransform x:Name="TitleTranslate" />
+                                    </TextBlock.RenderTransform>
+                                </TextBlock>
+                            </Canvas>
                         </Grid>
                         <TextBlock x:Name="SubtitleText"
                                    Text="72%"
