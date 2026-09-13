@@ -252,6 +252,6 @@ public class OsdSection
     public int Opacity { get; set; } = 90;
 
     [ConfigComment("界面缩放 (%)")]
-    [ConfigRange(50, 200)]
-    public int Scale { get; set; } = 100;
+    [ConfigRange(100, 200)]
+    public int Scale { get; set; } = 150;
 }

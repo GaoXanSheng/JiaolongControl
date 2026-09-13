@@ -210,8 +210,8 @@ onMounted(() => {
             </div>
             <a-slider
               v-model="osdData.Scale"
+              :min="100"
               :max="200"
-              :min="50"
               :step="5"
               class="slider-orange"
               @change="saveDebounced"

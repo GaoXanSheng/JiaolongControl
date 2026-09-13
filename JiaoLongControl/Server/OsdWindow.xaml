@@ -12,131 +12,132 @@
         Topmost="True"
         Focusable="False"
         IsHitTestVisible="False"
-        ResizeMode="NoResize">
-    <Viewbox Stretch="Uniform">
-        <Grid Width="440" Height="140">
-            <!-- 状态强调色光晕: 进场浮现 / 驻留呼吸 / 退场消散 -->
-            <Ellipse x:Name="Halo"
-                     Width="400"
-                     Height="120"
-                     Opacity="0"
-                     RenderTransformOrigin="0.5,0.5">
-                <Ellipse.Fill>
-                    <RadialGradientBrush>
-                        <GradientStop x:Name="HaloStop"
-                                      Color="#593B82F6"
-                                      Offset="0" />
-                        <GradientStop Color="#003B82F6"
-                                      Offset="0.72" />
-                        <GradientStop Color="#003B82F6"
-                                      Offset="1" />
-                    </RadialGradientBrush>
-                </Ellipse.Fill>
-                <Ellipse.RenderTransform>
-                    <ScaleTransform x:Name="HaloScale" />
-                </Ellipse.RenderTransform>
-            </Ellipse>
+        ResizeMode="NoResize"
+        UseLayoutRounding="True"
+        FontFamily="Microsoft YaHei"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType">
+    <Grid>
+        <!-- 状态强调色光晕: 进场浮现 / 驻留呼吸 / 退场消散 (尺寸由代码按缩放设置) -->
+        <Ellipse x:Name="Halo"
+                 Opacity="0"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 RenderTransformOrigin="0.5,0.5">
+            <Ellipse.Fill>
+                <RadialGradientBrush>
+                    <GradientStop x:Name="HaloStop"
+                                  Color="#593B82F6"
+                                  Offset="0" />
+                    <GradientStop Color="#003B82F6"
+                                  Offset="0.72" />
+                    <GradientStop Color="#003B82F6"
+                                  Offset="1" />
+                </RadialGradientBrush>
+            </Ellipse.Fill>
+            <Ellipse.RenderTransform>
+                <ScaleTransform x:Name="HaloScale" />
+            </Ellipse.RenderTransform>
+        </Ellipse>
 
-            <!-- 灵动岛胶囊: 深色亚克力质感近似 (渐变底板 + 高光描边 + 柔和投影) -->
-            <Border x:Name="Pill"
-                    Width="336"
-                    Height="40"
-                    CornerRadius="20"
-                    Opacity="0"
-                    RenderTransformOrigin="0.5,0.5"
-                    BorderThickness="1">
-                <Border.RenderTransform>
-                    <TransformGroup>
-                        <ScaleTransform x:Name="PillScale" />
-                        <TranslateTransform x:Name="PillTranslate" />
-                    </TransformGroup>
-                </Border.RenderTransform>
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="24"
-                                      ShadowDepth="2"
-                                      Opacity="0.35"
-                                      Color="#000000" />
-                </Border.Effect>
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop x:Name="PanelTop"
-                                      Color="#F217171C"
-                                      Offset="0" />
-                        <GradientStop x:Name="PanelBottom"
-                                      Color="#E90E0E12"
-                                      Offset="1" />
-                    </LinearGradientBrush>
-                </Border.Background>
-                <Border.BorderBrush>
-                    <SolidColorBrush x:Name="PanelBorder" Color="#24FFFFFF" />
-                </Border.BorderBrush>
-                <Grid Margin="14,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+        <!-- 灵动岛胶囊: 深色亚克力质感近似 (渐变底板 + 高光描边 + 柔和投影) -->
+        <!-- 不用 Viewbox 几何缩放: 变换会让 WPF 对文本禁用 ClearType 导致发虚,
+             改为代码按缩放比例直接设置尺寸与字号, 文本按最终尺寸排版保持清晰 -->
+        <Border x:Name="Pill"
+                Opacity="0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                RenderTransformOrigin="0.5,0.5"
+                BorderThickness="1">
+            <Border.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform x:Name="PillScale" />
+                    <TranslateTransform x:Name="PillTranslate" />
+                </TransformGroup>
+            </Border.RenderTransform>
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="24"
+                                  ShadowDepth="2"
+                                  Opacity="0.35"
+                                  Color="#000000" />
+            </Border.Effect>
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop x:Name="PanelTop"
+                                  Color="#F217171C"
+                                  Offset="0" />
+                    <GradientStop x:Name="PanelBottom"
+                                  Color="#E90E0E12"
+                                  Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+            <Border.BorderBrush>
+                <SolidColorBrush x:Name="PanelBorder" Color="#24FFFFFF" />
+            </Border.BorderBrush>
+            <Grid x:Name="ContentGrid" Margin="14,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
 
-                    <!-- 状态图标: 强调色着色 + 微光晕 -->
-                    <Grid Grid.Column="0"
-                          Width="26"
-                          Height="26"
-                          Margin="0,0,10,0"
-                          VerticalAlignment="Center">
-                        <Ellipse x:Name="IconGlow" Opacity="0.4">
-                            <Ellipse.Fill>
-                                <RadialGradientBrush>
-                                    <GradientStop x:Name="IconGlowStop"
-                                                  Color="#663B82F6"
-                                                  Offset="0" />
-                                    <GradientStop Color="#003B82F6"
-                                                  Offset="1" />
-                                </RadialGradientBrush>
-                            </Ellipse.Fill>
-                        </Ellipse>
-                        <TextBlock x:Name="IconGlyph"
-                                   Text="&#xE767;"
-                                   FontFamily="Segoe MDL2 Assets"
-                                   FontSize="15"
-                                   Foreground="#3B82F6"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center" />
-                    </Grid>
-
-                    <!-- 两行文本: 主标题 + 副标题 -->
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock x:Name="TitleText"
-                                   Text="音量"
-                                   FontSize="12"
-                                   FontWeight="SemiBold"
-                                   LineHeight="15"
-                                   Foreground="#F2FFFFFF" />
-                        <TextBlock x:Name="SubtitleText"
-                                   Text="72%"
-                                   FontSize="10"
-                                   LineHeight="13"
-                                   Margin="0,1,0,0"
-                                   Foreground="#8CFFFFFF" />
-                    </StackPanel>
-
-                    <!-- 值类状态的细进度条 -->
-                    <Grid x:Name="BarPanel"
-                          Grid.Column="2"
-                          Width="84"
-                          Height="4"
-                          Margin="10,0,0,0"
-                          VerticalAlignment="Center">
-                        <Border x:Name="BarTrack"
-                                CornerRadius="2"
-                                Background="#24FFFFFF" />
-                        <Border x:Name="BarFill"
-                                CornerRadius="2"
-                                Background="#3B82F6"
-                                HorizontalAlignment="Left"
-                                Width="60" />
-                    </Grid>
+                <!-- 状态图标: 强调色着色 + 微光晕 -->
+                <Grid x:Name="IconBox"
+                      Width="26"
+                      Height="26"
+                      Margin="0,0,10,0"
+                      VerticalAlignment="Center">
+                    <Ellipse x:Name="IconGlow" Opacity="0.4">
+                        <Ellipse.Fill>
+                            <RadialGradientBrush>
+                                <GradientStop x:Name="IconGlowStop"
+                                              Color="#663B82F6"
+                                              Offset="0" />
+                                <GradientStop Color="#003B82F6"
+                                              Offset="1" />
+                            </RadialGradientBrush>
+                        </Ellipse.Fill>
+                    </Ellipse>
+                    <TextBlock x:Name="IconGlyph"
+                               Text="&#xE767;"
+                               FontFamily="Segoe MDL2 Assets"
+                               FontSize="15"
+                               Foreground="#3B82F6"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center" />
                 </Grid>
-            </Border>
-        </Grid>
-    </Viewbox>
+
+                <!-- 两行文本: 主标题 + 副标题 -->
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock x:Name="TitleText"
+                               Text="音量"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="#F2FFFFFF" />
+                    <TextBlock x:Name="SubtitleText"
+                               Text="72%"
+                               FontSize="10"
+                               Margin="0,2,0,0"
+                               Foreground="#8CFFFFFF" />
+                </StackPanel>
+
+                <!-- 值类状态的细进度条 -->
+                <Grid x:Name="BarPanel"
+                      Grid.Column="2"
+                      Width="84"
+                      Height="4"
+                      Margin="10,0,0,0"
+                      VerticalAlignment="Center">
+                    <Border x:Name="BarTrack"
+                            CornerRadius="2"
+                            Background="#24FFFFFF" />
+                    <Border x:Name="BarFill"
+                            CornerRadius="2"
+                            Background="#3B82F6"
+                            HorizontalAlignment="Left"
+                            Width="60" />
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
 </Window>

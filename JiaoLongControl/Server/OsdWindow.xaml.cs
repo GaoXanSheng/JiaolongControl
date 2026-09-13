@@ -26,7 +26,9 @@ namespace JiaoLongControl.Server
         private static readonly ILog Logger = LogManager.GetLogger(typeof(OsdWindow));
 
         private readonly DispatcherTimer _hideTimer;
+        private double _barWidth = 84;
         private bool _exiting;
+        private double _uiScale = 1;
 
         public OsdWindow()
         {
@@ -75,13 +77,12 @@ namespace JiaoLongControl.Server
                 BarPanel.Visibility = item.BarValue.HasValue ? Visibility.Visible : Visibility.Collapsed;
                 if (item.BarValue.HasValue)
                 {
-                    BarFill.Width = 84 * Math.Clamp(item.BarValue.Value, 0, 1);
+                    BarFill.Width = _barWidth * Math.Clamp(item.BarValue.Value, 0, 1);
                 }
 
-                var scale = Math.Clamp(scalePercent, 50, 200) / 100.0;
-                Width = WinW * scale;
-                Height = WinH * scale;
-                MoveToTarget(position, scale);
+                var scale = Math.Clamp(scalePercent, 100, 200) / 100.0;
+                ApplyLayoutScale(scale);
+                MoveToTarget(position, _uiScale);
 
                 if (!IsVisible)
                 {
@@ -112,6 +113,37 @@ namespace JiaoLongControl.Server
         }
 
         // ===== 主题 =====
+
+        /// <summary>
+        /// 按用户缩放比例直接设置窗口/面板尺寸与字号 (不做几何变换):
+        /// WPF 对带变换的文本会禁用 ClearType, 直接排版才能保证文字清晰。
+        /// </summary>
+        private void ApplyLayoutScale(double scale)
+        {
+            _uiScale = scale;
+            _barWidth = 84 * scale;
+
+            Width = WinW * scale;
+            Height = WinH * scale;
+            Halo.Width = 400 * scale;
+            Halo.Height = 120 * scale;
+            Pill.Width = PillW * scale;
+            Pill.Height = PillH * scale;
+            Pill.CornerRadius = new CornerRadius(PillH * scale / 2);
+            ContentGrid.Margin = new Thickness(14 * scale, 0, 14 * scale, 0);
+            IconBox.Width = 26 * scale;
+            IconBox.Height = 26 * scale;
+            IconBox.Margin = new Thickness(0, 0, 10 * scale, 0);
+            IconGlyph.FontSize = 15 * scale;
+            TitleText.FontSize = 12 * scale;
+            SubtitleText.FontSize = 10 * scale;
+            SubtitleText.Margin = new Thickness(0, 2 * scale, 0, 0);
+            BarPanel.Width = _barWidth;
+            BarPanel.Height = Math.Max(3, 4 * scale);
+            BarPanel.Margin = new Thickness(10 * scale, 0, 0, 0);
+            BarTrack.CornerRadius = new CornerRadius(2 * scale);
+            BarFill.CornerRadius = new CornerRadius(2 * scale);
+        }
 
         private void ApplyTheme(bool light, string accentHex, double panelOpacity)
         {
