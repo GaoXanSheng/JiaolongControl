@@ -27,6 +27,7 @@ namespace JiaoLongControl.Server
 
         private readonly DispatcherTimer _hideTimer;
         private double _barWidth = 84;
+        private DispatcherTimer? _exitTimer;
         private bool _exiting;
         private double _uiScale = 1;
 
@@ -66,6 +67,7 @@ namespace JiaoLongControl.Server
             try
             {
                 _hideTimer.Stop();
+                _exitTimer?.Stop();
                 var wasExiting = _exiting;
                 _exiting = false;
 
@@ -251,8 +253,10 @@ namespace JiaoLongControl.Server
             // 3. 整体淡出
             Animate(Pill, OpacityProperty, null, 0, 240, 320, easeIn, holdEnd: true);
 
-            // 4. 完全消失
+            // 4. 完全消失 (持有为字段, 退场被打断时可在 ShowOsd 中取消, 避免旧回调误触 Hide)
+            _exitTimer?.Stop();
             var done = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(ExitMs) };
+            _exitTimer = done;
             done.Tick += (_, _) =>
             {
                 done.Stop();
@@ -295,17 +299,18 @@ namespace JiaoLongControl.Server
 
             StopAnimations();
 
-            var basePillOpacity = Pill.Opacity;
-            Pill.Opacity = curPillOpacity;
-            PillScale.ScaleY = curScaleY;
-            PillTranslate.Y = curY;
-            Halo.Opacity = curHalo;
-            HaloScale.ScaleX = curHaloScale;
-            HaloScale.ScaleY = curHaloScale;
-            IconGlyph.Opacity = curIcon;
-            TitleText.Opacity = curTitle;
-            SubtitleText.Opacity = curSubtitle;
-            BarPanel.Opacity = curBar;
+            // 基准值直接落到驻留目标值 (而非捕获的退场中间值): Animate 默认
+            // FillBehavior.Stop, 动画结束后属性回落到基准值, 恢复才不会弹回退场形态
+            var basePillOpacity = Pill.Opacity; // ApplyTheme 设置的配置不透明度
+            PillScale.ScaleY = 1;
+            PillTranslate.Y = 0;
+            Halo.Opacity = 0.9;
+            HaloScale.ScaleX = 1;
+            HaloScale.ScaleY = 1;
+            IconGlyph.Opacity = 1;
+            TitleText.Opacity = 1;
+            SubtitleText.Opacity = 1;
+            BarPanel.Opacity = 1;
 
             var easeOut = new CubicEase { EasingMode = EasingMode.EaseOut };
             Animate(Pill, OpacityProperty, curPillOpacity, basePillOpacity, 200, 0, easeOut);

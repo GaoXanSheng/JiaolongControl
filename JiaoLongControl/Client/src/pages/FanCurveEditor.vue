@@ -259,7 +259,7 @@
 
 <script lang="ts" setup>
 import FanSpeed from '@/components/common/FanSpeed.vue'
-import { useFanCurveEditor } from '@/composables/useFanCurveEditor'
+import {useFanCurveEditor} from '@/composables/useFanCurveEditor'
 
 const {
   activeTab,
@@ -487,37 +487,6 @@ const {
   background-color: var(--color-accent-purple) !important;
 }
 
-:deep(.arco-modal) {
-  background-color: var(--color-panel-bg) !important;
-  border: 1px solid var(--color-line) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 12px 36px var(--color-shadow-pop) !important;
-
-  .arco-modal-header {
-    border-bottom: 1px solid var(--color-line-soft) !important;
-    .arco-modal-title {
-      color: var(--color-text-main) !important;
-      font-size: 13px !important;
-    }
-  }
-
-  .arco-input-number {
-    background-color: var(--color-panel-elevated) !important;
-    border: 1px solid var(--color-line-soft) !important;
-    color: var(--color-text-main) !important;
-    border-radius: 8px !important;
-    overflow: hidden;
-
-    .arco-input-number-prepend {
-      background-color: var(--color-panel-bg) !important;
-      border-right: 1px solid var(--color-line-soft) !important;
-      color: color-mix(in srgb, var(--color-text-main) 50%, transparent) !important;
-      font-size: 11px !important;
-    }
-  }
-
-  .arco-modal-footer {
-    border-t: 1px solid var(--color-line-soft) !important;
-  }
-}
+/* "编辑转速节点"弹窗的深色皮肤在 src/style.css 全局覆写:
+ * Arco Modal 传送至 body 渲染, scoped 样式(:deep)命中不到 */
 </style>

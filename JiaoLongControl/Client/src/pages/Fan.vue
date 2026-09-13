@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { Message } from '@arco-design/web-vue'
-import { AutoFanControl, Fan } from '@/utils/bridge'
-import { useConfigStore } from '@/stores/config'
+import {computed, ref} from 'vue'
+import {Message} from '@arco-design/web-vue'
+import {AutoFanControl, Fan} from '@/utils/bridge'
+import {useConfigStore} from '@/stores/config'
 import FanSpeed from '@/components/common/FanSpeed.vue'
-import { FAN_MAX_RPM, FAN_MIN_RPM } from '@/constants'
+import {FAN_MAX_RPM, FAN_MIN_RPM} from '@/constants'
 
 const loading = ref(false)
 const visible = ref(false)
@@ -153,7 +153,7 @@ async function handleRemoveFanClick() {
       @ok="handleOk"
       @cancel="handleCancel"
     >
-      <template #title>⚠️ 安全警告</template>
+      <template #title>安全警告</template>
       <div class="text-[12px] text-gray-300 leading-relaxed">
         设定目标转速高于 <span class="text-rose-400 font-bold font-mono">5800 RPM</span> 或低于
         <span class="text-rose-400 font-bold font-mono">1500 RPM</span
@@ -179,40 +179,6 @@ async function handleRemoveFanClick() {
 
 /* 高发光 Slider 拖拽钮及轨道重写 */
 
-
-/* 重构 Arco Modal 的深色磨砂遮罩及按钮样式 */
-:deep(.arco-modal) {
-  background-color: var(--color-panel-bg) !important;
-  border: 1px solid var(--color-line) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 12px 36px var(--color-shadow-pop) !important;
-
-  .arco-modal-header {
-    border-bottom: 1px solid var(--color-line-soft) !important;
-    .arco-modal-title {
-      color: var(--color-text-main) !important;
-      font-size: 13px !important;
-    }
-  }
-
-  .arco-modal-footer {
-    border-top: 1px solid var(--color-line-soft) !important;
-
-    .arco-btn-secondary {
-      background-color: color-mix(in srgb, var(--color-text-main) 2%, transparent) !important;
-      border: 1px solid var(--color-line-soft) !important;
-      color: color-mix(in srgb, var(--color-text-main) 60%, transparent) !important;
-      border-radius: 6px !important;
-      font-size: 11px !important;
-    }
-    .arco-btn-primary {
-      background-color: #e11d48 !important;
-      border: none !important;
-      color: #ffffff !important;
-      border-radius: 6px !important;
-      font-size: 11px !important;
-      box-shadow: 0 0 10px rgba(225, 29, 72, 0.3) !important;
-    }
-  }
-}
+/* 安全警告弹窗的深色皮肤在 src/style.css 全局覆写:
+ * Arco Modal 传送至 body 渲染, scoped 样式(:deep)命中不到 */
 </style>

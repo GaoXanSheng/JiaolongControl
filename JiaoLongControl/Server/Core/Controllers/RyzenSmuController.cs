@@ -143,7 +143,8 @@ public class RyzenSmuController : PawnIO
         foreach (var (cmd, isMp1) in commands)
         {
             // 消息中注明实际使用的邮箱与命令号，便于区分 MP1/RSMU 哪条路径被接受
-            lastResult = Send(cmd, arg, isMp1, $"{name} [{(isMp1 ? "MP1" : "RSMU")} 0x{cmd:X2}]");
+            // lastResult = Send(cmd, arg, isMp1, $"{name} [{(isMp1 ? "MP1" : "RSMU")} 0x{cmd:X2}]");
+            lastResult = Send(cmd, arg, isMp1, name);
             if (lastResult.Success)
             {
                 return lastResult;
@@ -382,12 +383,14 @@ public class RyzenSmuController : PawnIO
     public CommandResult SetCurveOptimizerPerCore(uint coreIdx, int value)
     {
         uint coValue = (uint)value & 0xFFFFFu;
-        uint arg = (coreIdx << 20) | coValue;
         return CurrentFamily switch {
-            RyzenSmuFamily.FP6 => TrySend(arg, $"Curve Optimizer Core {coreIdx}", (0x54, true), (0x52, false)),
-            RyzenSmuFamily.FP7_FP8 => TrySend(arg, $"Curve Optimizer Core {coreIdx}", (0x4B, true), (0x53, false)),
-            RyzenSmuFamily.FP7_FP8_Strix => TrySend(arg, $"Curve Optimizer Core {coreIdx}", (0x4B, true), (0x53, false)),
-            _ => TrySend(arg, $"Curve Optimizer Core {coreIdx}", (0x35, true), (0x06, false))
+            RyzenSmuFamily.FP6 => TrySend((coreIdx << 20) | coValue, $"Curve Optimizer Core {coreIdx}", (0x54, true), (0x52, false)),
+            RyzenSmuFamily.FP7_FP8 => TrySend((coreIdx << 20) | coValue, $"Curve Optimizer Core {coreIdx}", (0x4B, true), (0x53, false)),
+            RyzenSmuFamily.FP7_FP8_Strix => TrySend((coreIdx << 20) | coValue, $"Curve Optimizer Core {coreIdx}", (0x4B, true), (0x53, false)),
+            // AM5_V1（Dragon Range/Raphael 等 chiplet 布局）: core 字段 = (CCD号<<8 | CCD内核心号) << 20，
+            // 位于 arg[28:20] 共 9 位。CCD0 的 8 个核与旧编码 (coreIdx<<20) 恰好等价；core 8 起旧编码
+            // 会被 SMU 以 0xFF（非法参数）拒绝。参考 SMUDebugTool EncodeCoreMarginBitmask
+            _ => TrySend((((coreIdx / 8) << 8) | (coreIdx % 8)) << 20 | coValue, $"Curve Optimizer Core {coreIdx}", (0x35, true), (0x06, false))
         };
     }
 
