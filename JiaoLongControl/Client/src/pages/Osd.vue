@@ -232,8 +232,8 @@ onMounted(() => {
               @change="saveDebounced"
             />
             <p class="text-[10px] text-gray-600 leading-relaxed">
-              轮询用于检测原生 Fn 热键（性能模式 / 背光 / Fn 锁 / 触摸板锁）在 EC
-              层的状态变化，间隔越小响应越快、开销略增
+              原生 Fn 热键（性能模式 / 背光 / Fn 锁 / 触摸板锁）优先经 HID_EVENT20
+              事件通道即时检测；此间隔仅在事件通道不可用时作为轮询兜底
             </p>
           </div>
         </div>

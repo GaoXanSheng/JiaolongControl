@@ -236,7 +236,7 @@ public class OsdSection
     [ConfigComment("显示项目: 触摸板锁定 (轮询EC检测)")]
     public bool ShowTouchpad { get; set; } = true;
 
-    [ConfigComment("EC 状态轮询间隔 (ms)")]
+    [ConfigComment("EC 状态轮询间隔 (ms, 事件通道不可用时的兜底)")]
     [ConfigRange(500, 5000)]
     public int PollIntervalMs { get; set; } = 1000;
 

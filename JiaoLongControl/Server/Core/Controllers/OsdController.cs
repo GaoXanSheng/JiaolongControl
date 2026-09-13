@@ -11,10 +11,11 @@ using log4net;
 namespace JiaoLongControl.Server.Core.Controllers
 {
     /// <summary>
-    /// OSD 屏显控制器: 两条触发链路。
+    /// OSD 屏显控制器: 三条触发链路。
     /// 1) 全局低级键盘钩子监听音量/锁定键 (不吞键), 防抖后读取真实系统状态;
-    /// 2) 后台定时轮询 EC 状态 (性能模式/键盘背光/Fn锁定/触摸板锁定) —— 原生 Fn 热键在 EC 层直接生效,
-    ///    只能通过状态变化检测来触发 OSD (参考 JiaoLongWMI 的 EventName 协议, 该机无 WMI 事件类可订阅)。
+    /// 2) 官方 HID_EVENT20 WMI 事件通道 —— 原生 Fn 热键 (性能模式/背光/Fn锁/触摸板锁/锁定键) 在 EC 层直接生效,
+    ///    事件到达后复用检测逻辑读取真实状态;
+    /// 3) 事件通道订阅失败时退回 EC 状态轮询兜底。
     /// 同时向 JS 暴露预览与音量读写接口。配置按项目惯例每次触发时读取, 开关与项目开关即时生效。
     /// </summary>
     [ComVisible(true)]
@@ -33,15 +34,19 @@ namespace JiaoLongControl.Server.Core.Controllers
         private const string AccentTouchpad = "#F472B6";    // 粉 (触摸板)
 
         private static readonly ILog Logger = LogManager.GetLogger(typeof(OsdController));
+        private readonly WMIEventService _eventService = new();
         private readonly Dictionary<string, PendingOsd> _pending = new();
         private bool _disposed;
         private IntPtr _hook = IntPtr.Zero;
         private byte? _lastBrightness;
         private bool? _lastCaps;
         private ResultState? _lastFnLock;
+        private bool? _lastNum;
 
-        // EC 状态轮询: null = 尚无基线 (首次有效读取只记录不触发); 读取失败 (255) 跳过不更新
+        // EC 状态基线: null = 尚无基线 (首次有效读取只记录不触发); 读取失败 (255) 跳过不更新。
+        // 轮询与 HID_EVENT20 事件链路复用同一组基线做去重
         private SystemPerMode? _lastPerf;
+        private bool? _lastScroll;
         private ResultState? _lastTouchpad;
         private CancellationTokenSource? _pollCts;
         private Task? _pollTask;
@@ -65,6 +70,8 @@ namespace JiaoLongControl.Server.Core.Controllers
             {
                 // 忽略取消失败
             }
+
+            _eventService.Dispose();
 
             try
             {
@@ -105,10 +112,52 @@ namespace JiaoLongControl.Server.Core.Controllers
                 Logger.Warn($"OSD 键盘钩子安装异常: {ex.Message}");
             }
 
-            StartStatePolling();
+            // 优先走官方 HID_EVENT20 事件通道 (即时、零轮询开销); 订阅失败退回轮询兜底
+            _eventService.EventArrived += OnHotKeyEvent;
+            if (!_eventService.Start())
+            {
+                Logger.Info("EC 事件通道不可用, OSD 状态检测退回轮询模式");
+                StartStatePolling();
+            }
         }
 
-        /// <summary>启动 EC 状态轮询 (LongRunning 后台线程, 沿用 KeyboardGradient/AutoFanControl 模式)。</summary>
+        /// <summary>HID_EVENT20 热键事件到达: 事件只说明"什么变了", 具体状态复用检测逻辑读取 (含基线去重与开关判断)。</summary>
+        private void OnHotKeyEvent(WmiHotKeyEvent evt)
+        {
+            try
+            {
+                switch (evt.EventName)
+                {
+                    case EventName.SystemPerMode:
+                        DetectSystemPerMode();
+                        break;
+                    case EventName.RGBKeyboardBrightness:
+                        DetectKeyboardBrightness();
+                        break;
+                    case EventName.FnState:
+                        DetectFnLock();
+                        break;
+                    case EventName.TouchPadState:
+                        DetectTouchpadLock();
+                        break;
+                    case EventName.CapsLkState:
+                        DetectCapsLock();
+                        break;
+                    case EventName.NumLockState:
+                        DetectNumLock();
+                        break;
+                    case EventName.ScrlockState:
+                        DetectScrollLock();
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"OSD 热键事件处理异常: {ex.Message}");
+            }
+        }
+
+        /// <summary>启动 EC 状态轮询兜底 (HID_EVENT20 事件通道订阅失败时才启用)。</summary>
         private void StartStatePolling()
         {
             if (_pollTask != null) return;
@@ -174,10 +223,19 @@ namespace JiaoLongControl.Server.Core.Controllers
                             });
                             break;
                         case User32.VK_NUMLOCK:
-                            DebounceShow("numlock", () => ShowLockOsd(User32.VK_NUMLOCK, "数字锁定", force: false));
+                            DebounceShow("numlock", () =>
+                            {
+                                // 同步事件/轮询基线, 避免对同一变化重复弹 OSD
+                                _lastNum = User32.IsToggleOn(User32.VK_NUMLOCK);
+                                ShowLockOsd(User32.VK_NUMLOCK, "数字锁定", force: false);
+                            });
                             break;
                         case User32.VK_SCROLL:
-                            DebounceShow("scrolllock", () => ShowLockOsd(User32.VK_SCROLL, "滚动锁定", force: false));
+                            DebounceShow("scrolllock", () =>
+                            {
+                                _lastScroll = User32.IsToggleOn(User32.VK_SCROLL);
+                                ShowLockOsd(User32.VK_SCROLL, "滚动锁定", force: false);
+                            });
                             break;
                     }
                 }
@@ -347,6 +405,24 @@ namespace JiaoLongControl.Server.Core.Controllers
             if (on == _lastCaps.Value) return;
             _lastCaps = on;
             ShowLockOsd(User32.VK_CAPITAL, "大写锁定", force: false);
+        }
+
+        private void DetectNumLock()
+        {
+            var on = User32.IsToggleOn(User32.VK_NUMLOCK);
+            if (!_lastNum.HasValue) { _lastNum = on; return; }
+            if (on == _lastNum.Value) return;
+            _lastNum = on;
+            ShowLockOsd(User32.VK_NUMLOCK, "数字锁定", force: false);
+        }
+
+        private void DetectScrollLock()
+        {
+            var on = User32.IsToggleOn(User32.VK_SCROLL);
+            if (!_lastScroll.HasValue) { _lastScroll = on; return; }
+            if (on == _lastScroll.Value) return;
+            _lastScroll = on;
+            ShowLockOsd(User32.VK_SCROLL, "滚动锁定", force: false);
         }
 
         private static string ModeName(SystemPerMode mode) => mode switch
