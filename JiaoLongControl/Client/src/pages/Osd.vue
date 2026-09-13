@@ -179,6 +179,21 @@ onMounted(() => {
 
             <div class="space-y-1.5">
               <div class="flex justify-between items-center text-[11px]">
+                <span class="text-gray-400">出入场时长</span>
+                <span class="text-ink font-mono">{{ osdData.AnimationMs }} ms</span>
+              </div>
+              <a-slider
+                v-model="osdData.AnimationMs"
+                :max="3000"
+                :min="200"
+                :step="20"
+                class="slider-purple"
+                @change="saveDebounced"
+              />
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center text-[11px]">
                 <span class="text-gray-400">显示时长</span>
                 <span class="text-ink font-mono">{{ osdData.DurationMs }} ms</span>
               </div>

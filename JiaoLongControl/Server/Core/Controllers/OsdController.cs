@@ -668,6 +668,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                         cfg.Position,
                         cfg.Opacity,
                         cfg.DurationMs,
+                        cfg.AnimationMs,
                         cfg.Scale,
                         UiTheme.IsLight(Bridge.Instance.Config.App.Theme));
                 }

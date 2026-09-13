@@ -74,6 +74,10 @@ namespace JiaoLongControl.Server.Core.Native
         [DllImport("shcore.dll")]
         public static extern int GetDpiForMonitor(IntPtr hMonitor, int dpiType, out uint dpiX, out uint dpiY);
 
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool GetCursorPos(out POINT lpPoint);
+
         /// <summary>切换键 (Caps/Num/Scroll Lock) 当前是否处于开启状态。</summary>
         public static bool IsToggleOn(int vk) => (GetKeyState(vk) & 0x0001) != 0;
 
