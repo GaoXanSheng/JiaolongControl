@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import {computed} from 'vue'
 import SettingToggle from '@/components/common/SettingToggle.vue'
-import LogoLight from './Settings/components/LogoLight.vue'
-import GPUDirectConnection from './Settings/components/GPUDirectConnection.vue'
 import PawnIODriverMode from './Settings/components/PawnIODriverMode.vue'
 import ThemeSetting from './Settings/components/ThemeSetting.vue'
 import BootAutoStart from './Settings/components/BootAutoStart.vue'
@@ -25,11 +23,6 @@ const toggleCards: ToggleCard[] = [
     title: '自启动高级风扇控制系统',
     description: '启用后，软件将在后台实时监控硬件温度，并依据【风扇曲线】页面中用户自定义的策略来动态调整风扇转速',
     configPath: 'App.BootAdvancedFanControlSystem',
-  },
-  {
-    title: '风扇曲线合并',
-    description: '启用后，软件将在【风扇曲线】页面中将所有风扇的曲线合并为一条曲线，方便用户统一调整风扇转速',
-    configPath: 'Fan.FanCurveMerge',
   },
   {
     title: 'CPU 参数自动应用',
@@ -80,8 +73,6 @@ const visibleCards = computed(() => {
     <div class="max-w-[1000px] mx-auto grid grid-cols-1 gap-4 pt-4">
       <!-- 通用设置 -->
       <ThemeSetting />
-      <LogoLight />
-      <GPUDirectConnection />
 
       <!-- 自启动与自动应用策略 -->
       <BootAutoStart />

@@ -107,8 +107,21 @@ namespace JiaoLongControl.Server.Interop
         }
 
         public void InitWebView(CoreWebView2 webView)
+    {
+        _webView = webView;
+    }
+
+        /// <summary>向前端推送 JSON 消息 (需在 UI 线程调用); WebView 未就绪时静默忽略。</summary>
+    public void PostWebMessage(string json)
+    {
+        try
         {
-            _webView = webView;
+            _webView?.PostWebMessageAsJson(json);
         }
+        catch (Exception ex)
+        {
+            Logger.Warn($"web message 发送失败: {ex.Message}");
+        }
+    }
     }
 }

@@ -4,6 +4,7 @@ import CPU from '@/assets/icon/CPU.png'
 import Fan from '@/assets/icon/Fan.png'
 import Keyboard from '@/assets/icon/Keyboard.png'
 import Settings from '@/assets/icon/Settings.png'
+import Settings2 from '@/assets/icon/Settings2.png'
 import AMD from '@/assets/icon/AMD.png'
 import GPU from '@/assets/icon/GPU.png'
 import FanCurve from '@/assets/icon/FanCurve.png'
@@ -17,6 +18,7 @@ import GPU_Page from '@/pages/GPU.vue'
 import RyzenSmu_Page from '@/pages/RyzenSmu.vue'
 import FanCurveEditor from '@/pages/FanCurveEditor.vue'
 import Osd_Page from '@/pages/Osd.vue'
+import General_Page from '@/pages/General.vue'
 
 const PAGE_STORAGE_KEY = 'jl-ui-page'
 const useStore = defineStore('store', {
@@ -55,6 +57,7 @@ export const HomeCardType = [
   { title: '风扇', icon: Fan, page: Fan_Page },
   { title: '键盘', icon: Keyboard, page: Keyboard_Page },
   { title: 'OSD', icon: OSD, page: Osd_Page },
+  { title: '常规设置', icon: Settings2, page: General_Page },
   { title: '设置', icon: Settings, page: Settings_Page },
 ].map((item, index) => ({
   ...item,

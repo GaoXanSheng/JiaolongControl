@@ -93,18 +93,18 @@ onMounted(() => {
 
 <template>
   <div v-if="osdData" class="h-full overflow-y-auto text-ink p-6 no-scrollbar">
-    <div class="max-w-[1300px] mx-auto flex flex-col lg:flex-row gap-6">
-      <!-- ==================== 左列: 开关与显示项目 ==================== -->
-      <div class="flex-1 space-y-6">
-        <!-- 头部标题 -->
-        <div>
-          <h1 class="text-2xl font-bold tracking-wide">OSD 屏幕显示</h1>
-          <p class="text-[13px] text-gray-500 mt-1">
-            OSD悬浮指示器：按键时在屏幕顶部即时显示状态，完成后悄然隐去
-          </p>
-        </div>
+    <div class="max-w-[1300px] mx-auto">
+      <!-- 头部标题: 通栏显示, 下方左右两列顶部齐平 -->
+      <div>
+        <h1 class="text-2xl font-bold tracking-wide">OSD 屏幕显示</h1>
+        <p class="text-[13px] text-gray-500 mt-1">
+          OSD悬浮指示器：按键时在屏幕顶部即时显示状态，完成后悄然隐去
+        </p>
+      </div>
 
-        <div class="space-y-4">
+      <div class="flex flex-col lg:flex-row gap-6 pt-6">
+        <!-- ==================== 左列: 开关与显示项目 ==================== -->
+        <div class="flex-1 space-y-4">
           <SettingToggle
             config-path="Osd.Enabled"
             description="启用后，按下音量键、大小写锁定等按键时，屏幕上会弹出置顶的胶囊指示器（无需重启，即时生效）"
@@ -116,9 +116,9 @@ onMounted(() => {
             title="音量指示"
           />
           <SettingToggle
-            config-path="Osd.ShowLockKeys"
             description="按下大写锁定 / 数字锁定 / 滚动锁定键时，显示对应的开关状态"
             title="锁定键状态"
+            config-path="Osd.ShowLockKeys"
           />
           <SettingToggle
             config-path="Osd.ShowKeyboardBacklight"
@@ -126,9 +126,9 @@ onMounted(() => {
             title="键盘背光档位"
           />
           <SettingToggle
-            config-path="Osd.ShowPerformanceMode"
             description="切换性能模式时（软件内或原生 Fn 热键）显示当前模式名称（原生热键经 EC 状态轮询检测）"
             title="性能模式切换"
+            config-path="Osd.ShowPerformanceMode"
           />
           <SettingToggle
             config-path="Osd.ShowFnLock"
@@ -136,166 +136,173 @@ onMounted(() => {
             title="功能键锁定 (Fn Lock)"
           />
           <SettingToggle
+            title="触摸板锁定"
             config-path="Osd.ShowTouchpad"
             description="原生 Fn 组合键切换触摸板锁定时显示状态（EC 状态轮询检测，变化后约一个轮询间隔内弹出）"
-            title="触摸板锁定"
           />
         </div>
-      </div>
 
-      <!-- ==================== 右列: 显示效果与预览 ==================== -->
-      <div class="w-full lg:w-[380px] shrink-0 space-y-6">
-        <!-- 显示效果 -->
-        <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-5"
-        >
-          <h3
-            class="text-xs font-black text-purple-400 uppercase tracking-widest border-l-4 border-purple-600 pl-2.5"
+        <!-- ==================== 右列: 显示效果与预览 ==================== -->
+        <div class="w-full lg:w-[380px] shrink-0 space-y-6">
+          <!-- 显示效果 -->
+          <div
+            class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-5"
           >
-            显示效果
-          </h3>
+            <h3
+              class="text-xs font-black text-purple-400 uppercase tracking-widest border-l-4 border-purple-600 pl-2.5"
+            >
+              显示效果
+            </h3>
 
-          <div>
-            <div class="text-[11px] text-gray-400 mb-2">显示位置</div>
-            <div class="flex items-center gap-1 p-1 rounded-xl bg-ink/[0.04] border border-ink/[0.06]">
-              <button
-                v-for="opt in positionOptions"
-                :key="opt.value"
-                :class="
-                  currentPosition === opt.value
-                    ? 'bg-cyber-purple text-white shadow-[0_0_10px_var(--color-glow-purple)]'
-                    : 'text-muted hover:text-ink'
-                "
-                class="flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer"
-                @click="selectPosition(opt.value)"
+            <div>
+              <div class="text-[11px] text-gray-400 mb-2">显示位置</div>
+              <div
+                class="flex items-center gap-1 p-1 rounded-xl bg-ink/[0.04] border border-ink/[0.06]"
               >
-                {{ opt.label }}
-              </button>
+                <button
+                  v-for="opt in positionOptions"
+                  :key="opt.value"
+                  :class="
+                    currentPosition === opt.value
+                      ? 'bg-cyber-purple text-white shadow-[0_0_10px_var(--color-glow-purple)]'
+                      : 'text-muted hover:text-ink'
+                  "
+                  class="flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer"
+                  @click="selectPosition(opt.value)"
+                >
+                  {{ opt.label }}
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div class="space-y-1.5">
-            <div class="flex justify-between items-center text-[11px]">
-              <span class="text-gray-400">显示时长</span>
-              <span class="text-ink font-mono">{{ osdData.DurationMs }} ms</span>
-            </div>
-            <a-slider
-              v-model="osdData.DurationMs"
-              :max="5000"
-              :min="500"
-              :step="100"
-              class="slider-purple"
-              @change="saveDebounced"
-            />
-          </div>
-
-          <div class="space-y-1.5">
-            <div class="flex justify-between items-center text-[11px]">
-              <span class="text-gray-400">面板不透明度</span>
-              <span class="text-ink font-mono">{{ osdData.Opacity }}%</span>
-            </div>
-            <a-slider
-              v-model="osdData.Opacity"
-              :max="100"
-              :min="30"
-              class="slider-blue"
-              @change="saveDebounced"
-            />
-          </div>
-
-          <div class="space-y-1.5">
-            <div class="flex justify-between items-center text-[11px]">
-              <span class="text-gray-400">界面缩放</span>
-              <span class="text-ink font-mono">{{ osdData.Scale }}%</span>
-            </div>
-            <a-slider
-              v-model="osdData.Scale"
-              :min="100"
-              :max="200"
-              :step="5"
-              class="slider-orange"
-              @change="saveDebounced"
-            />
-          </div>
-
-          <div class="space-y-1.5">
-            <div class="flex justify-between items-center text-[11px]">
-              <span class="text-gray-400">EC 状态轮询间隔</span>
-              <span class="text-ink font-mono">{{ osdData.PollIntervalMs }} ms</span>
-            </div>
-            <a-slider
-              v-model="osdData.PollIntervalMs"
-              :max="5000"
-              :min="500"
-              :step="100"
-              class="slider-red"
-              @change="saveDebounced"
-            />
-            <p class="text-[10px] text-gray-600 leading-relaxed">
-              原生 Fn 热键（性能模式 / 背光 / Fn 锁 / 触摸板锁）优先经 HID_EVENT20
-              事件通道即时检测；此间隔仅在事件通道不可用时作为轮询兜底
-            </p>
-          </div>
-        </div>
-
-        <!-- 效果预览 -->
-        <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-4"
-        >
-          <h3
-            class="text-xs font-black text-blue-400 uppercase tracking-widest border-l-4 border-blue-500 pl-2.5"
-          >
-            效果预览
-          </h3>
-
-          <div class="space-y-1.5">
-            <div class="flex justify-between items-center text-[11px]">
-              <span class="text-gray-400">系统音量（拖动即弹出 OSD）</span>
-              <span class="text-ink font-mono">{{ volume }}%{{ muted ? ' · 静音' : '' }}</span>
-            </div>
-            <div class="flex items-center gap-3">
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-gray-400">显示时长</span>
+                <span class="text-ink font-mono">{{ osdData.DurationMs }} ms</span>
+              </div>
               <a-slider
-                v-model="volume"
-                :max="100"
-                :min="0"
-                class="flex-1 slider-blue"
-                @change="onVolumeChange"
+                v-model="osdData.DurationMs"
+                :max="5000"
+                :min="500"
+                :step="100"
+                class="slider-purple"
+                @change="saveDebounced"
               />
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-gray-400">面板不透明度</span>
+                <span class="text-ink font-mono">{{ osdData.Opacity }}%</span>
+              </div>
+              <a-slider
+                v-model="osdData.Opacity"
+                :max="100"
+                :min="30"
+                class="slider-blue"
+                @change="saveDebounced"
+              />
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-gray-400">界面缩放</span>
+                <span class="text-ink font-mono">{{ osdData.Scale }}%</span>
+              </div>
+              <a-slider
+                v-model="osdData.Scale"
+                :max="200"
+                :min="100"
+                :step="5"
+                class="slider-orange"
+                @change="saveDebounced"
+              />
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-gray-400">EC 状态轮询间隔</span>
+                <span class="text-ink font-mono">{{ osdData.PollIntervalMs }} ms</span>
+              </div>
+              <a-slider
+                v-model="osdData.PollIntervalMs"
+                :max="5000"
+                :min="500"
+                :step="100"
+                class="slider-red"
+                @change="saveDebounced"
+              />
+              <p class="text-[10px] text-gray-600 leading-relaxed">
+                原生 Fn 热键（性能模式 / 背光 / Fn 锁 / 触摸板锁）优先经 HID_EVENT20
+                事件通道即时检测；此间隔仅在事件通道不可用时作为轮询兜底
+              </p>
+            </div>
+          </div>
+
+          <!-- 效果预览 -->
+          <div
+            class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-4"
+          >
+            <h3
+              class="text-xs font-black text-blue-400 uppercase tracking-widest border-l-4 border-blue-500 pl-2.5"
+            >
+              效果预览
+            </h3>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-gray-400">系统音量（拖动即弹出 OSD）</span>
+                <span class="text-ink font-mono">{{ volume }}%{{ muted ? ' · 静音' : '' }}</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <a-slider
+                  v-model="volume"
+                  :max="100"
+                  :min="0"
+                  class="flex-1 slider-blue"
+                  @change="onVolumeChange"
+                />
+                <a-button
+                  class="!bg-blue-600/10 !text-blue-400 !border-blue-500/25 hover:!bg-blue-600 hover:!text-white rounded-md px-3 font-semibold transition"
+                  size="small"
+                  @click="onToggleMute"
+                >
+                  {{ muted ? '取消静音' : '静音' }}
+                </a-button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
               <a-button
-                class="!bg-blue-600/10 !text-blue-400 !border-blue-500/25 hover:!bg-blue-600 hover:!text-white rounded-md px-3 font-semibold transition"
-                size="small"
-                @click="onToggleMute"
+                v-for="item in previewItems"
+                :key="item.kind"
+                class="!rounded-lg font-semibold !bg-ink/[0.04] !text-ink !border-ink/[0.08] hover:!bg-purple-600/20 hover:!text-purple-300 transition"
+                @click="preview(item.kind)"
               >
-                {{ muted ? '取消静音' : '静音' }}
+                预览{{ item.label }}
               </a-button>
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-2">
-            <a-button
-              v-for="item in previewItems"
-              :key="item.kind"
-              class="!rounded-lg font-semibold !bg-ink/[0.04] !text-ink !border-ink/[0.08] hover:!bg-purple-600/20 hover:!text-purple-300 transition"
-              @click="preview(item.kind)"
-            >
-              预览{{ item.label }}
-            </a-button>
-          </div>
-        </div>
-
-        <!-- 说明 -->
-        <div class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg">
-          <h2 class="text-[13px] font-semibold text-gray-300 mb-3">名词解释</h2>
-          <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">
-            <p>
-              <strong>键盘事件触发</strong>: 音量与锁定键经全局键盘钩子监听，按键不会被拦截，系统行为不受影响。
-            </p>
-            <p>
-              <strong>自动缩放</strong>: OSD 按显示器 DPI 物理像素定位与渲染，系统缩放调整后位置与清晰度自动适配。
-            </p>
-            <p>
-              <strong>主题自适应</strong>: 胶囊面板自动跟随应用的深色 / 浅色主题，强调色与工具箱配色一致。
-            </p>
+          <!-- 说明 -->
+          <div
+            class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg"
+          >
+            <h2 class="text-[13px] font-semibold text-gray-300 mb-3">名词解释</h2>
+            <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">
+              <p>
+                <strong>键盘事件触发</strong>:
+                音量与锁定键经全局键盘钩子监听，按键不会被拦截，系统行为不受影响。
+              </p>
+              <p>
+                <strong>自动缩放</strong>:
+                OSD 按显示器 DPI 物理像素定位与渲染，系统缩放调整后位置与清晰度自动适配。
+              </p>
+              <p>
+                <strong>主题自适应</strong>:
+                胶囊面板自动跟随应用的深色 / 浅色主题，强调色与工具箱配色一致。
+              </p>
+            </div>
           </div>
         </div>
       </div>

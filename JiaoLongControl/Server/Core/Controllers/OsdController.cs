@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
 using JiaoLongControl.Server.Core.Models;
@@ -217,8 +218,9 @@ namespace JiaoLongControl.Server.Core.Controllers
                         case User32.VK_CAPITAL:
                             DebounceShow("capslock", () =>
                             {
-                                // 同步轮询基线, 避免 EC 轮询在 1s 后对同一变化重复弹 OSD
+                                // 同步事件/轮询基线, 避免对同一变化重复弹 OSD
                                 _lastCaps = User32.IsToggleOn(User32.VK_CAPITAL);
+                                NotifyLockStatesChanged();
                                 ShowLockOsd(User32.VK_CAPITAL, "大写锁定", force: false);
                             });
                             break;
@@ -227,6 +229,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                             {
                                 // 同步事件/轮询基线, 避免对同一变化重复弹 OSD
                                 _lastNum = User32.IsToggleOn(User32.VK_NUMLOCK);
+                                NotifyLockStatesChanged();
                                 ShowLockOsd(User32.VK_NUMLOCK, "数字锁定", force: false);
                             });
                             break;
@@ -234,6 +237,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                             DebounceShow("scrolllock", () =>
                             {
                                 _lastScroll = User32.IsToggleOn(User32.VK_SCROLL);
+                                NotifyLockStatesChanged();
                                 ShowLockOsd(User32.VK_SCROLL, "滚动锁定", force: false);
                             });
                             break;
@@ -316,15 +320,25 @@ namespace JiaoLongControl.Server.Core.Controllers
             if (mode != SystemPerMode.Unknow) _lastPerf = mode;
             var cfg = Bridge.Instance.Config.Osd;
             if (!cfg.Enabled || !cfg.ShowPerformanceMode) return;
+            var (glyph, accent) = ModeVisual(mode);
             ShowOnWindow(new OsdItem
             {
-                IconGlyph = "\uE945",
-                AccentHex = AccentPerf,
+                IconGlyph = glyph,
+                AccentHex = accent,
                 Title = "性能模式",
                 Subtitle = ModeName(mode),
                 BarValue = null,
             }, cfg);
         }
+
+        /// <summary>按性能模式切换 OSD 图标与强调色: 性能=红/闪电, 均衡=蓝/仪表, 安静=绿/静音。</summary>
+        private static (string Glyph, string Accent) ModeVisual(SystemPerMode mode) => mode switch
+        {
+            SystemPerMode.PerformanceMode => ("\uE945", "#F43F5E"),
+            SystemPerMode.BalanceMode => ("\uE9D9", "#3B82F6"),
+            SystemPerMode.QuietMode => ("\uE706", "#34D399"),
+            _ => ("\uE945", AccentPerf),
+        };
 
         /// <summary>功能键 (Fn) 锁定状态变化时触发 (来自 EC 轮询)。</summary>
         public void OnFnLockChanged(ResultState state)
@@ -385,6 +399,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             if (!_lastFnLock.HasValue) { _lastFnLock = state; return; }
             if (state == _lastFnLock.Value) return;
             _lastFnLock = state;
+            NotifyLockStatesChanged();
             OnFnLockChanged(state);
         }
 
@@ -395,6 +410,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             if (!_lastTouchpad.HasValue) { _lastTouchpad = state; return; }
             if (state == _lastTouchpad.Value) return;
             _lastTouchpad = state;
+            NotifyLockStatesChanged();
             OnTouchpadLockChanged(state);
         }
 
@@ -404,6 +420,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             if (!_lastCaps.HasValue) { _lastCaps = on; return; }
             if (on == _lastCaps.Value) return;
             _lastCaps = on;
+            NotifyLockStatesChanged();
             ShowLockOsd(User32.VK_CAPITAL, "大写锁定", force: false);
         }
 
@@ -413,6 +430,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             if (!_lastNum.HasValue) { _lastNum = on; return; }
             if (on == _lastNum.Value) return;
             _lastNum = on;
+            NotifyLockStatesChanged();
             ShowLockOsd(User32.VK_NUMLOCK, "数字锁定", force: false);
         }
 
@@ -422,6 +440,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             if (!_lastScroll.HasValue) { _lastScroll = on; return; }
             if (on == _lastScroll.Value) return;
             _lastScroll = on;
+            NotifyLockStatesChanged();
             ShowLockOsd(User32.VK_SCROLL, "滚动锁定", force: false);
         }
 
@@ -513,6 +532,92 @@ namespace JiaoLongControl.Server.Core.Controllers
             {
                 return new CommandResult(false, $"设置静音失败: {ex.Message}");
             }
+        }
+
+        // ===== 锁定状态控制 (OSD 页按钮) =====
+
+        /// <summary>读取四项锁定状态; FnLock/触摸板锁读取失败时对应字段为 null (未知)。</summary>
+        public CommandResult GetLockStates()
+        {
+            return new CommandResult(true, "获取成功", new
+            {
+                CapsLock = User32.IsToggleOn(User32.VK_CAPITAL),
+                NumLock = User32.IsToggleOn(User32.VK_NUMLOCK),
+                FnLock = ReadResultState(MethodName.FnLock),
+                TouchpadLock = ReadResultState(MethodName.TPLock),
+            });
+        }
+
+        public CommandResult SetCapsLock(bool enabled)
+        {
+            if (User32.IsToggleOn(User32.VK_CAPITAL) == enabled)
+                return new CommandResult(true, "状态未变化");
+            User32.TapToggleKey(User32.VK_CAPITAL);
+            return new CommandResult(true, "设置成功");
+        }
+
+        public CommandResult SetNumLock(bool enabled)
+        {
+            if (User32.IsToggleOn(User32.VK_NUMLOCK) == enabled)
+                return new CommandResult(true, "状态未变化");
+            User32.TapToggleKey(User32.VK_NUMLOCK);
+            return new CommandResult(true, "设置成功");
+        }
+
+        public CommandResult SetFnLock(bool enabled)
+        {
+            var res = MethodServices.SetValue(MethodName.FnLock, enabled ? (byte)1 : (byte)0);
+            if (res)
+            {
+                OnFnLockChanged(enabled ? ResultState.ON : ResultState.OFF);
+                NotifyLockStatesChanged();
+            }
+            return new CommandResult(res, res ? "设置成功" : "设置失败");
+        }
+
+        public CommandResult SetTouchpadLock(bool enabled)
+        {
+            var res = MethodServices.SetValue(MethodName.TPLock, enabled ? (byte)1 : (byte)0);
+            if (res)
+            {
+                OnTouchpadLockChanged(enabled ? ResultState.ON : ResultState.OFF);
+                NotifyLockStatesChanged();
+            }
+            return new CommandResult(res, res ? "设置成功" : "设置失败");
+        }
+
+        private static bool? ReadResultState(MethodName method)
+        {
+            var state = MethodServices.GetValue<ResultState>(method);
+            return state == ResultState.Unknow ? null : state == ResultState.ON;
+        }
+
+        /// <summary>
+        /// 锁定状态变化后推送 lock-states-changed 消息, 常规设置页的按钮实时刷新
+        /// (WMI 读取放在后台线程, 结果回 UI 线程发送)。
+        /// </summary>
+        private void NotifyLockStatesChanged()
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    var payload = JsonSerializer.Serialize(new
+                    {
+                        type = "lock-states-changed",
+                        CapsLock = User32.IsToggleOn(User32.VK_CAPITAL),
+                        NumLock = User32.IsToggleOn(User32.VK_NUMLOCK),
+                        FnLock = ReadResultState(MethodName.FnLock),
+                        TouchpadLock = ReadResultState(MethodName.TPLock),
+                    });
+                    Application.Current?.Dispatcher.BeginInvoke(() =>
+                        Bridge.Instance.PostWebMessage(payload));
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warn($"锁定状态推送失败: {ex.Message}");
+                }
+            });
         }
 
         private void DebounceShow(string key, Action action)

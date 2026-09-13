@@ -32,6 +32,8 @@ namespace JiaoLongControl.Server.Core.Native
         public const uint SWP_NOSIZE = 0x0001;
         public const uint SWP_NOMOVE = 0x0002;
         public const uint SWP_NOACTIVATE = 0x0010;
+        public const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
+        public const uint KEYEVENTF_KEYUP = 0x0002;
 
         public static readonly IntPtr HWND_TOPMOST = new(-1);
 
@@ -74,6 +76,18 @@ namespace JiaoLongControl.Server.Core.Native
 
         /// <summary>切换键 (Caps/Num/Scroll Lock) 当前是否处于开启状态。</summary>
         public static bool IsToggleOn(int vk) => (GetKeyState(vk) & 0x0001) != 0;
+
+        [DllImport("user32.dll")]
+        public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+        /// <summary>模拟按一次切换键 (NumLock/ScrollLock 必须带扩展键标志才生效)。</summary>
+        public static void TapToggleKey(int vk)
+        {
+            var key = (byte)vk;
+            var flags = vk == VK_NUMLOCK || vk == VK_SCROLL ? KEYEVENTF_EXTENDEDKEY : 0;
+            keybd_event(key, 0, flags, UIntPtr.Zero);
+            keybd_event(key, 0, flags | KEYEVENTF_KEYUP, UIntPtr.Zero);
+        }
 
         [StructLayout(LayoutKind.Sequential)]
         public struct POINT
