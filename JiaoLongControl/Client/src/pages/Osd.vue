@@ -51,7 +51,8 @@ async function onVolumeChange(val: number | [number, number]) {
   try {
     const res = await Osd.SetVolume(val)
     if (!res.Success) Message.error(res.Message)
-    muted.value = false
+    // 回读实际值，避免滑条与系统真实音量脱节（如设备切换后）
+    await refreshVolume()
   } catch {
     Message.error('设置音量失败')
   }
@@ -62,6 +63,7 @@ async function onToggleMute() {
     const res = await Osd.SetMute(!muted.value)
     if (res.Success) {
       muted.value = !muted.value
+      await refreshVolume()
     } else {
       Message.error(res.Message)
     }
