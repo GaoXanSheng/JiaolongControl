@@ -1,6 +1,6 @@
-namespace JiaoLongControl.Server.Core.Models;
-
 using YamlDotNet.Serialization;
+
+namespace JiaoLongControl.Server.Core.Models;
 
 public class JiaoLongConfig
 {
@@ -29,6 +29,9 @@ public class AppSection
     [ConfigComment("开机自动设置Ryzen SMU Curve Optimizer All")]
     public bool BootSetRyzenSumCurveOptimizerAll { get; set; }
 
+    [ConfigComment("开机自动应用Ryzen SMU Curve Optimizer时使用分核降压 (代替全核)")]
+    public bool BootSetRyzenSmuCurveOptimizerPerCore { get; set; }
+
     [ConfigComment("开机自动开启键盘渐变")]
     public bool BootKeyboardGradient { get; set; }
 
@@ -44,7 +47,7 @@ public class CpuSection
     [ConfigComment("默认档位参数")]
     public CpuProfileData Default { get; set; } = new()
     {
-        CpuLongPower = 45, CpuShortPower = 65, CpuTempWall = 80, CpuMaxFrequency = 4400
+        CpuLongPower = 45, CpuShortPower = 65, CpuTempWall = 90, CpuMaxFrequency = 4400
     };
 
     [ConfigComment("高性能档位参数")]
@@ -56,12 +59,12 @@ public class CpuSection
     [ConfigComment("节能档位参数")]
     public CpuProfileData Saving { get; set; } = new()
     {
-        CpuLongPower = 30, CpuShortPower = 45, CpuTempWall = 75, CpuMaxFrequency = 3200
+        CpuLongPower = 30, CpuShortPower = 45, CpuTempWall = 85, CpuMaxFrequency = 3800
     };
 
     [ConfigComment("自定义档位参数")]
     public CpuProfileData Custom { get; set; } = new();
-    
+
     [YamlIgnore]
     public CpuProfileData Active => CpuProfile switch
     {
@@ -204,4 +207,7 @@ public class SmuSection
 
     [ConfigComment("Curve Optimizer All (负值为降压)")]
     public int CurveOptimizerAll { get; set; }
+
+    [ConfigComment("Curve Optimizer 分核偏移 (负值为降压, 索引=核心号)")]
+    public List<int> CurveOptimizerPerCore { get; set; } = new();
 }

@@ -14,6 +14,7 @@ export interface AppSectionType {
   BootAdvancedCPUSystem: boolean
   BootAdvancedGPUSystem: boolean
   BootSetRyzenSumCurveOptimizerAll: boolean
+  BootSetRyzenSmuCurveOptimizerPerCore: boolean
   BootKeyboardGradient: boolean
   Theme: ThemeMode
 }
@@ -69,6 +70,7 @@ export interface SmuSectionType {
   OcClk: number
   OcVolt: number
   CurveOptimizerAll: number
+  CurveOptimizerPerCore: number[]
 }
 
 export interface JiaoLongConfigType {
