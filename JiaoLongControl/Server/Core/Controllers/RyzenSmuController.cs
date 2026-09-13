@@ -159,6 +159,26 @@ public class RyzenSmuController : PawnIO
     public CommandResult SendRaw(uint cmd, uint arg, bool isMp1, string name)
         => Send(cmd, arg, isMp1, name);
 
+    /// <summary>
+    /// 调试用：读取邮箱 6 个参数槽（Get 类命令执行后 SMU 写回的返回值，测试工具 --smu-cmd-read 使用）
+    /// </summary>
+    public ulong[] ReadMailboxArgs(bool isMp1)
+    {
+        uint addrArg = CurrentFamily switch
+        {
+            RyzenSmuFamily.FP6 => isMp1 ? 0x3B10998u : 0x03B10A88u,
+            RyzenSmuFamily.FP7_FP8 => isMp1 ? 0x3B10998u : 0x03B10A88u,
+            RyzenSmuFamily.FP7_FP8_Strix => isMp1 ? 0x3B10998u : 0x03B10A88u,
+            _ => isMp1 ? 0x3B109C4u : 0x03B10A40u
+        };
+        var args = new ulong[6];
+        for (uint i = 0; i < 6; i++)
+        {
+            args[i] = Execute("ioctl_read_smu_register", new ulong[] { addrArg + i * 4 }, 1)[0];
+        }
+        return args;
+    }
+
     #region (Power Limits - PPT)
 
     public CommandResult SetStapmLimit(double watts)
@@ -387,9 +407,6 @@ public class RyzenSmuController : PawnIO
             RyzenSmuFamily.FP6 => TrySend((coreIdx << 20) | coValue, $"Curve Optimizer Core {coreIdx}", (0x54, true), (0x52, false)),
             RyzenSmuFamily.FP7_FP8 => TrySend((coreIdx << 20) | coValue, $"Curve Optimizer Core {coreIdx}", (0x4B, true), (0x53, false)),
             RyzenSmuFamily.FP7_FP8_Strix => TrySend((coreIdx << 20) | coValue, $"Curve Optimizer Core {coreIdx}", (0x4B, true), (0x53, false)),
-            // AM5_V1（Dragon Range/Raphael 等 chiplet 布局）: core 字段 = (CCD号<<8 | CCD内核心号) << 20，
-            // 位于 arg[28:20] 共 9 位。CCD0 的 8 个核与旧编码 (coreIdx<<20) 恰好等价；core 8 起旧编码
-            // 会被 SMU 以 0xFF（非法参数）拒绝。参考 SMUDebugTool EncodeCoreMarginBitmask
             _ => TrySend((((coreIdx / 8) << 8) | (coreIdx % 8)) << 20 | coValue, $"Curve Optimizer Core {coreIdx}", (0x35, true), (0x06, false))
         };
     }
