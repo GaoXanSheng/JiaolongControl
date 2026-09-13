@@ -1,42 +1,58 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Hardcodet.Wpf.TaskbarNotification;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
+using log4net;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Microsoft.Win32;
+using Color = System.Drawing.Color;
 
 namespace JiaoLongControl.Server
 {
     public partial class MainWindow : Window
     {
-        private static readonly log4net.ILog Logger =
-            log4net.LogManager.GetLogger(typeof(MainWindow));
+        private static readonly ILog Logger =
+            LogManager.GetLogger(typeof(MainWindow));
 
-        private Hardcodet.Wpf.TaskbarNotification.TaskbarIcon _taskbarIcon = null!;
+        private bool _allowClose;
+
+        private Grid? _errorOverlay;
+
+        // 当前是否浅色主题: 由配置(App.Theme)解析, 前端切换主题时经 theme-changed 消息同步
+        private bool _isLight;
+
+        // 退出中：抑制退出阶段 ProcessFailed 等无意义日志/重建（浏览器进程被销毁时正常退出）
+        private bool _isShuttingDown;
+
+        private Grid? _loadingOverlay;
+
+        // 进程崩溃连续计数：渲染/GPU 进程崩溃先轻量 Reload，连续崩溃则整体重建
+        private int _processFailCount;
+
+        // ProcessFailed 处理器引用：ConfigureWebView 订阅、DestroyWebView 注销，保证重建后旧回调不再触发
+        private EventHandler<CoreWebView2ProcessFailedEventArgs>? _processFailedHandler;
+
+        // 连续重建计数：自动重建超过上限则停止，避免进程反复崩溃时无限重建
+        private int _recreateCount;
+
+        private TaskbarIcon _taskbarIcon = null!;
         private string _webRoot = string.Empty;
+
         private WebView2? _webView;
+
         // 是否已销毁：仅表示 WebView 对象的有无，不能代表 CoreWebView2 已初始化完成。
         // CoreWebView2 是异步初始化的，因此判断"能否使用"必须看 SafeCore(_webView) 是否为 null。
         private bool _webViewDestroyed = true;
-        private bool _allowClose;
-        // 退出中：抑制退出阶段 ProcessFailed 等无意义日志/重建（浏览器进程被销毁时正常退出）
-        private bool _isShuttingDown;
+
         // WebView 重建代次：异步初始化完成后需校验代次，避免旧任务的错误覆盖层/导航落到新 WebView 或已销毁的 UI 树
         private int _webViewGeneration;
-        // 进程崩溃连续计数：渲染/GPU 进程崩溃先轻量 Reload，连续崩溃则整体重建
-        private int _processFailCount;
-        // 连续重建计数：自动重建超过上限则停止，避免进程反复崩溃时无限重建
-        private int _recreateCount;
-        private Grid? _loadingOverlay;
-        private Grid? _errorOverlay;
-        // 当前是否浅色主题: 由配置(App.Theme)解析, 前端切换主题时经 theme-changed 消息同步
-        private bool _isLight;
-        // ProcessFailed 处理器引用：ConfigureWebView 订阅、DestroyWebView 注销，保证重建后旧回调不再触发
-        private EventHandler<CoreWebView2ProcessFailedEventArgs>? _processFailedHandler;
 
         public MainWindow()
         {
@@ -52,6 +68,9 @@ namespace JiaoLongControl.Server
             // 注意：--boot 隐藏启动时 App.OnStartup 不会 Show 本窗口，Loaded 事件永远不触发，
             // 若把 SelfStart 放在 Loaded 里策略将永不应用。后台线程避免驱动加载/WMI 查询阻塞窗口显示。
             _ = RunSelfStartAsync();
+
+            // OSD 全局键盘钩子需在带消息泵的 UI 线程安装; 窗口本体在首次触发时才创建
+            Bridge.Instance.Osd.Start();
 
             Closing += OnClosing;
             SystemEvents.PowerModeChanged += OnPowerModeChanged;
@@ -237,7 +256,7 @@ namespace JiaoLongControl.Server
             // 阶段二：页面导航 + 失败重试（最多 3 次）
             await RetryNavigationAsync(view, generation);
         }
-        
+
         private static bool IsWebView2RuntimeMissing(Exception ex)
         {
             for (Exception? e = ex; e != null; e = e.InnerException)
@@ -247,7 +266,7 @@ namespace JiaoLongControl.Server
             }
             return false;
         }
-        
+
         private void PromptWebView2RuntimeMissing()
         {
             var result = MessageBox.Show(
@@ -625,10 +644,10 @@ namespace JiaoLongControl.Server
 
         private void InitializeTray()
         {
-            _taskbarIcon = new Hardcodet.Wpf.TaskbarNotification.TaskbarIcon
+            _taskbarIcon = new TaskbarIcon
             {
                 Icon = System.Drawing.Icon.ExtractAssociatedIcon(
-                    System.Reflection.Assembly.GetEntryAssembly()!.Location
+                    Assembly.GetEntryAssembly()!.Location
                 ),
                 ToolTipText = "JiaoLong Control"
             };
@@ -775,9 +794,9 @@ namespace JiaoLongControl.Server
             }
         }
 
-        private static System.Drawing.Color DrawingColorFrom(System.Windows.Media.Color color)
+        private static Color DrawingColorFrom(System.Windows.Media.Color color)
         {
-            return System.Drawing.Color.FromArgb(color.A, color.R, color.G, color.B);
+            return Color.FromArgb(color.A, color.R, color.G, color.B);
         }
 
         private static IEnumerable<T> FindVisualChildren<T>(DependencyObject? root)
@@ -862,7 +881,7 @@ namespace JiaoLongControl.Server
                 EnsureWebViewReady();
         }
 
-        private async void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+        private async void OnClosing(object? sender, CancelEventArgs e)
         {
             // 仅托盘菜单「退出」时允许真正关闭；其余情况（标题栏关闭按钮/前端 window-close）隐藏到托盘
             if (_allowClose)

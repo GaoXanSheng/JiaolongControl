@@ -10,6 +10,7 @@ public class JiaoLongConfig
     public GpuSection Gpu { get; set; } = new();
     public FanSection Fan { get; set; } = new();
     public SmuSection Smu { get; set; } = new();
+    public OsdSection Osd { get; set; } = new();
 }
 
 public class AppSection
@@ -210,4 +211,47 @@ public class SmuSection
 
     [ConfigComment("Curve Optimizer 分核偏移 (负值为降压, 索引=核心号)")]
     public List<int> CurveOptimizerPerCore { get; set; } = new();
+}
+
+public class OsdSection
+{
+    [ConfigComment("启用 OSD 屏幕显示 (音量/锁定键由键盘事件触发)")]
+    public bool Enabled { get; set; } = true;
+
+    [ConfigComment("显示项目: 音量指示")]
+    public bool ShowVolume { get; set; } = true;
+
+    [ConfigComment("显示项目: 大写/数字/滚动锁定")]
+    public bool ShowLockKeys { get; set; } = true;
+
+    [ConfigComment("显示项目: 键盘背光档位 (软件内调整时触发)")]
+    public bool ShowKeyboardBacklight { get; set; } = true;
+
+    [ConfigComment("显示项目: 性能模式切换 (软件内切换时触发)")]
+    public bool ShowPerformanceMode { get; set; } = true;
+
+    [ConfigComment("显示项目: 功能键(Fn)锁定 (轮询EC检测)")]
+    public bool ShowFnLock { get; set; } = true;
+
+    [ConfigComment("显示项目: 触摸板锁定 (轮询EC检测)")]
+    public bool ShowTouchpad { get; set; } = true;
+
+    [ConfigComment("EC 状态轮询间隔 (ms)")]
+    [ConfigRange(500, 5000)]
+    public int PollIntervalMs { get; set; } = 1000;
+
+    [ConfigComment("OSD 显示时长 (ms)")]
+    [ConfigRange(500, 5000)]
+    public int DurationMs { get; set; } = 2000;
+
+    [ConfigComment("显示位置: TopCenter / TopRight / BottomCenter")]
+    public string Position { get; set; } = "TopCenter";
+
+    [ConfigComment("面板不透明度 (%)")]
+    [ConfigRange(30, 100)]
+    public int Opacity { get; set; } = 90;
+
+    [ConfigComment("界面缩放 (%)")]
+    [ConfigRange(50, 200)]
+    public int Scale { get; set; } = 100;
 }

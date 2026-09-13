@@ -48,6 +48,7 @@ namespace JiaoLongControl.Server.Interop
         public NvidiaGpuController NvidiaGpu { get; } = new();
         public RyzenSmuController RyzenSmu { get; } = new();
         public SystemInfoController SystemInfo { get; } = new();
+        public OsdController Osd { get; } = new();
 
         public void Dispose()
         {
@@ -60,6 +61,7 @@ namespace JiaoLongControl.Server.Interop
             KeyboardGradient.Dispose();
             RyzenSmu.Dispose();
             NvidiaGpu.Dispose();
+            Osd.Dispose();
         }
 
         public void ApplyConfig(JiaoLongConfig config)

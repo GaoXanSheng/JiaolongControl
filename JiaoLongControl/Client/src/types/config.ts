@@ -73,6 +73,23 @@ export interface SmuSectionType {
   CurveOptimizerPerCore: number[]
 }
 
+export type OsdPosition = 'TopCenter' | 'TopRight' | 'BottomCenter'
+
+export interface OsdSectionType {
+  Enabled: boolean
+  ShowVolume: boolean
+  ShowLockKeys: boolean
+  ShowKeyboardBacklight: boolean
+  ShowPerformanceMode: boolean
+  ShowFnLock: boolean
+  ShowTouchpad: boolean
+  DurationMs: number
+  PollIntervalMs: number
+  Position: OsdPosition
+  Opacity: number
+  Scale: number
+}
+
 export interface JiaoLongConfigType {
   Version: string
   App: AppSectionType
@@ -80,4 +97,5 @@ export interface JiaoLongConfigType {
   Gpu: GpuSectionType
   Fan: FanSectionType
   Smu: SmuSectionType
+  Osd: OsdSectionType
 }

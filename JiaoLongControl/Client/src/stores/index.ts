@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import {defineStore} from 'pinia'
 import HOME from '@/assets/icon/HOME.png'
 import CPU from '@/assets/icon/CPU.png'
 import Fan from '@/assets/icon/Fan.png'
@@ -7,6 +7,7 @@ import Settings from '@/assets/icon/Settings.png'
 import AMD from '@/assets/icon/AMD.png'
 import GPU from '@/assets/icon/GPU.png'
 import FanCurve from '@/assets/icon/FanCurve.png'
+import OSD from '@/assets/icon/监控.png'
 import HOME_Page from '@/pages/Home.vue'
 import CPU_Page from '@/pages/CPU.vue'
 import Fan_Page from '@/pages/Fan.vue'
@@ -15,6 +16,8 @@ import Settings_Page from '@/pages/Settings.vue'
 import GPU_Page from '@/pages/GPU.vue'
 import RyzenSmu_Page from '@/pages/RyzenSmu.vue'
 import FanCurveEditor from '@/pages/FanCurveEditor.vue'
+import Osd_Page from '@/pages/Osd.vue'
+
 const PAGE_STORAGE_KEY = 'jl-ui-page'
 const useStore = defineStore('store', {
   state: () => {
@@ -51,6 +54,7 @@ export const HomeCardType = [
   { title: '风扇曲线', icon: FanCurve, page: FanCurveEditor },
   { title: '风扇', icon: Fan, page: Fan_Page },
   { title: '键盘', icon: Keyboard, page: Keyboard_Page },
+  { title: 'OSD', icon: OSD, page: Osd_Page },
   { title: '设置', icon: Settings, page: Settings_Page },
 ].map((item, index) => ({
   ...item,

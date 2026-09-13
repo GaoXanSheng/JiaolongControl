@@ -9,4 +9,10 @@
             </requestedPrivileges>
         </security>
     </trustInfo>
+    <application xmlns="urn:schemas-microsoft-com:asm.v3">
+        <windowsSettings>
+            <!-- OSD 悬浮窗按显示器 DPI 物理像素定位, 显式声明 PerMonitorV2 保证缩放行为明确 -->
+            <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+        </windowsSettings>
+    </application>
 </assembly>

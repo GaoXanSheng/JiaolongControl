@@ -140,6 +140,11 @@ export interface SmuTelemetry {
  */
 type HostBridgePromise<T> = Promise<CommandResult<T>> & { toJson(): string }
 
+export interface OsdVolumeState {
+  Volume: number
+  Muted: boolean
+}
+
 /** 后端 Bridge 端点全量类型映射: 与 C# Server/Bridge 及 Linux Server/bridge.py 保持一致 */
 export interface BridgeApi {
   CPU: {
@@ -278,6 +283,12 @@ export interface BridgeApi {
     SetCurveOptimizerAll(value: number): HostBridgePromise<void>
     SetCurveOptimizerPerCore(coreIdx: number, value: number): HostBridgePromise<void>
     GetSmuTelemetry(): HostBridgePromise<SmuTelemetry>
+  }
+  Osd: {
+    ShowTest(kind: string, value: number): HostBridgePromise<void>
+    GetVolume(): HostBridgePromise<OsdVolumeState>
+    SetVolume(percent: number): HostBridgePromise<void>
+    SetMute(muted: boolean): HostBridgePromise<void>
   }
 }
 
@@ -561,6 +572,13 @@ export const Power = {
   EnableTurbo: () => call(raw.Power.EnableTurbo()),
   GetCPUMaxFrequency: () => call(raw.Power.GetCPUMaxFrequency()),
   GetTurboEnabled: () => call(raw.Power.GetTurboEnabled()),
+}
+
+export const Osd = {
+  ShowTest: (kind: string, value = 0) => call(raw.Osd.ShowTest(kind, value)),
+  GetVolume: () => call(raw.Osd.GetVolume()),
+  SetVolume: (percent: number) => call(raw.Osd.SetVolume(percent)),
+  SetMute: (muted: boolean) => call(raw.Osd.SetMute(muted)),
 }
 
 export const Config = {

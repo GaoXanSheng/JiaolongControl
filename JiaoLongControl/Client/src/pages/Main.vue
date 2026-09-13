@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import RightSide from '@/components/layout/RightSide.vue'
 import TitleBar from '@/components/layout/TitleBar.vue'
-import useStore, { HomeCardType } from '@/stores'
+import useStore, {HomeCardType} from '@/stores'
 
 const store = useStore()
 
@@ -9,8 +9,9 @@ function onClickMenuItem(key: number) {
   store.setPage(key)
 }
 
-// 过滤掉 num 为 8 的“设置”选项，主导航菜单中仅渲染除“设置”之外的其他项
-const mainNavItems = HomeCardType.filter((item) => item.num !== 8)
+// “设置”页固定渲染在侧边栏底部，主导航仅显示其余页面（按标题查找，避免依赖固定序号）
+const settingsNum = HomeCardType.find((item) => item.title === '设置')?.num ?? 8
+const mainNavItems = HomeCardType.filter((item) => item.num !== settingsNum)
 </script>
 
 <template>
@@ -68,15 +69,15 @@ const mainNavItems = HomeCardType.filter((item) => item.num !== 8)
             <button
               :class="[
                 'w-full flex items-center justify-between px-5 py-4 transition-colors',
-                store.SwitchPages === 8 ? 'text-ink' : 'text-gray-400 hover:text-ink',
+                store.SwitchPages === settingsNum ? 'text-ink' : 'text-gray-400 hover:text-ink',
               ]"
-              @click="onClickMenuItem(8)"
+              @click="onClickMenuItem(settingsNum)"
             >
               <div class="flex items-center gap-4">
                 <div class="w-5 h-5 flex items-center justify-center relative">
                   <!-- 设置图标背景氛围炫光 -->
                   <span
-                    v-if="store.SwitchPages === 8"
+                    v-if="store.SwitchPages === settingsNum"
                     class="absolute w-5 h-5 bg-blue-500/40 rounded-full blur-[8px] animate-pulse pointer-events-none"
                   ></span>
 
@@ -84,7 +85,7 @@ const mainNavItems = HomeCardType.filter((item) => item.num !== 8)
                   <icon-settings
                     :class="[
                       'text-lg relative z-10 transition-all duration-300',
-                      store.SwitchPages === 8
+                      store.SwitchPages === settingsNum
                         ? 'text-blue-400 drop-shadow-[0_0_6px_rgba(59,130,246,0.9)]'
                         : '',
                     ]"
