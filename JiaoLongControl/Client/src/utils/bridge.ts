@@ -140,6 +140,20 @@ export interface SmuTelemetry {
  */
 type HostBridgePromise<T> = Promise<CommandResult<T>> & { toJson(): string }
 
+export interface OsdVolumeState {
+  Volume: number
+  Muted: boolean
+}
+
+export interface OsdLockStates {
+  CapsLock: boolean
+  NumLock: boolean
+  /** EC 读取失败时为 null (未知) */
+  FnLock: boolean | null
+  /** EC 读取失败时为 null (未知) */
+  TouchpadLock: boolean | null
+}
+
 /** 后端 Bridge 端点全量类型映射: 与 C# Server/Bridge 及 Linux Server/bridge.py 保持一致 */
 export interface BridgeApi {
   CPU: {
@@ -278,6 +292,17 @@ export interface BridgeApi {
     SetCurveOptimizerAll(value: number): HostBridgePromise<void>
     SetCurveOptimizerPerCore(coreIdx: number, value: number): HostBridgePromise<void>
     GetSmuTelemetry(): HostBridgePromise<SmuTelemetry>
+  }
+  Osd: {
+    ShowTest(kind: string, value: number): HostBridgePromise<void>
+    GetVolume(): HostBridgePromise<OsdVolumeState>
+    SetVolume(percent: number): HostBridgePromise<void>
+    SetMute(muted: boolean): HostBridgePromise<void>
+    GetLockStates(): HostBridgePromise<OsdLockStates>
+    SetCapsLock(enabled: boolean): HostBridgePromise<void>
+    SetNumLock(enabled: boolean): HostBridgePromise<void>
+    SetFnLock(enabled: boolean): HostBridgePromise<void>
+    SetTouchpadLock(enabled: boolean): HostBridgePromise<void>
   }
 }
 
@@ -561,6 +586,18 @@ export const Power = {
   EnableTurbo: () => call(raw.Power.EnableTurbo()),
   GetCPUMaxFrequency: () => call(raw.Power.GetCPUMaxFrequency()),
   GetTurboEnabled: () => call(raw.Power.GetTurboEnabled()),
+}
+
+export const Osd = {
+  ShowTest: (kind: string, value = 0) => call(raw.Osd.ShowTest(kind, value)),
+  GetVolume: () => call(raw.Osd.GetVolume()),
+  SetVolume: (percent: number) => call(raw.Osd.SetVolume(percent)),
+  SetMute: (muted: boolean) => call(raw.Osd.SetMute(muted)),
+  GetLockStates: () => call(raw.Osd.GetLockStates()),
+  SetCapsLock: (enabled: boolean) => call(raw.Osd.SetCapsLock(enabled)),
+  SetNumLock: (enabled: boolean) => call(raw.Osd.SetNumLock(enabled)),
+  SetFnLock: (enabled: boolean) => call(raw.Osd.SetFnLock(enabled)),
+  SetTouchpadLock: (enabled: boolean) => call(raw.Osd.SetTouchpadLock(enabled)),
 }
 
 export const Config = {

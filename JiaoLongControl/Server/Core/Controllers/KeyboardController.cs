@@ -46,6 +46,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         public CommandResult SetLightBrightness(RGBKeyboardBrightnessLevel br)
         {
             var res =  MethodServices.SetValue(MethodName.RGBKeyboardBrightness, (byte)br);
+            if (res) OsdController.Instance?.OnKeyboardBrightnessChanged((byte)br);
             return new CommandResult(res, res ? "设置成功" : "设置失败");
         }
     }

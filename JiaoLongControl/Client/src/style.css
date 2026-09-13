@@ -117,3 +117,111 @@ html[data-theme='dark'] .arco-slider-track {
   height: 13px !important;
   box-shadow: 0 0 10px rgba(138, 43, 226, 0.7) !important;
 }
+
+/* ===== Arco Modal 全局主题化: 弹窗传送(render-to-body)至 document.body, 页面 scoped
+ * 样式无法命中, 统一在此覆写; 颜色走主题变量, 深色/浅色自动适配 ===== */
+.arco-modal {
+  background-color: var(--color-panel-bg) !important;
+  border: 1px solid var(--color-line) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 36px var(--color-shadow-pop) !important;
+}
+.arco-modal-header {
+  border-bottom: 1px solid var(--color-line-soft) !important;
+}
+.arco-modal-title {
+  color: var(--color-text-main) !important;
+  font-size: 13px !important;
+}
+.arco-modal-close-btn {
+  color: var(--color-text-muted) !important;
+}
+.arco-modal-close-btn:hover {
+  color: var(--color-text-main) !important;
+}
+.arco-modal-footer {
+  border-top: 1px solid var(--color-line-soft) !important;
+}
+/* simple 模式下 Arco 默认 margin-top: 32px; 按钮区在其基础上再下移 5px,
+ * 并补回内边距(Arco 在 simple 模式将其清零), 避免按钮紧贴分隔线 */
+.arco-modal-simple .arco-modal-footer {
+  margin-top: 37px !important;
+  padding-top: 12px !important;
+}
+.arco-modal-footer .arco-btn-secondary {
+  background-color: color-mix(in srgb, var(--color-text-main) 2%, transparent) !important;
+  border: 1px solid var(--color-line-soft) !important;
+  color: color-mix(in srgb, var(--color-text-main) 60%, transparent) !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+}
+.arco-modal-footer .arco-btn-secondary:hover {
+  background-color: color-mix(in srgb, var(--color-text-main) 6%, transparent) !important;
+  color: var(--color-text-main) !important;
+}
+/* 确定键用危险玫红, 契合安全警告语义, 两主题下均保持可读 */
+.arco-modal-footer .arco-btn-primary {
+  background-color: #e11d48 !important;
+  border: none !important;
+  color: #ffffff !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  box-shadow: 0 0 10px rgba(225, 29, 72, 0.3) !important;
+}
+.arco-modal-footer .arco-btn-primary:hover {
+  background-color: #f43f5e !important;
+}
+/* 深色下遮罩加深; 浅色保持 Arco 原生遮罩 */
+html:not([data-theme='light']) .arco-modal-mask {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+/* 弹窗内数字输入框(风扇曲线编辑器)主题化; 前置标签复用 arco-input-prepend 类 */
+.arco-modal .arco-input-number {
+  background-color: var(--color-panel-elevated) !important;
+  border: 1px solid var(--color-line-soft) !important;
+  color: var(--color-text-main) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+.arco-modal .arco-input-number .arco-input-prepend {
+  background-color: var(--color-panel-bg) !important;
+  border-right: 1px solid var(--color-line-soft) !important;
+  color: color-mix(in srgb, var(--color-text-main) 50%, transparent) !important;
+  font-size: 11px !important;
+}
+
+/* ===== 设置卡片弹出动画: 用于 v-if / visibleWhen 显隐的开关卡片 (配合 <transition name="card-pop">) ===== */
+.card-pop-enter-active {
+  animation: card-pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.card-pop-leave-active {
+  animation: card-pop-out 0.2s ease forwards;
+}
+/* TransitionGroup: 兄弟卡片随插入/移除平滑补位 */
+.card-pop-move {
+  transition: transform 0.3s ease;
+}
+.card-pop-leave-active {
+  position: absolute;
+  width: 100%;
+}
+@keyframes card-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(-6px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+@keyframes card-pop-out {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.96) translateY(-6px);
+  }
+}

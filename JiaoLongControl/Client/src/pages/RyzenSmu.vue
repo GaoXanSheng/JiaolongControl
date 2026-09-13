@@ -1,17 +1,22 @@
 <script setup lang="ts">
 import CpuDie from '@/components/common/CpuDie.vue'
 
-import { reactive, ref, watch, computed, onMounted, onUnmounted } from 'vue'
-import { Message } from '@arco-design/web-vue'
-import { CPU, RyzenSmu, type CommandResult, type SmuTelemetry } from '@/utils/bridge'
-import { useConfigStore } from '@/stores/config'
-import type { SmuSectionType } from '@/types/config'
-import { POLL_INTERVAL_SMU } from '@/constants'
-import { buildSparkline, type SparklineResult } from '@/utils/chart'
+import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
+import {Message} from '@arco-design/web-vue'
+import {type CommandResult, CPU, RyzenSmu, type SmuTelemetry} from '@/utils/bridge'
+import {useConfigStore} from '@/stores/config'
+import type {SmuSectionType} from '@/types/config'
+import {POLL_INTERVAL_SMU} from '@/constants'
+import {buildSparkline, type SparklineResult} from '@/utils/chart'
+
+// CONFIG_GROUPS 走 Set+key 的动态应用，仅允许数值型 Smu 字段（数组字段如 CurveOptimizerPerCore 不适用）
+type NumericSmuKey = {
+  [K in keyof SmuSectionType]: SmuSectionType[K] extends number ? K : never
+}[keyof SmuSectionType]
 
 interface ConfigGroupItem {
   label: string
-  key: keyof SmuSectionType
+  key: NumericSmuKey
   min: number
   max: number
   step?: number
@@ -191,10 +196,11 @@ watch(
   coreCount,
   (newCount) => {
     if (newCount <= 0) return
+    const saved = configStore.config?.Smu.CurveOptimizerPerCore ?? []
     const currentLen = perCoreCurve.length
     if (newCount > currentLen) {
       for (let i = currentLen; i < newCount; i++) {
-        perCoreCurve.push(0)
+        perCoreCurve.push(saved[i] ?? 0)
         perCoreOcClk.push(0)
       }
     } else if (newCount < currentLen) {
@@ -225,6 +231,18 @@ const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: number[]
   } finally {
     loadingMap[methodName] = false
   }
+}
+
+// 分核值仅在点击✓真正应用到 SMU 时写入配置，未应用的草稿值不落盘
+const applyPerCoreCurve = (index: number) => {
+  const value = perCoreCurve[index] ?? 0
+  const smu = configStore.config?.Smu
+  if (smu) {
+    const saved = smu.CurveOptimizerPerCore
+    while (saved.length <= index) saved.push(0)
+    saved[index] = value
+  }
+  applySetting('SetCurveOptimizerPerCore', index, value)
 }
 
 // ====== Real-time SMU Telemetry ======
@@ -452,9 +470,7 @@ onUnmounted(() => {
                     />
                     <button
                       class="w-5 h-5 bg-orange-600/10 text-orange-400 hover:bg-orange-600 hover:text-white transition-colors border border-orange-500/20 rounded flex items-center justify-center text-[10px]"
-                      @click="
-                        applySetting('SetCurveOptimizerPerCore', index, perCoreCurve[index] ?? 0)
-                      "
+                      @click="applyPerCoreCurve(index)"
                     >
                       ✓
                     </button>

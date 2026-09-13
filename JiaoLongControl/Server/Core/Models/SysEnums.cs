@@ -87,4 +87,40 @@
         QuietMode,
         Unknow = 255
     }
+
+    /// <summary>
+    /// EC 热键事件名 (来自官方 HID_EVENT20 事件通道的 EventDetail[1])。
+    /// EventDetail: [0]=WMIEventType(HotKey=1), [1]=EventName, [2]=值 (风扇速度为 [2]&lt;&lt;8|[3] 双字节)。
+    /// </summary>
+    public enum EventName : byte
+    {
+        Reserved_1 = 1,
+        Reserved_2 = 2,
+        Reserved_3 = 3,
+        AirPlaneMode = 4,
+        RGBKeyboardBrightness = 5,
+        TouchPadState = 6,
+        FnState = 7,
+        RGBKeyboardMode = 8,
+        CapsLkState = 9,
+        AmbientlightState = 10,
+        CalculatorStart = 11,
+        DefaultBrowserStart = 12,
+        NumLockState = 13,
+        ScrlockState = 14,
+        SystemPerMode = 15,
+        FN_J = 16,
+        FN_F = 17,
+        FN_0 = 18,
+        FN_1 = 19,
+        FN_2 = 20,
+        FN_3 = 21,
+        FN_4 = 22,
+        FN_5 = 24,
+        PanelRefreshRate = 25,
+        CPUFanSpeed = 26,
+        GPUFanSpeed = 32,
+        WinKeyLock = 33,
+        UnKnow = 255,
+    }
 }

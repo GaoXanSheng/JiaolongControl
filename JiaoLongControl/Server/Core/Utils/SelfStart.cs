@@ -11,7 +11,19 @@ public class SelfStart
         if (bridge.Config.App.BootAdvancedCPUSystem) CPU();
         if (bridge.Config.App.BootAdvancedGPUSystem) GPU();
         if (bridge.Config.App.BootSetRyzenSumCurveOptimizerAll)
-            bridge.RyzenSmu.SetCurveOptimizerAll(bridge.Config.Smu.CurveOptimizerAll);
+        {
+            if (bridge.Config.App.BootSetRyzenSmuCurveOptimizerPerCore)
+            {
+                // 分核模式：逐核写入已保存的偏移（含0值，用于重置之前应用的偏移）；列表为空时不写入
+                var perCore = bridge.Config.Smu.CurveOptimizerPerCore;
+                for (int i = 0; i < perCore.Count; i++)
+                    bridge.RyzenSmu.SetCurveOptimizerPerCore((uint)i, perCore[i]);
+            }
+            else
+            {
+                bridge.RyzenSmu.SetCurveOptimizerAll(bridge.Config.Smu.CurveOptimizerAll);
+            }
+        }
         if (bridge.Config.App.BootKeyboardGradient) bridge.KeyboardGradient.Start();
     }
 

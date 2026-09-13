@@ -18,6 +18,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         public CommandResult Set(SystemPerMode mode)
         {
             var res = MethodServices.SetValue(MethodName.SystemPerMode, mode);
+            if (res) OsdController.Instance?.OnPerformanceModeChanged(mode);
             return new CommandResult(res, res ? "设置成功" : "设置失败");
         }
     }

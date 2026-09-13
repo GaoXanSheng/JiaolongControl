@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue'
-import { useConfigStore } from '@/stores/config'
-import { useSystemInfoStore } from '@/stores/systemInfo'
-import { applyTheme } from '@/theme/theme'
+import {onMounted, onUnmounted, watch} from 'vue'
+import {useConfigStore} from '@/stores/config'
+import {useLocksStore} from '@/stores/locks'
+import {useSystemInfoStore} from '@/stores/systemInfo'
+import {applyTheme} from '@/theme/theme'
 
 const systemInfoStore = useSystemInfoStore()
 const configStore = useConfigStore()
+const locksStore = useLocksStore()
 
 let stopPolling: () => void
 
@@ -24,6 +26,8 @@ function onWebViewMessage(e: MessageEvent) {
     const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
     if (data && data.type === 'config-changed') {
       configStore.refresh()
+    } else if (data && data.type === 'lock-states-changed') {
+      locksStore.apply(data)
     }
   } catch {
     // 来自 WebView2 外部消息, 非 JSON 时忽略

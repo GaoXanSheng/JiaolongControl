@@ -1,6 +1,6 @@
-namespace JiaoLongControl.Server.Core.Models;
-
 using YamlDotNet.Serialization;
+
+namespace JiaoLongControl.Server.Core.Models;
 
 public class JiaoLongConfig
 {
@@ -10,6 +10,7 @@ public class JiaoLongConfig
     public GpuSection Gpu { get; set; } = new();
     public FanSection Fan { get; set; } = new();
     public SmuSection Smu { get; set; } = new();
+    public OsdSection Osd { get; set; } = new();
 }
 
 public class AppSection
@@ -29,6 +30,9 @@ public class AppSection
     [ConfigComment("开机自动设置Ryzen SMU Curve Optimizer All")]
     public bool BootSetRyzenSumCurveOptimizerAll { get; set; }
 
+    [ConfigComment("开机自动应用Ryzen SMU Curve Optimizer时使用分核降压 (代替全核)")]
+    public bool BootSetRyzenSmuCurveOptimizerPerCore { get; set; }
+
     [ConfigComment("开机自动开启键盘渐变")]
     public bool BootKeyboardGradient { get; set; }
 
@@ -44,7 +48,7 @@ public class CpuSection
     [ConfigComment("默认档位参数")]
     public CpuProfileData Default { get; set; } = new()
     {
-        CpuLongPower = 45, CpuShortPower = 65, CpuTempWall = 80, CpuMaxFrequency = 4400
+        CpuLongPower = 45, CpuShortPower = 65, CpuTempWall = 90, CpuMaxFrequency = 4400
     };
 
     [ConfigComment("高性能档位参数")]
@@ -56,12 +60,12 @@ public class CpuSection
     [ConfigComment("节能档位参数")]
     public CpuProfileData Saving { get; set; } = new()
     {
-        CpuLongPower = 30, CpuShortPower = 45, CpuTempWall = 75, CpuMaxFrequency = 3200
+        CpuLongPower = 30, CpuShortPower = 45, CpuTempWall = 85, CpuMaxFrequency = 3800
     };
 
     [ConfigComment("自定义档位参数")]
     public CpuProfileData Custom { get; set; } = new();
-    
+
     [YamlIgnore]
     public CpuProfileData Active => CpuProfile switch
     {
@@ -204,4 +208,68 @@ public class SmuSection
 
     [ConfigComment("Curve Optimizer All (负值为降压)")]
     public int CurveOptimizerAll { get; set; }
+
+    [ConfigComment("Curve Optimizer 分核偏移 (负值为降压, 索引=核心号)")]
+    public List<int> CurveOptimizerPerCore { get; set; } = new();
+}
+
+public class OsdSection
+{
+    [ConfigComment("启用 OSD 屏幕显示 (音量/锁定键由键盘事件触发)")]
+    public bool Enabled { get; set; } = true;
+
+    [ConfigComment("显示项目: 音量指示")]
+    public bool ShowVolume { get; set; } = true;
+
+    [ConfigComment("显示项目: 大写/数字/滚动锁定")]
+    public bool ShowLockKeys { get; set; } = true;
+
+    [ConfigComment("显示项目: 键盘背光档位 (软件内调整时触发)")]
+    public bool ShowKeyboardBacklight { get; set; } = true;
+
+    [ConfigComment("显示项目: 性能模式切换 (软件内切换时触发)")]
+    public bool ShowPerformanceMode { get; set; } = true;
+
+    [ConfigComment("模式切换 OSD 附带 CPU/GPU 温度与风扇转速")]
+    public bool ShowPerfTelemetry { get; set; } = true;
+
+    [ConfigComment("显示项目: 功能键(Fn)锁定 (轮询EC检测)")]
+    public bool ShowFnLock { get; set; } = true;
+
+    [ConfigComment("显示项目: 触摸板锁定 (轮询EC检测)")]
+    public bool ShowTouchpad { get; set; } = true;
+
+    [ConfigComment("显示项目: 媒体播放提示 (系统有程序开始播放音乐或切歌时显示曲名与歌手)")]
+    public bool ShowMedia { get; set; } = true;
+
+    [ConfigComment("EC 状态轮询间隔 (ms, 事件通道不可用时的兜底)")]
+    [ConfigRange(500, 5000)]
+    public int PollIntervalMs { get; set; } = 1000;
+
+    [ConfigComment("出入场动画时长 (ms, 入场展开与出场收圆各占此时长)")]
+    [ConfigRange(200, 3000)]
+    public int AnimationMs { get; set; } = 480;
+
+    [ConfigComment("OSD 显示时长 (ms, 完全展开后的驻留时间)")]
+    [ConfigRange(500, 5000)]
+    public int DurationMs { get; set; } = 2000;
+
+    [ConfigComment("显示位置: TopCenter / BottomCenter / Custom")]
+    public string Position { get; set; } = "TopCenter";
+
+    [ConfigComment("自定义位置水平百分比 (胶囊在主屏工作区可移动行程的 0~100%, Position=Custom 时生效)")]
+    [ConfigRange(0, 100)]
+    public int CustomX { get; set; } = 50;
+
+    [ConfigComment("自定义位置垂直百分比 (胶囊在主屏工作区可移动行程的 0~100%, Position=Custom 时生效)")]
+    [ConfigRange(0, 100)]
+    public int CustomY { get; set; } = 8;
+
+    [ConfigComment("面板不透明度 (%)")]
+    [ConfigRange(30, 100)]
+    public int Opacity { get; set; } = 90;
+
+    [ConfigComment("界面缩放 (%)")]
+    [ConfigRange(100, 200)]
+    public int Scale { get; set; } = 150;
 }

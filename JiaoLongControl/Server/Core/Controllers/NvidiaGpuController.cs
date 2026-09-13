@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Linq;
 using System.Management;
 using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Models;
@@ -20,6 +19,12 @@ namespace JiaoLongControl.Server.Core.Controllers
             NVIDIA.Initialize();
         }
 
+        public void Dispose()
+        {
+            try { NVIDIA.Unload(); } catch { }
+            GC.SuppressFinalize(this);
+        }
+
         private PhysicalGPU GetGPU(int gpuIndex)
         {
             var gpus = PhysicalGPU.GetPhysicalGPUs();
@@ -27,21 +32,6 @@ namespace JiaoLongControl.Server.Core.Controllers
                 throw new InvalidOperationException("没有找到 NVIDIA GPU");
             int idx = gpuIndex >= 0 && gpuIndex < gpus.Length ? gpuIndex : 0;
             return gpus[idx];
-        }
-
-        public class GpuStatsInfo
-        {
-            public string GpuName { get; set; } = "";
-            public string DriverVersion { get; set; } = "";
-            public string DriverDate { get; set; } = "Unknown";
-            public string MemoryTotal { get; set; } = "";
-            public string BusWidth { get; set; } = "";
-            public string GpuUtilization { get; set; } = "";
-            public string MemoryUtilization { get; set; } = "";
-            public string CoreClock { get; set; } = "";
-            public string MemoryClock { get; set; } = "";
-            public string GpuTemperature { get; set; } = "";
-            public string FanSpeed { get; set; } = "";
         }
 
         public CommandResult GetGpuAllStats(int gpuIndex = -1)
@@ -53,7 +43,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                 {
                     GpuName = gpu.FullName,
                     DriverVersion = $"{(NVIDIA.DriverVersion / 100).ToString()}.{(NVIDIA.DriverVersion % 100).ToString()}",
-                    DriverDate = GetNvidiaDriverDate(gpuIndex) ?? "Unknown",
+                    DriverDate = GetNvidiaDriverDate(gpuIndex),
                     MemoryTotal = $"{(gpu.MemoryInformation.DedicatedVideoMemoryInkB / 1024).ToString()} MiB",
                     BusWidth = $"x{gpu.BusInformation.CurrentPCIeLanes}",
                     GpuUtilization = gpu.UsageInformation.GPU.Percentage.ToString(),
@@ -61,7 +51,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                     CoreClock = ((int)(gpu.CurrentClockFrequencies.GraphicsClock.Frequency / 1000)).ToString(),
                     MemoryClock = ((int)(gpu.CurrentClockFrequencies.MemoryClock.Frequency / 1000)).ToString(),
                     GpuTemperature = gpu.ThermalInformation.ThermalSensors.First().CurrentTemperature.ToString(),
-                    FanSpeed = GetGpuFanSpeed(gpuIndex).Data?.ToString() ?? "0"
+                    FanSpeed = GetGpuFanSpeed(gpuIndex).Data.ToString() ?? "0"
                 };
                 return new CommandResult(true, "获取成功", stats);
             }
@@ -290,6 +280,61 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             var result = RunNvidiaSmi("-i", ResolveGpuIndex(gpuIndex).ToString(), "-pl", watts.ToString());
             return result.Success ? new CommandResult(true, $"功耗限制已设置为 {watts} W") : result;
+        }
+
+        private int ResolveGpuIndex(int gpuIndex)
+        {
+            return gpuIndex >= 0 ? gpuIndex : 0;
+        }
+
+        private CommandResult RunNvidiaSmi(params string[] arguments)
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "nvidia-smi",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
+                // ArgumentList 逐项传递并自动转义, 不构造命令行字符串, 避免参数注入
+                foreach (var arg in arguments)
+                    psi.ArgumentList.Add(arg);
+
+                using var process = Process.Start(psi);
+                string output = process!.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
+                process.WaitForExit(5000);
+
+                if (process.ExitCode != 0)
+                {
+                    string message = string.IsNullOrWhiteSpace(error) ? output : error;
+                    return new CommandResult(false, $"[NvidiaGpuController] nvidia-smi {string.Join(" ", arguments)} 失败: {message.Trim()}");
+                }
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"[NvidiaGpuController] 执行 nvidia-smi 异常: {ex.Message}");
+            }
+
+            return new CommandResult(true, "执行成功");
+        }
+
+        public class GpuStatsInfo
+        {
+            public string GpuName { get; set; } = "";
+            public string DriverVersion { get; set; } = "";
+            public string DriverDate { get; set; } = "Unknown";
+            public string MemoryTotal { get; set; } = "";
+            public string BusWidth { get; set; } = "";
+            public string GpuUtilization { get; set; } = "";
+            public string MemoryUtilization { get; set; } = "";
+            public string CoreClock { get; set; } = "";
+            public string MemoryClock { get; set; } = "";
+            public string GpuTemperature { get; set; } = "";
+            public string FanSpeed { get; set; } = "";
         }
 
         #region 超频 (NVAPI 私有接口, Afterburner 同款路径)
@@ -551,7 +596,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                 int point = points[points.Length / 2];
                 int before = NvApiOverclock.GetCurvePointFrequencyMhz(gpu, point);
                 NvApiOverclock.SetClockPointOffset(gpu, point, 100000);
-                System.Threading.Thread.Sleep(80);
+                Thread.Sleep(80);
                 int after = NvApiOverclock.GetCurvePointFrequencyMhz(gpu, point);
                 NvApiOverclock.SetClockPointOffset(gpu, point, 0);
                 return after - before > 60;
@@ -606,51 +651,5 @@ namespace JiaoLongControl.Server.Core.Controllers
         }
 
         #endregion
-
-        private int ResolveGpuIndex(int gpuIndex)
-        {
-            return gpuIndex >= 0 ? gpuIndex : 0;
-        }
-
-        private CommandResult RunNvidiaSmi(params string[] arguments)
-        {
-            try
-            {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "nvidia-smi",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true
-                };
-                // ArgumentList 逐项传递并自动转义, 不构造命令行字符串, 避免参数注入
-                foreach (var arg in arguments)
-                    psi.ArgumentList.Add(arg);
-
-                using var process = Process.Start(psi);
-                string output = process!.StandardOutput.ReadToEnd();
-                string error = process.StandardError.ReadToEnd();
-                process.WaitForExit(5000);
-
-                if (process.ExitCode != 0)
-                {
-                    string message = string.IsNullOrWhiteSpace(error) ? output : error;
-                    return new CommandResult(false, $"[NvidiaGpuController] nvidia-smi {string.Join(" ", arguments)} 失败: {message.Trim()}");
-                }
-            }
-            catch (Exception ex)
-            {
-                return new CommandResult(false, $"[NvidiaGpuController] 执行 nvidia-smi 异常: {ex.Message}");
-            }
-
-            return new CommandResult(true, "执行成功");
-        }
-
-        public void Dispose()
-        {
-            try { NVIDIA.Unload(); } catch { }
-            GC.SuppressFinalize(this);
-        }
     }
 }

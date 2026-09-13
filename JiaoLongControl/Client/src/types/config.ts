@@ -14,6 +14,7 @@ export interface AppSectionType {
   BootAdvancedCPUSystem: boolean
   BootAdvancedGPUSystem: boolean
   BootSetRyzenSumCurveOptimizerAll: boolean
+  BootSetRyzenSmuCurveOptimizerPerCore: boolean
   BootKeyboardGradient: boolean
   Theme: ThemeMode
 }
@@ -69,6 +70,29 @@ export interface SmuSectionType {
   OcClk: number
   OcVolt: number
   CurveOptimizerAll: number
+  CurveOptimizerPerCore: number[]
+}
+
+export type OsdPosition = 'TopCenter' | 'BottomCenter' | 'Custom'
+
+export interface OsdSectionType {
+  Enabled: boolean
+  ShowVolume: boolean
+  ShowLockKeys: boolean
+  ShowKeyboardBacklight: boolean
+  ShowPerformanceMode: boolean
+  ShowPerfTelemetry: boolean
+  ShowFnLock: boolean
+  ShowTouchpad: boolean
+  ShowMedia: boolean
+  AnimationMs: number
+  DurationMs: number
+  PollIntervalMs: number
+  Position: OsdPosition
+  CustomX: number
+  CustomY: number
+  Opacity: number
+  Scale: number
 }
 
 export interface JiaoLongConfigType {
@@ -78,4 +102,5 @@ export interface JiaoLongConfigType {
   Gpu: GpuSectionType
   Fan: FanSectionType
   Smu: SmuSectionType
+  Osd: OsdSectionType
 }

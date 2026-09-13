@@ -1,22 +1,28 @@
 <script setup lang="ts">
+import {computed} from 'vue'
 import SettingToggle from '@/components/common/SettingToggle.vue'
-import LogoLight from './Settings/components/LogoLight.vue'
-import GPUDirectConnection from './Settings/components/GPUDirectConnection.vue'
 import PawnIODriverMode from './Settings/components/PawnIODriverMode.vue'
 import ThemeSetting from './Settings/components/ThemeSetting.vue'
 import BootAutoStart from './Settings/components/BootAutoStart.vue'
+import {useConfigStore} from '@/stores/config'
+import type {JiaoLongConfigType} from '@/types/config'
+
+const configStore = useConfigStore()
 
 // 布尔开关卡片配置: title/description + config JSON 路径, 由 SettingToggle 统一渲染
-const toggleCards = [
+// visibleWhen 返回 false 时该卡片不渲染
+interface ToggleCard {
+  title: string
+  description: string
+  configPath: string
+  visibleWhen?: (config: JiaoLongConfigType) => boolean
+}
+
+const toggleCards: ToggleCard[] = [
   {
     title: '自启动高级风扇控制系统',
     description: '启用后，软件将在后台实时监控硬件温度，并依据【风扇曲线】页面中用户自定义的策略来动态调整风扇转速',
     configPath: 'App.BootAdvancedFanControlSystem',
-  },
-  {
-    title: '风扇曲线合并',
-    description: '启用后，软件将在【风扇曲线】页面中将所有风扇的曲线合并为一条曲线，方便用户统一调整风扇转速',
-    configPath: 'Fan.FanCurveMerge',
   },
   {
     title: 'CPU 参数自动应用',
@@ -29,9 +35,15 @@ const toggleCards = [
     configPath: 'App.BootAdvancedGPUSystem',
   },
   {
-    title: 'RyzenSMU 全核降压自动应用',
-    description: '在软件启动时，自动应用【Ryzen SMU】页面中保存的 Curve Optimizer 全核心负压（降压超频）设定',
+    title: 'RyzenSMU 降压自动应用',
+    description: '在软件启动时，自动应用【Ryzen SMU】页面中保存的 Curve Optimizer 降压设定（全核或分核，由下方选项决定）',
     configPath: 'App.BootSetRyzenSumCurveOptimizerAll',
+  },
+  {
+    title: 'RyzenSMU 分核降压模式',
+    description: '启用后，启动时逐核心应用【Ryzen SMU】页面中保存的分核心 Curve Optimizer 数值，代替全核偏移',
+    configPath: 'App.BootSetRyzenSmuCurveOptimizerPerCore',
+    visibleWhen: (config) => config.App.BootSetRyzenSumCurveOptimizerAll,
   },
   {
     title: '自启动键盘渐变',
@@ -39,6 +51,12 @@ const toggleCards = [
     configPath: 'App.BootKeyboardGradient',
   },
 ]
+
+// config 未加载完成时先隐藏带 visibleWhen 条件的卡片
+const visibleCards = computed(() => {
+  const config = configStore.config
+  return toggleCards.filter((card) => !card.visibleWhen || !config || card.visibleWhen(config))
+})
 </script>
 
 <template>
@@ -51,25 +69,27 @@ const toggleCards = [
       </p>
     </div>
 
-    <!-- Setting Grid -->
-    <div class="max-w-[1000px] mx-auto grid grid-cols-1 gap-4 pt-4">
+    <!-- Setting Grid: TransitionGroup 驱动 visibleWhen 卡片 (如 SMU 分核降压模式) 的弹出/收起动画 -->
+    <TransitionGroup
+      class="max-w-[1000px] mx-auto grid grid-cols-1 gap-4 pt-4"
+      name="card-pop"
+      tag="div"
+    >
       <!-- 通用设置 -->
-      <ThemeSetting />
-      <LogoLight />
-      <GPUDirectConnection />
+      <ThemeSetting key="theme" />
 
       <!-- 自启动与自动应用策略 -->
-      <BootAutoStart />
+      <BootAutoStart key="bootautostart" />
       <SettingToggle
-        v-for="card in toggleCards"
+        v-for="card in visibleCards"
         :key="card.configPath"
         :title="card.title"
         :description="card.description"
         :config-path="card.configPath"
       />
 
-      <PawnIODriverMode />
-    </div>
+      <PawnIODriverMode key="pawnio" />
+    </TransitionGroup>
   </div>
 </template>
 

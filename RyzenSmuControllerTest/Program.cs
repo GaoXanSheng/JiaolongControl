@@ -80,11 +80,55 @@ try
 
             case "--curve-core":
                 if (!TryParseIntArg(args, ref i, out int coreIdx, 0, 15)) break;
+                i--; // TryParseIntArg 成功后 i 已指向下一个参数，回退一位才能读到紧跟核心号的偏移值
                 if (!TryParseIntArg(args, ref i, out int coreVal, -30, 30)) break;
                 exitCode |= RunCommand(controller,
                     () => controller.SetCurveOptimizerPerCore((uint)coreIdx, coreVal),
                     $"SetCurveOptimizerPerCore(core={coreIdx}, val={coreVal})");
                 break;
+
+            case "--smu-cmd":
+            {
+                if (!TryParseHexArg(args, ref i, out uint cmdHex)) break;
+                i--; // TryParseHexArg 成功后 i 已指向下一个参数，回退一位让下一次调用读到 arg
+                if (!TryParseHexArg(args, ref i, out uint argHex)) break;
+                // 第二次解析成功后 i 已指向邮箱类型 (mp1/rsmu)
+                if (i >= args.Length) { LogError("参数 --smu-cmd 缺少邮箱类型 (mp1/rsmu)"); break; }
+                bool isMp1 = args[i].Equals("mp1", StringComparison.OrdinalIgnoreCase);
+                if (!isMp1 && !args[i].Equals("rsmu", StringComparison.OrdinalIgnoreCase))
+                {
+                    LogError($"参数 --smu-cmd 邮箱类型无效: '{args[i]}' (应为 mp1 或 rsmu)");
+                    break;
+                }
+                i++;
+                string rawName = $"SMU Raw 0x{cmdHex:X2} {(isMp1 ? "MP1" : "RSMU")}";
+                exitCode |= RunCommand(controller,
+                    () => controller.SendRaw(cmdHex, argHex, isMp1, rawName),
+                    $"SendRaw(cmd=0x{cmdHex:X}, arg=0x{argHex:X}, {(isMp1 ? "MP1" : "RSMU")})");
+                break;
+            }
+
+            case "--smu-cmd-read":
+            {
+                if (!TryParseHexArg(args, ref i, out uint cmdHexR)) break;
+                i--; // 同 --smu-cmd：回退一位让下一次调用读到 arg
+                if (!TryParseHexArg(args, ref i, out uint argHexR)) break;
+                if (i >= args.Length) { LogError("参数 --smu-cmd-read 缺少邮箱类型 (mp1/rsmu)"); break; }
+                bool isMp1R = args[i].Equals("mp1", StringComparison.OrdinalIgnoreCase);
+                if (!isMp1R && !args[i].Equals("rsmu", StringComparison.OrdinalIgnoreCase))
+                {
+                    LogError($"参数 --smu-cmd-read 邮箱类型无效: '{args[i]}' (应为 mp1 或 rsmu)");
+                    break;
+                }
+                i++;
+                string rawNameR = $"SMU Raw 0x{cmdHexR:X2} {(isMp1R ? "MP1" : "RSMU")}";
+                exitCode |= RunCommand(controller,
+                    () => controller.SendRaw(cmdHexR, argHexR, isMp1R, rawNameR),
+                    $"SendRaw(cmd=0x{cmdHexR:X}, arg=0x{argHexR:X}, {(isMp1R ? "MP1" : "RSMU")})");
+                ulong[] retArgs = controller.ReadMailboxArgs(isMp1R);
+                Log("      返回参数槽: " + string.Join(" ", retArgs.Select(a => $"0x{a:X}")));
+                break;
+            }
 
             case "--stapm":
                 if (!TryParseDoubleArg(args, ref i, out double stapmW, 0, 200)) break;
@@ -615,6 +659,10 @@ SMU 命令行测试工具 — 支持所有 RyzenSmuController 操作
 === Curve Optimizer ===
   --curve-all <val>        全核 Curve Optimizer (-30 ~ 30)
   --curve-core <idx> <val> 单核 Curve Optimizer (例: --curve-core 0 -15)
+  --smu-cmd <cmd> <arg> <mp1|rsmu>
+                           调试: 发送原始 SMU 邮箱命令 (hex, 例: --smu-cmd 6 FFFEC rsmu)
+  --smu-cmd-read <cmd> <arg> <mp1|rsmu>
+                           调试: 发送命令并回读邮箱参数槽 (例: GetDldoPsmMargin: --smu-cmd-read D5 1000000 rsmu)
 
 === 功耗限制 ===
   --stapm <watts>          STAPM Limit (W)
