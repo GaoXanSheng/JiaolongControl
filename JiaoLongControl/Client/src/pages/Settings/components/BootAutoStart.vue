@@ -85,26 +85,28 @@ async function onMinimizedChange(next: string | number | boolean) {
       </template>
     </setting-card-component>
 
-    <setting-card-component
-      v-if="autoStart"
-      title="自启时最小化"
-      description="随开机自动启动时自动最小化到系统托盘，不弹出主界面，保持桌面清爽干净。"
-    >
-      <template #extra>
-        <a-switch
-          :model-value="minimized"
-          :loading="minimizedLoading"
-          @change="onMinimizedChange($event)"
-        >
-          <template #checked-icon>
-            <icon-check />
-          </template>
-          <template #unchecked-icon>
-            <icon-close />
-          </template>
-        </a-switch>
-      </template>
-    </setting-card-component>
+    <transition name="card-pop">
+      <setting-card-component
+        v-if="autoStart"
+        description="随开机自动启动时自动最小化到系统托盘，不弹出主界面，保持桌面清爽干净。"
+        title="自启时最小化"
+      >
+        <template #extra>
+          <a-switch
+            :loading="minimizedLoading"
+            :model-value="minimized"
+            @change="onMinimizedChange($event)"
+          >
+            <template #checked-icon>
+              <icon-check />
+            </template>
+            <template #unchecked-icon>
+              <icon-close />
+            </template>
+          </a-switch>
+        </template>
+      </setting-card-component>
+    </transition>
   </div>
 </template>
 

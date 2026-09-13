@@ -69,13 +69,17 @@ const visibleCards = computed(() => {
       </p>
     </div>
 
-    <!-- Setting Grid -->
-    <div class="max-w-[1000px] mx-auto grid grid-cols-1 gap-4 pt-4">
+    <!-- Setting Grid: TransitionGroup 驱动 visibleWhen 卡片 (如 SMU 分核降压模式) 的弹出/收起动画 -->
+    <TransitionGroup
+      class="max-w-[1000px] mx-auto grid grid-cols-1 gap-4 pt-4"
+      name="card-pop"
+      tag="div"
+    >
       <!-- 通用设置 -->
-      <ThemeSetting />
+      <ThemeSetting key="theme" />
 
       <!-- 自启动与自动应用策略 -->
-      <BootAutoStart />
+      <BootAutoStart key="bootautostart" />
       <SettingToggle
         v-for="card in visibleCards"
         :key="card.configPath"
@@ -84,8 +88,8 @@ const visibleCards = computed(() => {
         :config-path="card.configPath"
       />
 
-      <PawnIODriverMode />
-    </div>
+      <PawnIODriverMode key="pawnio" />
+    </TransitionGroup>
   </div>
 </template>
 

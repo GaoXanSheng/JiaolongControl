@@ -117,3 +117,39 @@ html[data-theme='dark'] .arco-slider-track {
   height: 13px !important;
   box-shadow: 0 0 10px rgba(138, 43, 226, 0.7) !important;
 }
+
+/* ===== 设置卡片弹出动画: 用于 v-if / visibleWhen 显隐的开关卡片 (配合 <transition name="card-pop">) ===== */
+.card-pop-enter-active {
+  animation: card-pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.card-pop-leave-active {
+  animation: card-pop-out 0.2s ease forwards;
+}
+/* TransitionGroup: 兄弟卡片随插入/移除平滑补位 */
+.card-pop-move {
+  transition: transform 0.3s ease;
+}
+.card-pop-leave-active {
+  position: absolute;
+  width: 100%;
+}
+@keyframes card-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(-6px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+@keyframes card-pop-out {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.96) translateY(-6px);
+  }
+}
