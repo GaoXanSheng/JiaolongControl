@@ -83,6 +83,7 @@ export interface OsdSectionType {
   ShowPerformanceMode: boolean
   ShowFnLock: boolean
   ShowTouchpad: boolean
+  ShowMedia: boolean
   AnimationMs: number
   DurationMs: number
   PollIntervalMs: number

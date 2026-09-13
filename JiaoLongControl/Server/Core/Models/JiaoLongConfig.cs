@@ -236,6 +236,9 @@ public class OsdSection
     [ConfigComment("显示项目: 触摸板锁定 (轮询EC检测)")]
     public bool ShowTouchpad { get; set; } = true;
 
+    [ConfigComment("显示项目: 媒体播放提示 (系统有程序开始播放音乐或切歌时显示曲名与歌手)")]
+    public bool ShowMedia { get; set; } = true;
+
     [ConfigComment("EC 状态轮询间隔 (ms, 事件通道不可用时的兜底)")]
     [ConfigRange(500, 5000)]
     public int PollIntervalMs { get; set; } = 1000;

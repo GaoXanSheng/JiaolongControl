@@ -86,6 +86,7 @@ const previewItems = [
   { kind: 'lock', label: '锁定键' },
   { kind: 'keyboard', label: '键盘背光' },
   { kind: 'perf', label: '性能模式' },
+  { kind: 'media', label: '媒体播放' },
 ]
 
 onMounted(() => {
@@ -141,6 +142,11 @@ onMounted(() => {
             title="触摸板锁定"
             config-path="Osd.ShowTouchpad"
             description="原生 Fn 组合键切换触摸板锁定时显示状态（EC 状态轮询检测，变化后约一个轮询间隔内弹出）"
+          />
+          <SettingToggle
+            config-path="Osd.ShowMedia"
+            description="系统有程序开始播放音乐或切歌时，显示曲名与歌手（经 Windows 系统媒体会话检测，支持网易云、Spotify、浏览器等）"
+            title="媒体播放提示"
           />
         </div>
 

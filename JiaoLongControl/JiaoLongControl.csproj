@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net8.0-windows</TargetFramework>
+        <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -11,7 +11,7 @@
         <Configurations>Debug;Release</Configurations>
         <Platforms>x64</Platforms>
         <SatelliteResourceLanguages>zh-CN</SatelliteResourceLanguages>
-        <AppVersion>10.14.25-B</AppVersion>
+        <AppVersion>10.14.25.B</AppVersion>
     </PropertyGroup>
 
     <ItemGroup>

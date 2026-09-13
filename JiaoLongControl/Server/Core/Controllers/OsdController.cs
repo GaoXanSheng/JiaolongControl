@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
+using Windows.Media.Control;
 using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Native;
 using JiaoLongControl.Server.Core.Services;
@@ -33,15 +34,20 @@ namespace JiaoLongControl.Server.Core.Controllers
         private const string AccentPerf = "#34D399";        // 绿 (性能)
         private const string AccentFnLock = "#6366F1";      // 靛 (功能键)
         private const string AccentTouchpad = "#F472B6";    // 粉 (触摸板)
+        private const string AccentMedia = "#22D3EE";       // 青 (媒体播放)
 
         private static readonly ILog Logger = LogManager.GetLogger(typeof(OsdController));
         private readonly WMIEventService _eventService = new();
+
+        // 系统媒体会话 (SMTC): 仅挂接"当前会话", 切歌/播放状态变化时提示曲名与歌手
+        private readonly object _mediaLock = new();
         private readonly Dictionary<string, PendingOsd> _pending = new();
         private bool _disposed;
         private IntPtr _hook = IntPtr.Zero;
         private byte? _lastBrightness;
         private bool? _lastCaps;
         private ResultState? _lastFnLock;
+        private string? _lastMediaKey;
         private bool? _lastNum;
 
         // EC 状态基线: null = 尚无基线 (首次有效读取只记录不触发); 读取失败 (255) 跳过不更新。
@@ -49,6 +55,10 @@ namespace JiaoLongControl.Server.Core.Controllers
         private SystemPerMode? _lastPerf;
         private bool? _lastScroll;
         private ResultState? _lastTouchpad;
+        private bool _loggedNoSession;
+        private GlobalSystemMediaTransportControlsSessionManager? _mediaManager;
+        private DispatcherTimer? _mediaPollTimer;
+        private GlobalSystemMediaTransportControlsSession? _mediaSession;
         private CancellationTokenSource? _pollCts;
         private Task? _pollTask;
 
@@ -65,6 +75,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             _disposed = true;
             try
             {
+                _mediaPollTimer?.Stop();
                 _pollCts?.Cancel();
             }
             catch
@@ -73,6 +84,25 @@ namespace JiaoLongControl.Server.Core.Controllers
             }
 
             _eventService.Dispose();
+
+            try
+            {
+                if (_mediaSession != null)
+                {
+                    _mediaSession.MediaPropertiesChanged -= OnMediaSessionUpdated;
+                    _mediaSession.PlaybackInfoChanged -= OnMediaSessionUpdated;
+                }
+
+                if (_mediaManager != null)
+                {
+                    _mediaManager.CurrentSessionChanged -= OnMediaCurrentSessionChanged;
+                    _mediaManager.SessionsChanged -= OnMediaSessionsChanged;
+                }
+            }
+            catch
+            {
+                // 忽略媒体会话解绑失败
+            }
 
             try
             {
@@ -120,6 +150,9 @@ namespace JiaoLongControl.Server.Core.Controllers
                 Logger.Info("EC 事件通道不可用, OSD 状态检测退回轮询模式");
                 StartStatePolling();
             }
+
+            // 系统媒体会话监视 (音乐开始播放/切歌时提示); 初始化失败仅记录, 不影响其它链路
+            StartMediaWatcher();
         }
 
         /// <summary>HID_EVENT20 热键事件到达: 事件只说明"什么变了", 具体状态复用检测逻辑读取 (含基线去重与开关判断)。</summary>
@@ -452,6 +485,170 @@ namespace JiaoLongControl.Server.Core.Controllers
             _ => "未知模式",
         };
 
+        // ===== 系统媒体会话 (SMTC) =====
+
+        /// <summary>
+        /// 订阅系统"正在播放"会话 (网易云/Spotify/浏览器等经 SMTC 注册的程序)。
+        /// 只挂接系统当前会话, 减少多会话干扰; 请求失败 (如旧系统) 静默禁用。
+        /// </summary>
+        private async void StartMediaWatcher()
+        {
+            try
+            {
+                Logger.Info("媒体会话监视: 正在请求系统会话管理器…");
+                // 放到线程池执行: 不占用 UI 线程, 也规避 UI 上下文对 WinRT 异步的潜在干扰
+                _mediaManager = await Task.Run(() =>
+                    GlobalSystemMediaTransportControlsSessionManager.RequestAsync().AsTask());
+                _mediaManager.CurrentSessionChanged += OnMediaCurrentSessionChanged;
+                _mediaManager.SessionsChanged += OnMediaSessionsChanged;
+                HookMediaSession(_mediaManager.GetCurrentSession());
+                Logger.Info($"媒体会话监视: 初始化完成, 当前会话={(_mediaSession != null ? "已就绪" : "无 (等待音乐程序注册)")}");
+
+                // 事件兜底轮询: 即使事件投递失效, 播放状态最多延迟 2s 也会被捕捉 (去重防重复弹)
+                _mediaPollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+                _mediaPollTimer.Tick += (_, _) =>
+                {
+                    var session = _mediaManager?.GetCurrentSession();
+                    HookMediaSession(session);
+                    _ = ShowMediaAsync(session);
+                };
+                _mediaPollTimer.Start();
+            }
+            catch (Exception ex)
+            {
+                Logger.Info($"系统媒体会话监视不可用: {ex.Message}");
+            }
+        }
+
+        private void OnMediaCurrentSessionChanged(GlobalSystemMediaTransportControlsSessionManager sender, object args)
+        {
+            Logger.Debug("媒体会话事件: CurrentSessionChanged");
+            HookMediaSession(sender.GetCurrentSession());
+            _ = ShowMediaAsync(sender.GetCurrentSession());
+        }
+
+        private void OnMediaSessionsChanged(GlobalSystemMediaTransportControlsSessionManager sender, object args)
+        {
+            // 会话增减后"当前会话"可能切换, 重新对准并尝试提示 (如音乐软件刚开播)
+            Logger.Debug("媒体会话事件: SessionsChanged");
+            HookMediaSession(sender.GetCurrentSession());
+            _ = ShowMediaAsync(sender.GetCurrentSession());
+        }
+
+        /// <summary>把事件挂接从旧会话迁移到新的当前会话 (Session 为运行时新实例, 需按引用换绑)。</summary>
+        private void HookMediaSession(GlobalSystemMediaTransportControlsSession? session)
+        {
+            if (session == null)
+            {
+                if (!_loggedNoSession)
+                {
+                    _loggedNoSession = true;
+                    Logger.Debug("媒体会话监视: 当前无活动会话");
+                }
+                return;
+            }
+
+            _loggedNoSession = false;
+            lock (_mediaLock)
+            {
+                if (ReferenceEquals(session, _mediaSession)) return;
+                if (_mediaSession != null)
+                {
+                    _mediaSession.MediaPropertiesChanged -= OnMediaSessionUpdated;
+                    _mediaSession.PlaybackInfoChanged -= OnMediaSessionUpdated;
+                }
+
+                _mediaSession = session;
+                _mediaSession.MediaPropertiesChanged += OnMediaSessionUpdated;
+                _mediaSession.PlaybackInfoChanged += OnMediaSessionUpdated;
+            }
+
+            Logger.Debug($"媒体会话监视: 已挂接会话 {session.SourceAppUserModelId}");
+        }
+
+        private void OnMediaSessionUpdated(GlobalSystemMediaTransportControlsSession sender, object args)
+        {
+            Logger.Debug($"媒体会话事件: {args?.GetType().Name} @ {sender.SourceAppUserModelId}");
+            _ = ShowMediaAsync(sender);
+        }
+
+        /// <summary>
+        /// 读取会话的播放状态与曲名/歌手并弹 OSD。仅播放中弹出; 同一曲目去重 (暂停后恢复不重复弹)。
+        /// force 供前端预览: 无播放会话时显示示例内容, 且跳过开关与去重。
+        /// </summary>
+        private async Task ShowMediaAsync(GlobalSystemMediaTransportControlsSession? session, bool force = false)
+        {
+            try
+            {
+                var cfg = Bridge.Instance.Config.Osd;
+                if (!force && (!cfg.Enabled || !cfg.ShowMedia))
+                {
+                    Logger.Debug("媒体提示: OSD 或媒体开关未启用, 跳过");
+                    return;
+                }
+
+                string title, subtitle;
+                if (session != null)
+                {
+                    var playback = session.GetPlaybackInfo();
+                    Logger.Debug($"媒体提示: 状态 {playback.PlaybackStatus}");
+                    if (playback.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
+                    {
+                        // 官方投影的方法名为 TryGetMediaPropertiesAsync (类上无 GetMediaPropertiesAsync)
+                        var props = await session.GetMediaPropertiesOrNullAsync();
+                        Logger.Debug($"媒体提示: 曲目 {props?.Title} - {props?.Artist}");
+                        if (props != null && !string.IsNullOrWhiteSpace(props.Title))
+                        {
+                            title = props.Title.Trim();
+                            subtitle = string.IsNullOrWhiteSpace(props.Artist) ? "正在播放" : props.Artist.Trim();
+                        }
+                        else if (!force)
+                        {
+                            return;
+                        }
+                        else
+                        {
+                            (title, subtitle) = ("示例曲目", "媒体播放提示");
+                        }
+                    }
+                    else if (!force)
+                    {
+                        return;
+                    }
+                    else
+                    {
+                        (title, subtitle) = ("示例曲目", "媒体播放提示 (当前未在播放)");
+                    }
+                }
+                else if (!force)
+                {
+                    return;
+                }
+                else
+                {
+                    (title, subtitle) = ("示例曲目", "媒体播放提示 (当前无播放会话)");
+                }
+
+                // 曲目+来源去重: 切歌/换程序才弹, 同曲暂停恢复不重复打扰
+                var key = $"{title}|{subtitle}|{session?.SourceAppUserModelId}";
+                if (!force && key == _lastMediaKey) return;
+                _lastMediaKey = key;
+
+                ShowOnWindow(new OsdItem
+                {
+                    IconGlyph = "\uE8D6",
+                    AccentHex = AccentMedia,
+                    Title = title,
+                    Subtitle = subtitle,
+                    BarValue = null,
+                }, cfg);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"OSD 媒体提示异常: {ex.Message}");
+            }
+        }
+
         // ===== JS 接口 =====
 
         /// <summary>预览 OSD: kind = volume / lock / keyboard / perf。</summary>
@@ -481,6 +678,9 @@ namespace JiaoLongControl.Server.Core.Controllers
                                 var mode = MethodServices.GetValue<SystemPerMode>(MethodName.SystemPerMode);
                                 OnPerformanceModeChanged(mode);
                             });
+                            break;
+                        case "media":
+                            _ = ShowMediaAsync(_mediaManager?.GetCurrentSession(), force: true);
                             break;
                     }
                 }
@@ -685,6 +885,29 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             public DispatcherTimer Timer { get; init; } = null!;
             public Action Action { get; set; } = null!;
+        }
+    }
+
+    /// <summary>
+    /// CsWinRT v2 投影适配: 官方投影的方法名为 TryGetMediaPropertiesAsync
+    /// (learn.microsoft.com 类成员列表确认, 类上不存在 GetMediaPropertiesAsync)。
+    /// </summary>
+    internal static class SmtcExtensions
+    {
+        private static readonly ILog Logger = LogManager.GetLogger(typeof(SmtcExtensions));
+
+        public static async Task<GlobalSystemMediaTransportControlsSessionMediaProperties?>
+            GetMediaPropertiesOrNullAsync(this GlobalSystemMediaTransportControlsSession session)
+        {
+            try
+            {
+                return await session.TryGetMediaPropertiesAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"SMTC 适配: TryGetMediaPropertiesAsync 失败: {ex.Message}");
+                return null;
+            }
         }
     }
 }
