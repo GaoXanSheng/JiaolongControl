@@ -889,10 +889,18 @@ namespace JiaoLongControl.Server
         {
             StopTitleMarquee();
             if (!IsVisible || CurrentKind != "media") return;
-            var viewport = TitleClip.ActualWidth;
-            if (viewport <= 1) return;
 
+            // 已显示状态下切歌时, 新文本的布局可能尚未跑完, 强制同步完成,
+            // 否则 ActualWidth 会是上一首的旧宽度 → 误判"未超宽"而放弃平移 (概率性不滚动)
+            TitleClip.UpdateLayout();
+            var viewport = TitleClip.ActualWidth;
             var textWidth = TitleText.ActualWidth;
+            if (viewport <= 1 || textWidth <= 1)
+            {
+                ScheduleTitleMarquee(120); // 布局尚未产出有效尺寸 (极小概率): 稍后重试
+                return;
+            }
+
             var overflow = textWidth - viewport;
             if (overflow <= 2) return; // 未超过显示区域: 静止完整显示
 
