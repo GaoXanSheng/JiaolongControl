@@ -15,8 +15,8 @@ const osdData = computed(() => configStore.config?.Osd)
 // ===== 显示效果 =====
 const positionOptions: Array<{ value: OsdPosition; label: string }> = [
   { value: 'TopCenter', label: '顶部居中' },
-  { value: 'TopRight', label: '顶部右侧' },
   { value: 'BottomCenter', label: '底部居中' },
+  { value: 'Custom', label: '自定义' },
 ]
 const currentPosition = computed(() => osdData.value?.Position ?? 'TopCenter')
 
@@ -28,6 +28,51 @@ function selectPosition(value: OsdPosition) {
 
 function saveDebounced() {
   configStore.debouncedSave()
+}
+
+// ===== 自定义位置: 屏幕比例预览区拖拽 (与服务端相同的行程百分比映射) =====
+const PILL_W = 52
+const PILL_H = 14
+const previewEl = ref<HTMLElement | null>(null)
+let previewDragging = false
+
+const pillStyle = computed(() => {
+  const x = ((osdData.value?.CustomX ?? 50) / 100).toFixed(4)
+  const y = ((osdData.value?.CustomY ?? 8) / 100).toFixed(4)
+  return {
+    left: `calc((100% - ${PILL_W}px) * ${x})`,
+    top: `calc((100% - ${PILL_H}px) * ${y})`,
+    width: `${PILL_W}px`,
+    height: `${PILL_H}px`,
+  }
+})
+
+function applyPreviewPosition(e: PointerEvent) {
+  const el = previewEl.value
+  if (!el || !osdData.value) return
+  const rect = el.getBoundingClientRect()
+  const travelX = Math.max(1, rect.width - PILL_W)
+  const travelY = Math.max(1, rect.height - PILL_H)
+  const clampPct = (v: number) => Math.round(Math.min(100, Math.max(0, v)))
+  osdData.value.CustomX = clampPct(((e.clientX - rect.left - PILL_W / 2) / travelX) * 100)
+  osdData.value.CustomY = clampPct(((e.clientY - rect.top - PILL_H / 2) / travelY) * 100)
+  configStore.debouncedSave()
+}
+
+function onPillPointerDown(e: PointerEvent) {
+  if (!osdData.value) return
+  previewDragging = true
+  if (currentPosition.value !== 'Custom') osdData.value.Position = 'Custom'
+  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  configStore.debouncedSave()
+}
+
+function onPillPointerMove(e: PointerEvent) {
+  if (previewDragging) applyPreviewPosition(e)
+}
+
+function onPillPointerUp() {
+  previewDragging = false
 }
 
 // ===== 效果预览: 音量实时控制 + 各状态 OSD 预览 =====
@@ -115,7 +160,7 @@ onMounted(() => {
           />
           <SettingToggle
             config-path="Osd.ShowVolume"
-            description="按下音量增大 / 减小 / 静音键时，显示系统音量条与百分比"
+            description="按下音量增大 / 减小 / 静音键时，显示系统音量条与百分比；OSD 停留期间可直接拖动进度条调整音量，或点击小喇叭按钮切换静音"
             title="音量指示"
           />
           <SettingToggle
@@ -125,13 +170,18 @@ onMounted(() => {
           />
           <SettingToggle
             config-path="Osd.ShowKeyboardBacklight"
-            description="通过本软件调整键盘背光亮度时，显示当前档位（Fn 组合键由 EC 直接处理，不产生系统键盘事件）"
+            description="通过本软件调整键盘背光亮度时，显示当前档位（Fn 组合键由 EC 直接处理）；OSD 停留期间可直接点击分段选择 0~3 档"
             title="键盘背光档位"
           />
           <SettingToggle
             description="切换性能模式时（软件内或原生 Fn 热键）显示当前模式名称（原生热键经 EC 状态轮询检测）"
             title="性能模式切换"
             config-path="Osd.ShowPerformanceMode"
+          />
+          <SettingToggle
+            config-path="Osd.ShowPerfTelemetry"
+            description="开启后，模式切换 OSD 的标题附带模式名称，并在读取完成后补充显示当前 CPU / GPU 温度与双风扇转速（经 EC 与 NVIDIA API 后台读取，约需零点几秒，读取失败时仅显示模式名）"
+            title="模式 OSD 附带温度/转速"
           />
           <SettingToggle
             config-path="Osd.ShowFnLock"
@@ -145,7 +195,7 @@ onMounted(() => {
           />
           <SettingToggle
             config-path="Osd.ShowMedia"
-            description="系统有程序开始播放音乐或切歌时，显示曲名与歌手（经 Windows 系统媒体会话检测，支持网易云、Spotify、浏览器等）"
+            description="系统有程序开始播放音乐或切歌时，显示曲名与歌手（经 Windows 系统媒体会话检测，支持网易云、Spotify、浏览器等）；胶囊右侧提供上一曲 / 播放暂停 / 下一曲控制按钮"
             title="媒体播放提示"
           />
         </div>
@@ -181,6 +231,30 @@ onMounted(() => {
                   {{ opt.label }}
                 </button>
               </div>
+
+              <!-- 位置预览: 16:9 屏幕示意, 拖动胶囊即保存为自定义位置 -->
+              <div
+                class="relative w-full mt-2.5 rounded-lg border border-ink/[0.08] bg-ink/[0.03] overflow-hidden select-none"
+                style="aspect-ratio: 16 / 9"
+              >
+                <div ref="previewEl" class="absolute inset-x-0 top-0 bottom-[10px]">
+                  <div
+                    :style="pillStyle"
+                    class="absolute rounded-full bg-gradient-to-r from-purple-500 to-blue-500 shadow-[0_0_8px_var(--color-glow-purple)] cursor-grab active:cursor-grabbing touch-none"
+                    @pointerdown="onPillPointerDown"
+                    @pointermove="onPillPointerMove"
+                    @pointerup="onPillPointerUp"
+                  />
+                </div>
+                <div
+                  class="absolute inset-x-0 bottom-0 h-[10px] bg-ink/[0.06] border-t border-ink/[0.06]"
+                />
+              </div>
+              <p class="text-[10px] text-gray-600 leading-relaxed mt-1.5">
+                拖动胶囊到任意位置即保存为自定义位置（真实 OSD 出现在主屏的对应处）；
+                选择预设位置时忽略自定义坐标。当前：X {{ osdData.CustomX }}% · Y
+                {{ osdData.CustomY }}%
+              </p>
             </div>
 
             <div class="space-y-1.5">
@@ -313,6 +387,10 @@ onMounted(() => {
           >
             <h2 class="text-[13px] font-semibold text-gray-300 mb-3">名词解释</h2>
             <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">
+              <p>
+                <strong>可交互胶囊</strong>:
+                音量 / 键盘背光 / 媒体 OSD 停留期间可直接操作（拖动调音量、点分段选背光档位、按钮控制播放），操作不抢走当前应用焦点，锁定键等其他 OSD 保持点击穿透。
+              </p>
               <p>
                 <strong>键盘事件触发</strong>:
                 音量与锁定键经全局键盘钩子监听，按键不会被拦截，系统行为不受影响。

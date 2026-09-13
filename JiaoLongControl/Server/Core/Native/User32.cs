@@ -21,6 +21,11 @@ namespace JiaoLongControl.Server.Core.Native
         public const int VK_VOLUME_DOWN = 0xAE;  // 音量减小
         public const int VK_VOLUME_UP = 0xAF;    // 音量增大
 
+        // 媒体控制键 (OSD 媒体按钮模拟, 经系统 SMTC 分发到当前播放器)
+        public const int VK_MEDIA_NEXT_TRACK = 0xB0;
+        public const int VK_MEDIA_PREV_TRACK = 0xB1;
+        public const int VK_MEDIA_PLAY_PAUSE = 0xB3;
+
         public const int GWL_EXSTYLE = -20;
         public const int WS_EX_TOPMOST = 0x00000008;
         public const int WS_EX_TRANSPARENT = 0x00000020;
@@ -91,6 +96,14 @@ namespace JiaoLongControl.Server.Core.Native
             var flags = vk == VK_NUMLOCK || vk == VK_SCROLL ? KEYEVENTF_EXTENDEDKEY : 0;
             keybd_event(key, 0, flags, UIntPtr.Zero);
             keybd_event(key, 0, flags | KEYEVENTF_KEYUP, UIntPtr.Zero);
+        }
+
+        /// <summary>模拟按一次媒体键 (播放/暂停、上一曲、下一曲)。</summary>
+        public static void TapMediaKey(int vk)
+        {
+            var key = (byte)vk;
+            keybd_event(key, 0, KEYEVENTF_EXTENDEDKEY, UIntPtr.Zero);
+            keybd_event(key, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, UIntPtr.Zero);
         }
 
         [StructLayout(LayoutKind.Sequential)]

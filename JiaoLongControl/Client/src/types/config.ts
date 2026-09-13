@@ -73,7 +73,7 @@ export interface SmuSectionType {
   CurveOptimizerPerCore: number[]
 }
 
-export type OsdPosition = 'TopCenter' | 'TopRight' | 'BottomCenter'
+export type OsdPosition = 'TopCenter' | 'BottomCenter' | 'Custom'
 
 export interface OsdSectionType {
   Enabled: boolean
@@ -81,6 +81,7 @@ export interface OsdSectionType {
   ShowLockKeys: boolean
   ShowKeyboardBacklight: boolean
   ShowPerformanceMode: boolean
+  ShowPerfTelemetry: boolean
   ShowFnLock: boolean
   ShowTouchpad: boolean
   ShowMedia: boolean
@@ -88,6 +89,8 @@ export interface OsdSectionType {
   DurationMs: number
   PollIntervalMs: number
   Position: OsdPosition
+  CustomX: number
+  CustomY: number
   Opacity: number
   Scale: number
 }

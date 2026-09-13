@@ -36,6 +36,9 @@ namespace JiaoLongControl.Server.Core.Controllers
         private const string AccentTouchpad = "#F472B6";    // 粉 (触摸板)
         private const string AccentMedia = "#22D3EE";       // 青 (媒体播放)
 
+        // OSD PNG 图标 (经 csproj Resource 链接编译进程序集, 源文件在客户端图标库)
+        private const string IconPackBase = "pack://application:,,,/Assets/OSD/";
+
         private static readonly ILog Logger = LogManager.GetLogger(typeof(OsdController));
         private readonly WMIEventService _eventService = new();
 
@@ -298,11 +301,13 @@ namespace JiaoLongControl.Server.Core.Controllers
                 var volume = Math.Clamp(state.Volume, 0f, 1f);
                 ShowOnWindow(new OsdItem
                 {
+                    Kind = "volume",
                     IconGlyph = state.Muted ? "\uE74F" : "\uE767",
                     AccentHex = AccentVolume,
                     Title = "音量",
                     Subtitle = state.Muted ? "已静音" : $"{Math.Round(volume * 100)}%",
                     BarValue = volume,
+                    IsMuted = state.Muted,
                 }, cfg);
             }
             catch (Exception ex)
@@ -315,12 +320,20 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             var cfg = Bridge.Instance.Config.Osd;
             if (!force && (!cfg.Enabled || !cfg.ShowLockKeys)) return;
+            var on = User32.IsToggleOn(vk);
             ShowOnWindow(new OsdItem
             {
+                Kind = "lock",
                 IconGlyph = "\uE72E",
+                // 大小写切换: 开=AllCaps / 关=AllLowercase; 其余锁定键: 开=Lock / 关=Unlock
+                IconImage = vk switch
+                {
+                    User32.VK_CAPITAL => on ? IconPackBase + "AllCaps.png" : IconPackBase + "AllLowercase.png",
+                    _ => on ? IconPackBase + "Lock.png" : IconPackBase + "Unlock.png",
+                },
                 AccentHex = AccentLock,
                 Title = title,
-                Subtitle = User32.IsToggleOn(vk) ? "已开启" : "已关闭",
+                Subtitle = on ? "已开启" : "已关闭",
                 BarValue = null,
             }, cfg);
         }
@@ -339,11 +352,13 @@ namespace JiaoLongControl.Server.Core.Controllers
             var lv = Math.Clamp(level, (byte)0, (byte)3);
             ShowOnWindow(new OsdItem
             {
+                Kind = "keyboard",
                 IconGlyph = "\uE765",
                 AccentHex = AccentKeyboard,
                 Title = "键盘背光",
                 Subtitle = $"档位 {lv} / 3",
-                BarValue = lv / 3.0,
+                BarValue = null,
+                BrightnessLevel = lv,
             }, cfg);
         }
 
@@ -354,14 +369,92 @@ namespace JiaoLongControl.Server.Core.Controllers
             var cfg = Bridge.Instance.Config.Osd;
             if (!cfg.Enabled || !cfg.ShowPerformanceMode) return;
             var (glyph, accent) = ModeVisual(mode);
+
+            if (!cfg.ShowPerfTelemetry)
+            {
+                ShowOnWindow(new OsdItem
+                {
+                    Kind = "perf",
+                    IconGlyph = glyph,
+                    AccentHex = accent,
+                    Title = "性能模式",
+                    Subtitle = ModeName(mode),
+                    BarValue = null,
+                }, cfg);
+                return;
+            }
+
+            // 附带遥测: 先立即弹出模式 OSD (零延迟反馈), 标题携带模式名;
+            // 温度/转速经 EC WMI + NvAPI 后台读取, 完成后原位补充到副标题
+            // (EC 读取慢约数百 ms; 读取失败保留模式名, 不影响主信息)
             ShowOnWindow(new OsdItem
             {
+                Kind = "perf",
                 IconGlyph = glyph,
                 AccentHex = accent,
-                Title = "性能模式",
+                Title = $"性能模式 · {ModeName(mode)}",
                 Subtitle = ModeName(mode),
                 BarValue = null,
             }, cfg);
+
+            Task.Run(() =>
+            {
+                var telemetry = ReadPerfTelemetry();
+                if (telemetry != null) _window?.UpdatePerfTelemetry(telemetry);
+            });
+        }
+
+        /// <summary>
+        /// 读取性能模式 OSD 的温度/转速遥测 (EC WMI + NvAPI, 后台线程调用)。
+        /// 各项独立容错: CPU 温度 255 / 温度转速越界 / 单项异常均跳过; 全部失败返回 null。
+        /// 风扇转速取 EC 双风扇值 (RPM), 与风扇曲线页同源; 不用 NvAPI 风扇值 (单位为百分比)。
+        /// </summary>
+        private static string? ReadPerfTelemetry()
+        {
+            var parts = new List<string>();
+            try
+            {
+                var res = Bridge.Instance.CPU.GetCPUThermometer();
+                if (res.Data is byte cpuTemp and > 0 and < 150)
+                    parts.Add($"CPU {cpuTemp}°C");
+            }
+            catch
+            {
+                // 忽略单项失败
+            }
+
+            try
+            {
+                var res = Bridge.Instance.NvidiaGpu.GetGpuTemperature();
+                if (res.Success && res.Data != null)
+                {
+                    var gpuTemp = Convert.ToInt32(res.Data);
+                    if (gpuTemp is > 0 and < 150)
+                        parts.Add($"GPU {gpuTemp}°C");
+                }
+            }
+            catch
+            {
+                // 忽略单项失败
+            }
+
+            try
+            {
+                var res = Bridge.Instance.Fan.GetFanSpeed();
+                if (res.Success && res.Data is FanSpeedInfo fan)
+                {
+                    var cpu = fan.CPUFanSpeed is > 0 and < 10000 ? fan.CPUFanSpeed : 0;
+                    var gpu = fan.GPUFanSpeed is > 0 and < 10000 ? fan.GPUFanSpeed : 0;
+                    if (cpu > 0 && gpu > 0) parts.Add($"风扇 {cpu}/{gpu}RPM");
+                    else if (cpu > 0 || gpu > 0) parts.Add($"风扇 {Math.Max(cpu, gpu)}RPM");
+                }
+            }
+            catch
+            {
+                // 忽略单项失败
+            }
+
+            return parts.Count == 0 ? null : string.Join(" · ", parts);
         }
 
         /// <summary>按性能模式切换 OSD 图标与强调色: 性能=红/闪电, 均衡=蓝/仪表, 安静=绿/静音。</summary>
@@ -380,7 +473,9 @@ namespace JiaoLongControl.Server.Core.Controllers
             if (!cfg.Enabled || !cfg.ShowFnLock) return;
             ShowOnWindow(new OsdItem
             {
+                Kind = "fnlock",
                 IconGlyph = "\uE72E",
+                IconImage = state == ResultState.ON ? IconPackBase + "Lock.png" : IconPackBase + "Unlock.png",
                 AccentHex = AccentFnLock,
                 Title = "功能键锁定",
                 Subtitle = state == ResultState.ON ? "已开启" : "已关闭",
@@ -395,7 +490,9 @@ namespace JiaoLongControl.Server.Core.Controllers
             if (!cfg.Enabled || !cfg.ShowTouchpad) return;
             ShowOnWindow(new OsdItem
             {
+                Kind = "touchpad",
                 IconGlyph = "\uE7E2",
+                IconImage = IconPackBase + "TouchPad.png", // 禁用/启动同用触摸板图标
                 AccentHex = AccentTouchpad,
                 Title = "触摸板",
                 Subtitle = state == ResultState.ON ? "已锁定" : "已解锁",
@@ -588,11 +685,13 @@ namespace JiaoLongControl.Server.Core.Controllers
                 }
 
                 string title, subtitle;
+                var playing = false;
                 if (session != null)
                 {
                     var playback = session.GetPlaybackInfo();
+                    playing = playback.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
                     Logger.Debug($"媒体提示: 状态 {playback.PlaybackStatus}");
-                    if (playback.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
+                    if (playing)
                     {
                         // 官方投影的方法名为 TryGetMediaPropertiesAsync (类上无 GetMediaPropertiesAsync)
                         var props = await session.GetMediaPropertiesOrNullAsync();
@@ -604,6 +703,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                         }
                         else if (!force)
                         {
+                            SyncMediaPlayState(playing);
                             return;
                         }
                         else
@@ -613,6 +713,8 @@ namespace JiaoLongControl.Server.Core.Controllers
                     }
                     else if (!force)
                     {
+                        // 暂停不打扰: 不重弹 OSD, 但若媒体 OSD 正驻留则原位同步播放/暂停图标
+                        SyncMediaPlayState(playing);
                         return;
                     }
                     else
@@ -631,16 +733,22 @@ namespace JiaoLongControl.Server.Core.Controllers
 
                 // 曲目+来源去重: 切歌/换程序才弹, 同曲暂停恢复不重复打扰
                 var key = $"{title}|{subtitle}|{session?.SourceAppUserModelId}";
-                if (!force && key == _lastMediaKey) return;
+                if (!force && key == _lastMediaKey)
+                {
+                    SyncMediaPlayState(playing);
+                    return;
+                }
                 _lastMediaKey = key;
 
                 ShowOnWindow(new OsdItem
                 {
+                    Kind = "media",
                     IconGlyph = "\uE8D6",
                     AccentHex = AccentMedia,
                     Title = title,
                     Subtitle = subtitle,
                     BarValue = null,
+                    IsPlaying = playing,
                 }, cfg);
             }
             catch (Exception ex)
@@ -649,9 +757,15 @@ namespace JiaoLongControl.Server.Core.Controllers
             }
         }
 
+        /// <summary>媒体 OSD 正驻留时原位同步播放/暂停按钮图标 (不重弹窗口)。</summary>
+        private void SyncMediaPlayState(bool playing)
+        {
+            _window?.UpdatePlayState(playing);
+        }
+
         // ===== JS 接口 =====
 
-        /// <summary>预览 OSD: kind = volume / lock / keyboard / perf。</summary>
+        /// <summary>预览 OSD: kind = volume / lock / keyboard / perf / media。</summary>
         public CommandResult ShowTest(string kind, int value)
         {
             var dispatcher = Application.Current?.Dispatcher;
@@ -731,6 +845,75 @@ namespace JiaoLongControl.Server.Core.Controllers
             catch (Exception ex)
             {
                 return new CommandResult(false, $"设置静音失败: {ex.Message}");
+            }
+        }
+
+        // ===== OSD 交互回调 (交互型 OSD 上的滑条/分段/按钮, UI 线程) =====
+
+        /// <summary>音量滑条拖动/点击: 直接设置系统音量; 界面由窗口原位刷新, 不重播动画。</summary>
+        private void OnVolumeSelected(double ratio)
+        {
+            try
+            {
+                CoreAudio.SetVolume((float)Math.Clamp(ratio, 0, 1));
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"OSD 音量调整失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>音量 OSD 静音按钮: 取反当前静音状态并原位刷新图标。</summary>
+        private void OnMuteToggled()
+        {
+            try
+            {
+                var muted = CoreAudio.GetVolumeState().Muted;
+                CoreAudio.SetMute(!muted);
+                ShowVolumeOsd(force: true);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"OSD 静音切换失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>背光分段点击: WMI/EC 写入较慢放后台线程, 成功后走统一回调
+        /// 同步轮询基线并刷新 OSD (写入失败则保留乐观显示, 等下次真实状态纠正)。</summary>
+        private void OnBrightnessSelected(byte level)
+        {
+            var target = Math.Clamp(level, (byte)0, (byte)3);
+            Task.Run(() =>
+            {
+                if (MethodServices.SetValue(MethodName.RGBKeyboardBrightness, target))
+                {
+                    OnKeyboardBrightnessChanged(target);
+                }
+                else
+                {
+                    Logger.Warn($"OSD 背光选择: EC 写入失败 (档位 {target})");
+                }
+            });
+        }
+
+        /// <summary>媒体按钮: 模拟媒体键, 经系统 SMTC 分发到当前播放器 (通用支持所有播放软件)。</summary>
+        private void OnMediaCommand(string command)
+        {
+            var vk = command switch
+            {
+                "prev" => User32.VK_MEDIA_PREV_TRACK,
+                "next" => User32.VK_MEDIA_NEXT_TRACK,
+                "playpause" => User32.VK_MEDIA_PLAY_PAUSE,
+                _ => 0,
+            };
+            if (vk == 0) return;
+            try
+            {
+                User32.TapMediaKey(vk);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"OSD 媒体控制失败: {ex.Message}");
             }
         }
 
@@ -862,15 +1045,15 @@ namespace JiaoLongControl.Server.Core.Controllers
             {
                 try
                 {
-                    _window ??= new OsdWindow();
-                    _window.ShowOsd(
-                        item,
-                        cfg.Position,
-                        cfg.Opacity,
-                        cfg.DurationMs,
-                        cfg.AnimationMs,
-                        cfg.Scale,
-                        UiTheme.IsLight(Bridge.Instance.Config.App.Theme));
+                    if (_window == null)
+                    {
+                        _window = new OsdWindow();
+                        _window.VolumeSelected += OnVolumeSelected;
+                        _window.MuteToggled += OnMuteToggled;
+                        _window.BrightnessSelected += OnBrightnessSelected;
+                        _window.MediaCommand += OnMediaCommand;
+                    }
+                    _window.ShowOsd(item, cfg, UiTheme.IsLight(Bridge.Instance.Config.App.Theme));
                 }
                 catch (Exception ex)
                 {

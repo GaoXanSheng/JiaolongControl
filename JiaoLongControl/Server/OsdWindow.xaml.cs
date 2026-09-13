@@ -1,8 +1,13 @@
+using System.Globalization;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Native;
@@ -16,8 +21,10 @@ namespace JiaoLongControl.Server
     /// 退场 = 内容收拢 → 两边向中心收缩成一个圆 → 圆体收拢消散;
     /// 出入场动画各占 AnimationMs, 完全展开后驻留 DurationMs (展开 → 驻留 → 收圆),
     /// 打断时从当前形态恢复;
-    /// 悬停柔光 + 悬停挂起自动隐藏, 鼠标离开才触发离场。
+    /// 悬停柔光 + 悬停挂起自动隐藏, 鼠标离开后按显示时长重新计时, 到点才触发离场。
     /// 点击穿透、不抢焦点、始终置顶; 按显示器 DPI 物理像素定位以兼容系统缩放。
+    /// 交互型 OSD (音量/键盘背光/媒体) 显示期间动态解除点击穿透:
+    /// 胶囊内的滑条/分段/按钮可直接操作, 胶囊外空区仍穿透, 且全程不抢焦点。
     /// </summary>
     public partial class OsdWindow : Window
     {
@@ -34,12 +41,21 @@ namespace JiaoLongControl.Server
 
         private readonly DispatcherTimer _hideTimer;
 
-        // 入场/出场动画的总时长 (= 配置的显示时长), 各阶段节奏按基准编排等比缩放
-        private double _animMs = 2000;
+        // ===== 交互状态 =====
+
+        // 主题缓存: 背光分段激活色 / 未激活色 / 音量条基准高度
+        private Color _accentColor = Color.FromRgb(0x3B, 0x82, 0xF6);
+
+        // 入场/出场动画的总时长 (= 配置的出入场时长, 默认 480ms), 各阶段节奏按基准编排等比缩放
+        private double _animMs = 480;
         private double _barWidth = 84;
         private double _dip = 1;
+
+        // 驻留时长 (= 配置的显示时长): 悬停离开后按此时长重新计时, 到点才播离场动画
+        private double _dwellMs = 2000;
         private DispatcherTimer? _exitTimer;
         private bool _exiting;
+        private SolidColorBrush _faintBrush = new(Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF));
         private bool _hoverInside;
         private double _lightOpacity;
         private double _lightOpacityTarget;
@@ -47,7 +63,12 @@ namespace JiaoLongControl.Server
         // 悬停柔光状态: 光斑位置为胶囊归一化坐标, 轮询中做指数平滑
         private Point _lightPos = new(0.5, 0.5);
         private Point _lightTarget = new(0.5, 0.5);
+
+        // 按住/拖动交互控件期间不触发退场 (光标可能暂时离开胶囊判定区)
+        private bool _pressing;
         private double _uiScale = 1;
+        private double _volumeBarH = 4;
+        private bool _volumeDragging;
 
         public OsdWindow()
         {
@@ -62,6 +83,21 @@ namespace JiaoLongControl.Server
             _cursorTimer.Tick += (_, _) => UpdateHoverLight();
             SourceInitialized += (_, _) => ApplyOverlayStyle();
         }
+
+        /// <summary>当前驻留的 OSD 类型 (供控制器判断是否需要原位刷新)。</summary>
+        public string CurrentKind { get; private set; } = "";
+
+        /// <summary>音量滑条被拖动/点击到某比例 (0~1, UI 线程回调)。</summary>
+        public event Action<double>? VolumeSelected;
+
+        /// <summary>静音小按钮被点击 (由控制器读取当前状态并取反)。</summary>
+        public event Action? MuteToggled;
+
+        /// <summary>背光分段被点击 (0~3 档)。</summary>
+        public event Action<byte>? BrightnessSelected;
+
+        /// <summary>媒体按钮被点击: prev / playpause / next。</summary>
+        public event Action<string>? MediaCommand;
 
         private void ApplyOverlayStyle()
         {
@@ -81,8 +117,28 @@ namespace JiaoLongControl.Server
             }
         }
 
+        /// <summary>动态切换点击穿透: 交互型 OSD 显示期间接收鼠标, 其余时间保持穿透。</summary>
+        private void SetClickThrough(bool clickThrough)
+        {
+            try
+            {
+                var hwnd = new WindowInteropHelper(this).Handle;
+                if (hwnd == IntPtr.Zero) return;
+                var style = (int)User32.GetWindowLongPtrW(hwnd, User32.GWL_EXSTYLE);
+                var updated = clickThrough
+                    ? style | User32.WS_EX_TRANSPARENT
+                    : style & ~User32.WS_EX_TRANSPARENT;
+                if (updated != style)
+                    User32.SetWindowLongPtrW(hwnd, User32.GWL_EXSTYLE, new IntPtr(updated));
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"OSD 点击穿透切换失败: {ex.Message}");
+            }
+        }
+
         /// <summary>更新内容并按当前状态选择动画 (需在窗口所属 Dispatcher 线程调用)。</summary>
-        public void ShowOsd(OsdItem item, string position, int opacityPercent, int durationMs, int animMs, int scalePercent, bool lightTheme)
+        public void ShowOsd(OsdItem item, OsdSection cfg, bool lightTheme)
         {
             try
             {
@@ -90,22 +146,43 @@ namespace JiaoLongControl.Server
                 _exitTimer?.Stop();
                 var wasExiting = _exiting;
                 _exiting = false;
-                _animMs = Math.Clamp(animMs, 200, 5000);
+                _animMs = Math.Clamp(cfg.AnimationMs, 200, 5000);
 
-                ApplyTheme(lightTheme, item.AccentHex, Math.Clamp(opacityPercent, 30, 100) / 100.0);
+                ApplyTheme(lightTheme, item.AccentHex, Math.Clamp(cfg.Opacity, 30, 100) / 100.0);
 
+                CurrentKind = item.Kind;
                 IconGlyph.Text = item.IconGlyph;
                 TitleText.Text = item.Title;
                 SubtitleText.Text = item.Subtitle;
-                BarPanel.Visibility = item.BarValue.HasValue ? Visibility.Visible : Visibility.Collapsed;
-                if (item.BarValue.HasValue)
-                {
-                    BarFill.Width = _barWidth * Math.Clamp(item.BarValue.Value, 0, 1);
-                }
 
-                var scale = Math.Clamp(scalePercent, 100, 200) / 100.0;
+                // PNG 图标优先 (强调色遮罩渲染), 加载失败回退字形
+                var iconSource = TryLoadIconImage(item.IconImage);
+                IconImageBrush.ImageSource = iconSource;
+                IconImage.Visibility = iconSource != null ? Visibility.Visible : Visibility.Collapsed;
+                IconGlyph.Visibility = iconSource != null ? Visibility.Collapsed : Visibility.Visible;
+
+                var scale = Math.Clamp(cfg.Scale, 100, 200) / 100.0;
                 ApplyLayoutScale(scale);
-                MoveToTarget(position, _uiScale);
+                MoveToTarget(cfg.Position, cfg.CustomX, cfg.CustomY, _uiScale);
+
+                // 交互控件切换 (依赖缩放后的基准尺寸, 故放在 ApplyLayoutScale 之后)
+                var interactive = item.Kind is "volume" or "keyboard" or "media";
+                VolumePanel.Visibility = item.Kind == "volume" ? Visibility.Visible : Visibility.Collapsed;
+                BrightnessPanel.Visibility = item.Kind == "keyboard" ? Visibility.Visible : Visibility.Collapsed;
+                MediaPanel.Visibility = item.Kind == "media" ? Visibility.Visible : Visibility.Collapsed;
+                switch (item.Kind)
+                {
+                    case "volume":
+                        VolumeFill.Width = _barWidth * Math.Clamp(item.BarValue ?? 0, 0, 1);
+                        MuteGlyph.Text = item.IsMuted ? "\uE74F" : "\uE767";
+                        break;
+                    case "keyboard":
+                        UpdateSegments(item.BrightnessLevel);
+                        break;
+                    case "media":
+                        PlayPauseGlyph.Text = item.IsPlaying ? "\uE769" : "\uE768";
+                        break;
+                }
 
                 if (!IsVisible)
                 {
@@ -126,11 +203,17 @@ namespace JiaoLongControl.Server
                     ReassertTopmost();
                 }
 
+                // 穿透切换放在 Show 之后: 首次显示时窗口句柄此时才存在
+                SetClickThrough(!interactive);
                 StartHoverTracking();
 
+                // 标题跑马灯需等布局完成拿到可视区宽度 (Loaded 优先级在布局后执行)
+                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, UpdateTitleMarquee);
+
                 // 驻留计时 = 入场时长 + 显示时长: 显示时长为完全展开后的纯驻留时间,
-                // 到点后播放与入场等长的出场动画 (悬停挂起, 离开即收)
-                _hideTimer.Interval = TimeSpan.FromMilliseconds(_animMs + Math.Max(500, durationMs));
+                // 到点后播放与入场等长的出场动画 (悬停挂起, 离开后按显示时长重新计时)
+                _dwellMs = Math.Max(500, cfg.DurationMs);
+                _hideTimer.Interval = TimeSpan.FromMilliseconds(_animMs + _dwellMs);
                 _hideTimer.Start();
             }
             catch (Exception ex)
@@ -166,24 +249,72 @@ namespace JiaoLongControl.Server
             IconBox.Height = 26 * scale;
             IconBox.Margin = new Thickness(0, 0, 10 * scale, 0);
             IconGlyph.FontSize = 15 * scale;
+            IconImage.Width = 18 * scale;
+            IconImage.Height = 18 * scale;
             TitleText.FontSize = 12 * scale;
             SubtitleText.FontSize = 10 * scale;
             SubtitleText.Margin = new Thickness(0, 2 * scale, 0, 0);
-            BarPanel.Width = _barWidth;
-            BarPanel.Height = Math.Max(3, 4 * scale);
-            BarPanel.Margin = new Thickness(10 * scale, 0, 0, 0);
-            BarTrack.CornerRadius = new CornerRadius(2 * scale);
-            BarFill.CornerRadius = new CornerRadius(2 * scale);
+
+            // 音量交互: 滑条命中区 + 静音按钮
+            VolumeSliderHit.Width = 84 * scale;
+            VolumeSliderHit.Height = Math.Max(16, 22 * scale);
+            VolumeBar.Height = _volumeBarH = 4 * scale;
+            VolumeTrack.CornerRadius = new CornerRadius(2 * scale);
+            VolumeFill.CornerRadius = new CornerRadius(2 * scale);
+            MuteButton.Width = 22 * scale;
+            MuteButton.Height = 22 * scale;
+            MuteButton.CornerRadius = new CornerRadius(11 * scale);
+            MuteButton.Margin = new Thickness(6 * scale, 0, 0, 0);
+            MuteGlyph.FontSize = 12 * scale;
+
+            // 背光分段
+            var segs = new[] { Seg0, Seg1, Seg2, Seg3 };
+            var segFills = new[] { Seg0Fill, Seg1Fill, Seg2Fill, Seg3Fill };
+            for (var i = 0; i < segs.Length; i++)
+            {
+                segs[i].Width = 18 * scale;
+                segs[i].Height = 16 * scale;
+                segs[i].Margin = i == 0 ? default : new Thickness(3 * scale, 0, 0, 0);
+                segFills[i].Height = 8 * scale;
+                segFills[i].CornerRadius = new CornerRadius(2 * scale);
+            }
+
+            // 媒体按钮
+            var mediaBtns = new[] { MediaPrev, MediaPlayPause, MediaNext };
+            var mediaGlyphs = new[] { MediaPrevGlyph, PlayPauseGlyph, MediaNextGlyph };
+            for (var i = 0; i < mediaBtns.Length; i++)
+            {
+                mediaBtns[i].Width = 22 * scale;
+                mediaBtns[i].Height = 22 * scale;
+                mediaBtns[i].CornerRadius = new CornerRadius(11 * scale);
+                mediaBtns[i].Margin = i == 0 ? default : new Thickness(3 * scale, 0, 0, 0);
+                mediaGlyphs[i].FontSize = 12 * scale;
+            }
         }
 
         private void ApplyTheme(bool light, string accentHex, double panelOpacity)
         {
             var a = TryParseColor(accentHex, Color.FromRgb(0x3B, 0x82, 0xF6));
+            _accentColor = a;
 
             HaloStop.Color = Color.FromArgb(0x59, a.R, a.G, a.B);
             IconGlowStop.Color = Color.FromArgb(0x66, a.R, a.G, a.B);
             IconGlyph.Foreground = new SolidColorBrush(a);
-            BarFill.Background = new LinearGradientBrush(a, Darken(a, 0.72), 90);
+            IconImage.Fill = new SolidColorBrush(a); // PNG 剪影经遮罩染成强调色
+
+            // 交互控件前景与底色
+            var glyphFg = new SolidColorBrush(light
+                ? Color.FromArgb(0xE6, 0x17, 0x18, 0x1C)
+                : Color.FromArgb(0xF2, 0xFF, 0xFF, 0xFF));
+            MuteGlyph.Foreground = glyphFg;
+            MediaPrevGlyph.Foreground = glyphFg;
+            PlayPauseGlyph.Foreground = glyphFg;
+            MediaNextGlyph.Foreground = glyphFg;
+            _faintBrush = new SolidColorBrush(light
+                ? Color.FromArgb(0x1A, 0x00, 0x00, 0x00)
+                : Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF));
+            VolumeTrack.Background = _faintBrush;
+            VolumeFill.Background = new LinearGradientBrush(a, Darken(a, 0.72), 90);
 
             if (light)
             {
@@ -194,7 +325,6 @@ namespace JiaoLongControl.Server
                 PanelBorder.Color = Color.FromArgb(0x14, 0x00, 0x00, 0x00);
                 TitleText.Foreground = new SolidColorBrush(Color.FromArgb(0xE6, 0x17, 0x18, 0x1C));
                 SubtitleText.Foreground = new SolidColorBrush(Color.FromArgb(0x73, 0x17, 0x18, 0x1C));
-                BarTrack.Background = new SolidColorBrush(Color.FromArgb(0x1A, 0x00, 0x00, 0x00));
             }
             else
             {
@@ -204,7 +334,6 @@ namespace JiaoLongControl.Server
                 PanelBorder.Color = Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF);
                 TitleText.Foreground = new SolidColorBrush(Color.FromArgb(0xF2, 0xFF, 0xFF, 0xFF));
                 SubtitleText.Foreground = new SolidColorBrush(Color.FromArgb(0x8C, 0xFF, 0xFF, 0xFF));
-                BarTrack.Background = new SolidColorBrush(Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF));
             }
 
             // 配置不透明度作为胶囊基础值, 动画 (FillBehavior.Stop) 结束后回落到此值
@@ -339,6 +468,8 @@ namespace JiaoLongControl.Server
                 if (_exiting)
                 {
                     StopHoverTracking();
+                    SetClickThrough(true); // 隐藏后恢复穿透, 避免空窗口残留挡鼠标
+                    StopTitleMarquee(); // 停掉跑马灯, 避免隐藏后空转动画
                     Hide();
                 }
             };
@@ -458,7 +589,7 @@ namespace JiaoLongControl.Server
 
         // ===== 定位与置顶 =====
 
-        private void MoveToTarget(string position, double uiScale)
+        private void MoveToTarget(string position, int customX, int customY, double uiScale)
         {
             var hMon = User32.MonitorFromPoint(new User32.POINT { X = 0, Y = 0 }, User32.MONITOR_DEFAULTTOPRIMARY);
             var mi = new User32.MONITORINFO { cbSize = Marshal.SizeOf<User32.MONITORINFO>() };
@@ -468,19 +599,23 @@ namespace JiaoLongControl.Server
             var dip = dpi / 96.0;
             _dip = dip; // 供悬停柔光做光标物理像素 → 窗口 DIP 换算
             var pillPxW = PillW * dip * uiScale;
-            var pillPxH = PillH * dip * uiScale;    
+            var pillPxH = PillH * dip * uiScale;
             var margin = 28 * dip;
 
             double pillLeft, pillTop;
             switch (position)
-            {       
-                case "TopRight":
-                    pillLeft = mi.rcWork.Right - margin - pillPxW;
-                    pillTop = mi.rcWork.Top + margin;
-                    break;
+            {
                 case "BottomCenter":
                     pillLeft = mi.rcWork.Left + ((mi.rcWork.Right - mi.rcWork.Left) - pillPxW) / 2;
                     pillTop = mi.rcWork.Bottom - margin - pillPxH;
+                    break;
+                case "Custom":
+                    // 自定义位置 = 胶囊在主屏工作区"可移动行程"的百分比 (0% 贴左/上边缘, 100% 贴右/下边缘),
+                    // 与界面缩放无关; 与设置页预览区的映射保持一致
+                    var travelW = Math.Max(0, mi.rcWork.Right - mi.rcWork.Left - pillPxW);
+                    var travelH = Math.Max(0, mi.rcWork.Bottom - mi.rcWork.Top - pillPxH);
+                    pillLeft = mi.rcWork.Left + travelW * Math.Clamp(customX, 0, 100) / 100.0;
+                    pillTop = mi.rcWork.Top + travelH * Math.Clamp(customY, 0, 100) / 100.0;
                     break;
                 default: // TopCenter
                     pillLeft = mi.rcWork.Left + ((mi.rcWork.Right - mi.rcWork.Left) - pillPxW) / 2;
@@ -508,7 +643,7 @@ namespace JiaoLongControl.Server
             }
         }
 
-        // ===== 悬停柔光: 光标轮询驱动 (窗口 WS_EX_TRANSPARENT 收不到鼠标消息) =====
+        // ===== 悬停柔光: 光标轮询驱动 =====
 
         private void StartHoverTracking()
         {
@@ -528,6 +663,14 @@ namespace JiaoLongControl.Server
             _lightOpacity = 0;
             _lightOpacityTarget = 0;
             HoverGlow.Opacity = 0;
+        }
+
+        /// <summary>悬停离开后按配置的显示时长重新计时, 到点由计时器触发离场动画。</summary>
+        private void RestartDwellTimer()
+        {
+            _hideTimer.Stop();
+            _hideTimer.Interval = TimeSpan.FromMilliseconds(_dwellMs);
+            _hideTimer.Start();
         }
 
         private void UpdateHoverLight()
@@ -563,7 +706,8 @@ namespace JiaoLongControl.Server
             _lightTarget = inside ? new Point(nx, ny) : _lightTarget;
             _lightOpacityTarget = inside ? 1 : 0;
 
-            // 悬停期间挂起自动隐藏, 鼠标离开时才触发离场动画
+            // 悬停期间挂起自动隐藏; 按住交互控件时即使光标暂离也不退场;
+            // 光标离开后按显示时长重新计时, 到点才触发离场动画
             if (inside != _hoverInside)
             {
                 _hoverInside = inside;
@@ -571,10 +715,15 @@ namespace JiaoLongControl.Server
                 {
                     _hideTimer.Stop();
                 }
-                else
+                else if (!_pressing)
                 {
-                    PlayExit();
+                    RestartDwellTimer();
                 }
+            }
+            else if (inside && _hideTimer.IsEnabled)
+            {
+                // 悬停中刷新内容 (如连续按键) 会重启计时: 持续兜底挂起, 避免悬停中被收回
+                _hideTimer.Stop();
             }
 
             // 指数平滑: 位置轻微滞后产生柔光跟随感, 不透明度缓入缓出
@@ -589,6 +738,176 @@ namespace JiaoLongControl.Server
             HoverGlowBrush.GradientOrigin = new Point(gx, gy);
             HoverGlowBrush.Center = new Point(gx, gy);
             HoverGlow.Opacity = _lightOpacity;
+        }
+
+        // ===== 交互: 音量滑条 / 背光分段 / 媒体按钮 =====
+
+        private void VolumeSliderHit_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _pressing = true;
+            _volumeDragging = true;
+            _hideTimer.Stop();
+            VolumeSliderHit.CaptureMouse();
+            ApplyVolumeFromPosition(e.GetPosition(VolumeSliderHit).X);
+            e.Handled = true;
+        }
+
+        private void VolumeSliderHit_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_volumeDragging) return;
+            ApplyVolumeFromPosition(e.GetPosition(VolumeSliderHit).X);
+        }
+
+        private void VolumeSliderHit_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!_volumeDragging) return;
+            _volumeDragging = false;
+            _pressing = false;
+            if (VolumeSliderHit.IsMouseCaptured) VolumeSliderHit.ReleaseMouseCapture();
+            VolumeBar.Height = _volumeBarH;
+            e.Handled = true;
+            if (_hoverInside)
+            {
+                _hideTimer.Stop(); // 仍在胶囊上: 交回悬停挂起逻辑
+            }
+            else
+            {
+                RestartDwellTimer(); // 已离开胶囊: 按显示时长重新计时后退场
+            }
+        }
+
+        private void VolumeSliderHit_MouseEnter(object sender, MouseEventArgs e)
+        {
+            if (!_volumeDragging) VolumeBar.Height = _volumeBarH * 1.5; // 悬停增粗提示可拖
+        }
+
+        private void VolumeSliderHit_MouseLeave(object sender, MouseEventArgs e)
+        {
+            if (!_volumeDragging) VolumeBar.Height = _volumeBarH;
+        }
+
+        private void ApplyVolumeFromPosition(double x)
+        {
+            var ratio = Math.Clamp(x / Math.Max(1, VolumeSliderHit.ActualWidth), 0, 1);
+            VolumeFill.Width = _barWidth * ratio;
+            SubtitleText.Text = $"{Math.Round(ratio * 100)}%";
+            VolumeSelected?.Invoke(ratio);
+        }
+
+        private void MuteButton_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            MuteToggled?.Invoke();
+        }
+
+        private void Segment_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Border seg
+                && byte.TryParse(seg.Tag as string, out var level))
+            {
+                UpdateSegments(level); // 乐观刷新, EC 写入结果经 OnKeyboardBrightnessChanged 回流
+                BrightnessSelected?.Invoke(level);
+                e.Handled = true;
+            }
+        }
+
+        private void MediaPrev_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            MediaCommand?.Invoke("prev");
+        }
+
+        private void MediaNext_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            MediaCommand?.Invoke("next");
+        }
+
+        private void MediaPlayPause_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            // 乐观切换图标, 真实播放状态由 SMTC 事件经 UpdatePlayState 回同步
+            PlayPauseGlyph.Text = PlayPauseGlyph.Text == "\uE769" ? "\uE768" : "\uE769";
+            MediaCommand?.Invoke("playpause");
+        }
+
+        /// <summary>按档位刷新背光分段 (激活段强调色, 未激活段半透明)。</summary>
+        private void UpdateSegments(byte level)
+        {
+            var fills = new[] { Seg0Fill, Seg1Fill, Seg2Fill, Seg3Fill };
+            for (var i = 0; i < fills.Length; i++)
+                fills[i].Background = i <= level ? new SolidColorBrush(_accentColor) : _faintBrush;
+        }
+
+        /// <summary>SMTC 事件回同步播放/暂停按钮图标 (同曲去重不重弹时保持按钮状态正确)。
+        /// SMTC 事件可能来自线程池线程, 统一调度到 UI 线程。</summary>
+        public void UpdatePlayState(bool playing)
+        {
+            if (CurrentKind != "media") return;
+            Dispatcher.BeginInvoke(() =>
+                PlayPauseGlyph.Text = playing ? "\uE769" : "\uE768");
+        }
+
+        /// <summary>性能模式遥测读取完成后原位补充副标题 (EC/NvAPI 读取在后台线程, 需调度)。</summary>
+        public void UpdatePerfTelemetry(string subtitle)
+        {
+            if (CurrentKind != "perf") return;
+            Dispatcher.BeginInvoke(() => SubtitleText.Text = subtitle);
+        }
+
+        // ===== 标题跑马灯: 媒体 OSD 长曲名超出可视区时往返滚动 (替代省略号截断) =====
+
+        /// <summary>布局完成后测量标题: 仅媒体 OSD 且溢出时启用滚动, 其余情况恢复省略号。</summary>
+        private void UpdateTitleMarquee()
+        {
+            StopTitleMarquee();
+            if (!IsVisible || CurrentKind != "media") return;
+            var viewport = TitleClip.ActualWidth;
+            if (viewport <= 1) return;
+
+            var textWidth = MeasureTitleWidth();
+            var overflow = textWidth - viewport;
+            if (overflow <= 4) return; // 未溢出: 保持省略号方案 (不滚动)
+
+            TitleText.TextTrimming = TextTrimming.None;
+            TitleText.Width = textWidth + 2; // 显式全宽让文本可滚出裁剪区, +2 防末字符被裁
+            StartTitleMarquee(overflow + 2);
+        }
+
+        /// <summary>按当前字体测量标题全宽 (DIP)。FormattedText 与布局排版无关, 可在裁剪容器外测量。</summary>
+        private double MeasureTitleWidth()
+        {
+            var typeface = new Typeface(
+                TitleText.FontFamily, TitleText.FontStyle, TitleText.FontWeight, TitleText.FontStretch);
+            var formatted = new FormattedText(
+                TitleText.Text,
+                CultureInfo.CurrentCulture,
+                FlowDirection.LeftToRight,
+                typeface,
+                TitleText.FontSize,
+                Brushes.Black,
+                VisualTreeHelper.GetDpi(this).PixelsPerDip);
+            return formatted.Width;
+        }
+
+        /// <summary>往返滚动: 滚到末尾 → 停顿 → 滚回开头 → 停顿, 无限循环。</summary>
+        private void StartTitleMarquee(double overflow)
+        {
+            var scrollMs = Math.Max(1000, (int)(overflow / 25.0 * 1000)); // 约 25 DIP/s 的从容速度
+            const int holdMs = 700;
+            var ease = new SineEase { EasingMode = EasingMode.EaseInOut };
+            var anim = new DoubleAnimationUsingKeyFrames { RepeatBehavior = RepeatBehavior.Forever };
+            anim.KeyFrames.Add(new LinearDoubleKeyFrame(0, TimeSpan.Zero));
+            anim.KeyFrames.Add(new EasingDoubleKeyFrame(-overflow, TimeSpan.FromMilliseconds(scrollMs), ease));
+            anim.KeyFrames.Add(new DiscreteDoubleKeyFrame(-overflow, TimeSpan.FromMilliseconds(scrollMs + holdMs)));
+            anim.KeyFrames.Add(new EasingDoubleKeyFrame(0, TimeSpan.FromMilliseconds(scrollMs * 2 + holdMs), ease));
+            anim.KeyFrames.Add(new DiscreteDoubleKeyFrame(0, TimeSpan.FromMilliseconds(scrollMs * 2 + holdMs * 2)));
+            TitleTranslate.BeginAnimation(TranslateTransform.XProperty, anim);
+        }
+
+        /// <summary>停止滚动并恢复省略号截断与自动宽度。</summary>
+        private void StopTitleMarquee()
+        {
+            TitleTranslate.BeginAnimation(TranslateTransform.XProperty, null);
+            TitleTranslate.X = 0;
+            TitleText.Width = double.NaN;
+            TitleText.TextTrimming = TextTrimming.CharacterEllipsis;
         }
 
         protected override void OnClosed(EventArgs e)
@@ -606,6 +925,56 @@ namespace JiaoLongControl.Server
             catch
             {
                 return fallback;
+            }
+        }
+
+        /// <summary>
+        /// 加载 OsdItem 指定的 PNG 图标 (支持 pack URI 与磁盘路径), 失败返回 null 回退字形。
+        /// 素材为黑色剪影 (部分导出时整体半透明), 读取后做透明度归一化 (最高不透明度拉满,
+        /// 保留抗锯齿边缘); 渲染时由 OpacityMask 以强调色着色, 不直接显示黑色原图。
+        /// </summary>
+        private static ImageSource? TryLoadIconImage(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return null;
+            try
+            {
+                var uri = path.StartsWith("pack:", StringComparison.OrdinalIgnoreCase)
+                    ? new Uri(path, UriKind.Absolute)
+                    : Path.IsPathRooted(path)
+                        ? new Uri(path)
+                        : new Uri(Path.Combine(AppContext.BaseDirectory, path));
+                var bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption = BitmapCacheOption.OnLoad; // 读完即释放文件句柄
+                bmp.UriSource = uri;
+                bmp.EndInit();
+
+                // 透明度归一化: 转非预乘 Bgra32 后按最高 alpha 等比拉满 (maxAlpha 已达 255 则跳过)
+                var converted = new FormatConvertedBitmap(bmp, PixelFormats.Bgra32, null, 0);
+                var normalized = new WriteableBitmap(converted);
+                var stride = normalized.PixelWidth * 4;
+                var pixels = new byte[stride * normalized.PixelHeight];
+                normalized.CopyPixels(pixels, stride, 0);
+                byte maxAlpha = 0;
+                for (var i = 3; i < pixels.Length; i += 4)
+                    if (pixels[i] > maxAlpha)
+                        maxAlpha = pixels[i];
+                if (maxAlpha is > 8 and < 250)
+                {
+                    for (var i = 3; i < pixels.Length; i += 4)
+                        pixels[i] = (byte)Math.Min(255, pixels[i] * 255 / maxAlpha);
+                    normalized.WritePixels(
+                        new Int32Rect(0, 0, normalized.PixelWidth, normalized.PixelHeight),
+                        pixels, stride, 0);
+                }
+
+                normalized.Freeze(); // 跨线程安全, 且免去每帧命中测试开销
+                return normalized;
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"OSD 图标图片加载失败 ({path}): {ex.Message}");
+                return null;
             }
         }
 

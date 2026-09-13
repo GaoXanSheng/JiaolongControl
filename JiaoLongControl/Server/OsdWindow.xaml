@@ -6,12 +6,11 @@
         Height="140"
         WindowStyle="None"
         AllowsTransparency="True"
-        Background="Transparent"
+        Background="{x:Null}"
         ShowInTaskbar="False"
         ShowActivated="False"
         Topmost="True"
         Focusable="False"
-        IsHitTestVisible="False"
         ResizeMode="NoResize"
         UseLayoutRounding="True"
         FontFamily="Microsoft YaHei"
@@ -19,8 +18,10 @@
         TextOptions.TextRenderingMode="ClearType">
     <Grid>
         <!-- 状态强调色光晕: 进场浮现 / 驻留呼吸 / 退场消散 (尺寸由代码按缩放设置) -->
+        <!-- 不参与命中: 只允许胶囊本体接收鼠标, 窗口空区保持穿透 -->
         <Ellipse x:Name="Halo"
                  Opacity="0"
+                 IsHitTestVisible="False"
                  HorizontalAlignment="Center"
                  VerticalAlignment="Center"
                  RenderTransformOrigin="0.5,0.5">
@@ -77,7 +78,7 @@
             </Border.BorderBrush>
             <Grid>
                 <!-- 柔光跟随鼠标: 垫在内容之下只照亮面板, 避免半透明层盖住文字导致
-                     ClearType 失效发虚 (光标轮询驱动, 窗口保持点击穿透)。
+                     ClearType 失效发虚 (光标轮询驱动)。
                      MappingMode=Absolute: 光源为与胶囊宽高比无关的正圆 -->
                 <Border x:Name="HoverGlow"
                         Opacity="0"
@@ -131,37 +132,177 @@
                                    Foreground="#3B82F6"
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center" />
+                        <!-- PNG 图标 (锁定键/触摸板等): 素材为黑色剪影, 读取后透明度归一化,
+                             经 OpacityMask 以强调色着色渲染 (与 IconGlyph 字形同色), 显示时隐藏字形 -->
+                        <Rectangle x:Name="IconImage"
+                                   Width="18"
+                                   Height="18"
+                                   Visibility="Collapsed"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center">
+                            <Rectangle.OpacityMask>
+                                <ImageBrush x:Name="IconImageBrush" Stretch="Uniform" />
+                            </Rectangle.OpacityMask>
+                        </Rectangle>
                     </Grid>
 
-                    <!-- 两行文本: 主标题 + 副标题 -->
+                    <!-- 两行文本: 主标题 + 副标题 (长曲名截断省略) -->
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock x:Name="TitleText"
-                                   Text="音量"
-                                   FontSize="12"
-                                   FontWeight="SemiBold"
-                                   Foreground="#F2FFFFFF" />
+                        <!-- 标题裁剪容器: 媒体 OSD 长曲名时经 TitleTranslate 做跑马灯滚动 -->
+                        <Grid x:Name="TitleClip" ClipToBounds="True">
+                            <TextBlock x:Name="TitleText"
+                                       Text="音量"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis"
+                                       HorizontalAlignment="Left"
+                                       Foreground="#F2FFFFFF">
+                                <TextBlock.RenderTransform>
+                                    <TranslateTransform x:Name="TitleTranslate" />
+                                </TextBlock.RenderTransform>
+                            </TextBlock>
+                        </Grid>
                         <TextBlock x:Name="SubtitleText"
                                    Text="72%"
                                    FontSize="10"
                                    Margin="0,2,0,0"
+                                   TextTrimming="CharacterEllipsis"
                                    Foreground="#8CFFFFFF" />
                     </StackPanel>
 
-                    <!-- 值类状态的细进度条 -->
-                    <Grid x:Name="BarPanel"
-                          Grid.Column="2"
-                          Width="84"
-                          Height="4"
-                          Margin="10,0,0,0"
-                          VerticalAlignment="Center">
-                        <Border x:Name="BarTrack"
-                                CornerRadius="2"
-                                Background="#24FFFFFF" />
-                        <Border x:Name="BarFill"
-                                CornerRadius="2"
-                                Background="#3B82F6"
-                                HorizontalAlignment="Left"
-                                Width="60" />
+                    <!-- 右侧区域: 按当前 OSD 类型切换可见性
+                         (纯值进度条已由交互控件取代, 保留容器名供出入场动画引用) -->
+                    <Grid x:Name="BarPanel" Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0">
+                        <!-- 音量: 可拖动/点击的进度条 + 静音切换小按钮 -->
+                        <StackPanel x:Name="VolumePanel"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    Visibility="Collapsed">
+                            <Border x:Name="VolumeSliderHit"
+                                    Width="84"
+                                    Height="22"
+                                    VerticalAlignment="Center"
+                                    Background="Transparent"
+                                    Cursor="Hand"
+                                    MouseLeftButtonDown="VolumeSliderHit_MouseLeftButtonDown"
+                                    MouseMove="VolumeSliderHit_MouseMove"
+                                    MouseLeftButtonUp="VolumeSliderHit_MouseLeftButtonUp"
+                                    MouseEnter="VolumeSliderHit_MouseEnter"
+                                    MouseLeave="VolumeSliderHit_MouseLeave">
+                                <Grid x:Name="VolumeBar" Height="4" VerticalAlignment="Center">
+                                    <Border x:Name="VolumeTrack"
+                                            CornerRadius="2"
+                                            Background="#24FFFFFF" />
+                                    <Border x:Name="VolumeFill"
+                                            CornerRadius="2"
+                                            HorizontalAlignment="Left"
+                                            Width="60" />
+                                </Grid>
+                            </Border>
+                            <Border x:Name="MuteButton"
+                                    Width="22"
+                                    Height="22"
+                                    VerticalAlignment="Center"
+                                    Background="Transparent"
+                                    Cursor="Hand"
+                                    CornerRadius="11"
+                                    MouseLeftButtonUp="MuteButton_MouseLeftButtonUp">
+                                <TextBlock x:Name="MuteGlyph"
+                                           Text="&#xE767;"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                        </StackPanel>
+
+                        <!-- 键盘背光: 0~3 档可点击分段 -->
+                        <StackPanel x:Name="BrightnessPanel"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    Visibility="Collapsed">
+                            <Border x:Name="Seg0"
+                                    Width="18"
+                                    Height="16"
+                                    Background="Transparent"
+                                    Cursor="Hand"
+                                    Tag="0"
+                                    MouseLeftButtonDown="Segment_MouseLeftButtonDown">
+                                <Border x:Name="Seg0Fill" Height="8" CornerRadius="2" VerticalAlignment="Center" />
+                            </Border>
+                            <Border x:Name="Seg1"
+                                    Width="18"
+                                    Height="16"
+                                    Background="Transparent"
+                                    Cursor="Hand"
+                                    Tag="1"
+                                    MouseLeftButtonDown="Segment_MouseLeftButtonDown">
+                                <Border x:Name="Seg1Fill" Height="8" CornerRadius="2" VerticalAlignment="Center" />
+                            </Border>
+                            <Border x:Name="Seg2"
+                                    Width="18"
+                                    Height="16"
+                                    Background="Transparent"
+                                    Cursor="Hand"
+                                    Tag="2"
+                                    MouseLeftButtonDown="Segment_MouseLeftButtonDown">
+                                <Border x:Name="Seg2Fill" Height="8" CornerRadius="2" VerticalAlignment="Center" />
+                            </Border>
+                            <Border x:Name="Seg3"
+                                    Width="18"
+                                    Height="16"
+                                    Background="Transparent"
+                                    Cursor="Hand"
+                                    Tag="3"
+                                    MouseLeftButtonDown="Segment_MouseLeftButtonDown">
+                                <Border x:Name="Seg3Fill" Height="8" CornerRadius="2" VerticalAlignment="Center" />
+                            </Border>
+                        </StackPanel>
+
+                        <!-- 媒体: 上一曲 / 播放暂停 / 下一曲 -->
+                        <StackPanel x:Name="MediaPanel"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    Visibility="Collapsed">
+                            <Border x:Name="MediaPrev"
+                                    Width="22"
+                                    Height="22"
+                                    Background="Transparent"
+                                    Cursor="Hand"
+                                    CornerRadius="11"
+                                    MouseLeftButtonUp="MediaPrev_MouseLeftButtonUp">
+                                <TextBlock x:Name="MediaPrevGlyph"
+                                           Text="&#xE892;"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <Border x:Name="MediaPlayPause"
+                                    Width="22"
+                                    Height="22"
+                                    Background="Transparent"
+                                    Cursor="Hand"
+                                    CornerRadius="11"
+                                    MouseLeftButtonUp="MediaPlayPause_MouseLeftButtonUp">
+                                <TextBlock x:Name="PlayPauseGlyph"
+                                           Text="&#xE769;"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <Border x:Name="MediaNext"
+                                    Width="22"
+                                    Height="22"
+                                    Background="Transparent"
+                                    Cursor="Hand"
+                                    CornerRadius="11"
+                                    MouseLeftButtonUp="MediaNext_MouseLeftButtonUp">
+                                <TextBlock x:Name="MediaNextGlyph"
+                                           Text="&#xE893;"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                        </StackPanel>
                     </Grid>
                 </Grid>
             </Grid>

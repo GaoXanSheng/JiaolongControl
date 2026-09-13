@@ -11,7 +11,7 @@
         <Configurations>Debug;Release</Configurations>
         <Platforms>x64</Platforms>
         <SatelliteResourceLanguages>zh-CN</SatelliteResourceLanguages>
-        <AppVersion>10.14.25.B</AppVersion>
+        <AppVersion>10.15.25</AppVersion>
     </PropertyGroup>
 
     <ItemGroup>
@@ -45,6 +45,15 @@
         <Content Include="Resources\WebRoot\**\*">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
+    </ItemGroup>
+    <ItemGroup>
+        <!-- OSD 图标: 锁定状态/触摸板/大小写 (源文件在客户端图标库, 链接进程序集,
+             pack URI = pack://application:,,,/Assets/OSD/<文件名>) -->
+        <Resource Include="Client\src\assets\icon\TouchPad.png" Link="Assets\OSD\TouchPad.png" />
+        <Resource Include="Client\src\assets\icon\Lock.png" Link="Assets\OSD\Lock.png" />
+        <Resource Include="Client\src\assets\icon\Unlock.png" Link="Assets\OSD\Unlock.png" />
+        <Resource Include="Client\src\assets\icon\AllCaps.png" Link="Assets\OSD\AllCaps.png" />
+        <Resource Include="Client\src\assets\icon\AllLowercase.png" Link="Assets\OSD\AllLowercase.png" />
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Include="Server\Resources\Icons\app.ico" />

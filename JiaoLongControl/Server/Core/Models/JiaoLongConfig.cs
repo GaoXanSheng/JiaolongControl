@@ -230,6 +230,9 @@ public class OsdSection
     [ConfigComment("显示项目: 性能模式切换 (软件内切换时触发)")]
     public bool ShowPerformanceMode { get; set; } = true;
 
+    [ConfigComment("模式切换 OSD 附带 CPU/GPU 温度与风扇转速")]
+    public bool ShowPerfTelemetry { get; set; } = true;
+
     [ConfigComment("显示项目: 功能键(Fn)锁定 (轮询EC检测)")]
     public bool ShowFnLock { get; set; } = true;
 
@@ -251,8 +254,16 @@ public class OsdSection
     [ConfigRange(500, 5000)]
     public int DurationMs { get; set; } = 2000;
 
-    [ConfigComment("显示位置: TopCenter / TopRight / BottomCenter")]
+    [ConfigComment("显示位置: TopCenter / BottomCenter / Custom")]
     public string Position { get; set; } = "TopCenter";
+
+    [ConfigComment("自定义位置水平百分比 (胶囊在主屏工作区可移动行程的 0~100%, Position=Custom 时生效)")]
+    [ConfigRange(0, 100)]
+    public int CustomX { get; set; } = 50;
+
+    [ConfigComment("自定义位置垂直百分比 (胶囊在主屏工作区可移动行程的 0~100%, Position=Custom 时生效)")]
+    [ConfigRange(0, 100)]
+    public int CustomY { get; set; } = 8;
 
     [ConfigComment("面板不透明度 (%)")]
     [ConfigRange(30, 100)]
