@@ -402,12 +402,12 @@ public class RyzenSmuController : PawnIO
 
     public CommandResult SetCurveOptimizerPerCore(uint coreIdx, int value)
     {
-        uint coValue = (uint)value & 0xFFFFFu;
+        uint marginArg = (uint)((value < 0 ? 0x100000 : 0) + value) & 0xFFFFu;
         return CurrentFamily switch {
-            RyzenSmuFamily.FP6 => TrySend((coreIdx << 20) | coValue, $"Curve Optimizer Core {coreIdx}", (0x54, true), (0x52, false)),
-            RyzenSmuFamily.FP7_FP8 => TrySend((coreIdx << 20) | coValue, $"Curve Optimizer Core {coreIdx}", (0x4B, true), (0x53, false)),
-            RyzenSmuFamily.FP7_FP8_Strix => TrySend((coreIdx << 20) | coValue, $"Curve Optimizer Core {coreIdx}", (0x4B, true), (0x53, false)),
-            _ => TrySend((((coreIdx / 8) << 8) | (coreIdx % 8)) << 20 | coValue, $"Curve Optimizer Core {coreIdx}", (0x35, true), (0x06, false))
+            RyzenSmuFamily.FP6 => TrySend((coreIdx << 20) | ((uint)value & 0xFFFFFu), $"Curve Optimizer Core {coreIdx}", (0x54, true), (0x52, false)),
+            RyzenSmuFamily.FP7_FP8 => TrySend((coreIdx << 20) | ((uint)value & 0xFFFFFu), $"Curve Optimizer Core {coreIdx}", (0x4B, true), (0x53, false)),
+            RyzenSmuFamily.FP7_FP8_Strix => TrySend((coreIdx << 20) | ((uint)value & 0xFFFFFu), $"Curve Optimizer Core {coreIdx}", (0x4B, true), (0x53, false)),
+            _ => TrySend((((coreIdx / 8) << 28) | ((coreIdx % 8) << 20)) | marginArg, $"Curve Optimizer Core {coreIdx}", (0x35, true), (0x06, false))
         };
     }
 
