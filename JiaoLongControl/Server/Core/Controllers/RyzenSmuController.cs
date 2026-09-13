@@ -1,7 +1,11 @@
+using System.Diagnostics;
+using System.Management;
 using System.Runtime.InteropServices;
-using Microsoft.Win32;
 using JiaoLongControl.Server.Core.Drivers;
+using JiaoLongControl.Server.Core.Native;
 using JiaoLongControl.Server.Core.Utils;
+using LibreHardwareMonitor.Hardware;
+using Microsoft.Win32;
 
 namespace JiaoLongControl.Server.Core.Controllers;
 
@@ -17,8 +21,6 @@ public enum RyzenSmuFamily
 [ClassInterface(ClassInterfaceType.AutoDual)]
 public class RyzenSmuController : PawnIO 
 {
-    public RyzenSmuFamily CurrentFamily { get; set; } = RyzenSmuFamily.AM5_V1;
-
     public RyzenSmuController()
     {
         try
@@ -26,8 +28,8 @@ public class RyzenSmuController : PawnIO
             string cpuName = GetCpuNameFast();
             if (string.IsNullOrWhiteSpace(cpuName))
             {
-                using var searcher = new System.Management.ManagementObjectSearcher("SELECT Name FROM Win32_Processor");
-                foreach (System.Management.ManagementObject obj in searcher.Get())
+                using var searcher = new ManagementObjectSearcher("SELECT Name FROM Win32_Processor");
+                foreach (ManagementObject obj in searcher.Get())
                 {
                     cpuName = obj["Name"]?.ToString() ?? "";
                     break;
@@ -47,6 +49,8 @@ public class RyzenSmuController : PawnIO
         }
         catch { }
     }
+
+    public RyzenSmuFamily CurrentFamily { get; set; } = RyzenSmuFamily.AM5_V1;
 
     private static string GetCpuNameFast()
     {
@@ -138,7 +142,8 @@ public class RyzenSmuController : PawnIO
         CommandResult? lastResult = null;
         foreach (var (cmd, isMp1) in commands)
         {
-            lastResult = Send(cmd, arg, isMp1, name);
+            // 消息中注明实际使用的邮箱与命令号，便于区分 MP1/RSMU 哪条路径被接受
+            lastResult = Send(cmd, arg, isMp1, $"{name} [{(isMp1 ? "MP1" : "RSMU")} 0x{cmd:X2}]");
             if (lastResult.Success)
             {
                 return lastResult;
@@ -147,7 +152,14 @@ public class RyzenSmuController : PawnIO
         return lastResult ?? new CommandResult(false, $"{name} 设置失败: 无可用指令");
     }
 
+    /// <summary>
+    /// 调试用：向指定邮箱发送原始 SMU 命令（测试工具 --smu-cmd 使用）
+    /// </summary>
+    public CommandResult SendRaw(uint cmd, uint arg, bool isMp1, string name)
+        => Send(cmd, arg, isMp1, name);
+
     #region (Power Limits - PPT)
+
     public CommandResult SetStapmLimit(double watts)
     {
         uint arg = (uint)(watts * 1000);
@@ -211,9 +223,11 @@ public class RyzenSmuController : PawnIO
         };
         return Send(cmd, (uint)(watts * 1000), false, "PPT Limit (RSMU)");
     }
+
     #endregion
 
     #region (Current & Temp Limits)
+
     public CommandResult SetVrmCurrentMp1(uint milliamps)
     {
         uint cmd = CurrentFamily switch { 
@@ -279,9 +293,11 @@ public class RyzenSmuController : PawnIO
         };
         return Send(cmd, celsius, false, "Temp Limit (RSMU)");
     }
+
     #endregion
 
     #region (PBO & Overclocking)
+
     public CommandResult SetPboScalar(uint value)
     {
         uint cmd = CurrentFamily switch { 
@@ -347,9 +363,11 @@ public class RyzenSmuController : PawnIO
         };
         return Send(cmd, 0, false, "Disable OC Mode");
     }
+
     #endregion
 
     #region (Curve Optimizer)
+
     public CommandResult SetCurveOptimizerAll(int value)
     {
         uint arg = (uint)value & 0xFFFFFu;
@@ -372,20 +390,22 @@ public class RyzenSmuController : PawnIO
             _ => TrySend(arg, $"Curve Optimizer Core {coreIdx}", (0x35, true), (0x06, false))
         };
     }
+
     #endregion
 
     #region (Power Telemetry)
-    private static LibreHardwareMonitor.Hardware.Computer? _lhmComputer;
+
+    private static Computer? _lhmComputer;
     private static readonly object _lhmLock = new();
-    
+
     private const uint MsrFidvidStatus = 0xC0010293;
 
     public double? GetCoreVoltage()
     {
         try
         {
-            IntPtr thread = Native.Kernel32.GetCurrentThread();
-            IntPtr originalMask = Native.Kernel32.SetThreadAffinityMask(thread, new IntPtr(unchecked((long)-1)));
+            IntPtr thread = Kernel32.GetCurrentThread();
+            IntPtr originalMask = Kernel32.SetThreadAffinityMask(thread, new IntPtr(unchecked((long)-1)));
             if (originalMask == IntPtr.Zero)
                 return ReadVidVoltage();
 
@@ -395,7 +415,7 @@ public class RyzenSmuController : PawnIO
                 int coreCount = Environment.ProcessorCount;
                 for (int i = 0; i < coreCount; i++)
                 {
-                    IntPtr prev = Native.Kernel32.SetThreadAffinityMask(thread, new IntPtr(1L << i));
+                    IntPtr prev = Kernel32.SetThreadAffinityMask(thread, new IntPtr(1L << i));
                     if (prev == IntPtr.Zero)
                         continue; // 进程亲和性不允许该核心
 
@@ -408,7 +428,7 @@ public class RyzenSmuController : PawnIO
             }
             finally
             {
-                Native.Kernel32.SetThreadAffinityMask(thread, originalMask);
+                Kernel32.SetThreadAffinityMask(thread, originalMask);
             }
         }
         catch
@@ -432,13 +452,13 @@ public class RyzenSmuController : PawnIO
         }
     }
 
-    private static LibreHardwareMonitor.Hardware.Computer GetOrCreateLhm()
+    private static Computer GetOrCreateLhm()
     {
         if (_lhmComputer != null) return _lhmComputer;
         lock (_lhmLock)
         {
             if (_lhmComputer != null) return _lhmComputer;
-            var computer = new LibreHardwareMonitor.Hardware.Computer
+            var computer = new Computer
             {
                 IsCpuEnabled = true,
             };
@@ -464,7 +484,7 @@ public class RyzenSmuController : PawnIO
 
                 foreach (var hardware in computer.Hardware)
                 {
-                    if (hardware.HardwareType != LibreHardwareMonitor.Hardware.HardwareType.Cpu)
+                    if (hardware.HardwareType != HardwareType.Cpu)
                         continue;
 
                     hardware.Update();
@@ -476,14 +496,14 @@ public class RyzenSmuController : PawnIO
 
                         switch (sensor.SensorType)
                         {
-                            case LibreHardwareMonitor.Hardware.SensorType.Power:
+                            case SensorType.Power:
                                 if (sensor.Name.Contains("Package") && ppt == 0)
                                     ppt = Math.Round(val, 1);
                                 if (sensor.Name.Contains("Core") && tdc == 0)
                                     tdc = Math.Round(val, 1);
                                 break;
 
-                            case LibreHardwareMonitor.Hardware.SensorType.Temperature:
+                            case SensorType.Temperature:
                                 if ((sensor.Name.Contains("Core") && sensor.Name.Contains("Max")) ||
                                      sensor.Name.Contains("Tctl") || sensor.Name.Contains("Tdie"))
                                 {
@@ -491,12 +511,12 @@ public class RyzenSmuController : PawnIO
                                 }
                                 break;
 
-                            case LibreHardwareMonitor.Hardware.SensorType.Frequency:
+                            case SensorType.Frequency:
                                 if (sensor.Name.Contains("Core #1") || sensor.Name.Contains("Bus Speed"))
                                     freq = Math.Round(val, 0);
                                 break;
 
-                            case LibreHardwareMonitor.Hardware.SensorType.Load:
+                            case SensorType.Load:
                                 if (sensor.Name.Contains("Total"))
                                     usage = (int)Math.Round(val);
                                 break;
@@ -513,10 +533,10 @@ public class RyzenSmuController : PawnIO
             {
                 try
                 {
-                    using var searcher = new System.Management.ManagementObjectSearcher(
+                    using var searcher = new ManagementObjectSearcher(
                         @"root\WMI", "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
                     double maxTemp = 0;
-                    foreach (System.Management.ManagementObject obj in searcher.Get())
+                    foreach (ManagementObject obj in searcher.Get())
                     {
                         uint raw = Convert.ToUInt32(obj["CurrentTemperature"]);
                         double t = (raw - 2732) / 10.0;
@@ -528,14 +548,14 @@ public class RyzenSmuController : PawnIO
 
                 try
                 {
-                    using var freqCounter = new System.Diagnostics.PerformanceCounter(
+                    using var freqCounter = new PerformanceCounter(
                         "Processor Information", "% Processor Performance", "_Total");
                     freqCounter.NextValue();
-                    System.Threading.Thread.Sleep(100);
+                    Thread.Sleep(100);
                     float perfPct = freqCounter.NextValue();
-                    using var wmi = new System.Management.ManagementObjectSearcher(
+                    using var wmi = new ManagementObjectSearcher(
                         "SELECT MaxClockSpeed FROM Win32_Processor");
-                    foreach (System.Management.ManagementObject obj in wmi.Get())
+                    foreach (ManagementObject obj in wmi.Get())
                     {
                         freq = Math.Round(perfPct / 100.0 * Convert.ToUInt32(obj["MaxClockSpeed"]), 0);
                         break;
@@ -545,10 +565,10 @@ public class RyzenSmuController : PawnIO
 
                 try
                 {
-                    using var usageCounter = new System.Diagnostics.PerformanceCounter(
+                    using var usageCounter = new PerformanceCounter(
                         "Processor", "% Processor Time", "_Total");
                     usageCounter.NextValue();
-                    System.Threading.Thread.Sleep(100);
+                    Thread.Sleep(100);
                     usage = (int)Math.Round(usageCounter.NextValue());
                 }
                 catch { }
@@ -569,5 +589,6 @@ public class RyzenSmuController : PawnIO
             return new CommandResult(false, $"遥测读取失败: {ex.Message}");
         }
     }
+
     #endregion
 }

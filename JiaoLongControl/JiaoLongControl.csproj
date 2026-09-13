@@ -82,9 +82,6 @@
             <CopyToOutputDirectory>Never</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
-    <ItemGroup>
-      <Folder Include="low\" />
-    </ItemGroup>
 
     <ItemGroup>
         <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
