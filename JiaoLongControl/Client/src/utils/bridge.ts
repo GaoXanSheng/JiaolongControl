@@ -84,45 +84,28 @@ export interface RangeInfo {
   Max: number
 }
 
-export interface ClockOffsetRangeInfo {
-  Core: RangeInfo
-  Memory: RangeInfo
+export interface VfPoint {
+  Mv: number
+  Mhz: number
 }
 
-export interface ClockOffsetsInfo {
-  CoreMhz: number
-  MemoryMhz: number
+export interface GpuCurveCapabilitiesInfo {
+  Supported: boolean
+  Reason: string
+  GpuName: string
+  CoreOffsetMinMhz: number
+  CoreOffsetMaxMhz: number
 }
 
-export interface PowerPolicyInfo {
-  CurrentWatts: number
-  MinWatts: number
-  DefaultWatts: number
-  MaxWatts: number
-}
-
-export interface ThermalPolicyInfo {
-  CurrentTemp: number
-  MinTemp: number
-  DefaultTemp: number
-  MaxTemp: number
-}
-
-export interface GpuFanControlInfo {
-  CoolerCount: number
-  CoolerId: number
-  ControlMode: number
-  Level: number
-  Rpm: number
-  MaxRpm: number
-}
-
-export interface OverclockCapabilities {
-  CoreOffset: boolean
-  MemoryOffset: boolean
-  VoltageBoost: boolean
-  ThermalPolicy: boolean
-  PowerPolicy: boolean
+export interface GpuCurveStatusInfo {
+  CoreOffsetMhz: number
+  CoreOffsetMinMhz: number
+  CoreOffsetMaxMhz: number
+  MemoryOffsetMhz: number
+  MemoryOffsetMinMhz: number
+  MemoryOffsetMaxMhz: number
+  BaseMemoryClockMhz: number
+  OperatingPoint: VfPoint | null
 }
 
 export interface SmuTelemetry {
@@ -237,22 +220,10 @@ export interface BridgeApi {
     LockMemoryClock(freq: number, gpuIndex?: number): HostBridgePromise<void>
     ResetMemoryClock(gpuIndex?: number): HostBridgePromise<void>
     SetPowerLimit(watts: number, gpuIndex?: number): HostBridgePromise<void>
-    GetClockOffsetRange(gpuIndex?: number): HostBridgePromise<ClockOffsetRangeInfo>
-    GetClockOffsets(gpuIndex?: number): HostBridgePromise<ClockOffsetsInfo>
-    ApplyClockOffsets(coreMhz: number, memoryMhz: number, gpuIndex?: number): HostBridgePromise<void>
-    SetCoreClockOffset(mhz: number, gpuIndex?: number): HostBridgePromise<void>
-    SetMemoryClockOffset(mhz: number, gpuIndex?: number): HostBridgePromise<void>
-    ResetClockOffsets(gpuIndex?: number): HostBridgePromise<void>
-    GetVoltageBoostPercent(gpuIndex?: number): HostBridgePromise<number>
-    SetVoltageBoostPercent(percent: number, gpuIndex?: number): HostBridgePromise<void>
-    GetGpuPowerPolicy(gpuIndex?: number): HostBridgePromise<PowerPolicyInfo>
-    SetGpuPowerPolicy(watts: number, gpuIndex?: number): HostBridgePromise<void>
-    GetGpuThermalPolicy(gpuIndex?: number): HostBridgePromise<ThermalPolicyInfo>
-    SetGpuThermalPolicy(tempCelsius: number, gpuIndex?: number): HostBridgePromise<void>
-    GetGpuFanControl(gpuIndex?: number): HostBridgePromise<GpuFanControlInfo>
-    SetGpuFanLevel(percent: number, gpuIndex?: number): HostBridgePromise<void>
-    SetGpuFanAuto(gpuIndex?: number): HostBridgePromise<void>
-    GetOverclockCapabilities(gpuIndex?: number): HostBridgePromise<OverclockCapabilities>
+    GetGpuCurveCapabilities(gpuIndex?: number): HostBridgePromise<GpuCurveCapabilitiesInfo>
+    GetGpuCurveStatus(gpuIndex?: number): HostBridgePromise<GpuCurveStatusInfo>
+    SetGpuOffsets(coreOffsetMhz: number, memoryOffsetMhz: number, gpuIndex?: number): HostBridgePromise<void>
+    ResetGpuCurve(gpuIndex?: number): HostBridgePromise<void>
   }
   Power: {
     SetCPUMaxFrequency(mhz: number): HostBridgePromise<void>
@@ -513,36 +484,14 @@ export const NvidiaGpu = {
   ResetMemoryClock: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetMemoryClock(gpuIndex)),
   SetPowerLimit: (watts: number, gpuIndex?: number) =>
     call(raw.NvidiaGpu.SetPowerLimit(watts, gpuIndex)),
-  GetClockOffsetRange: (gpuIndex?: number) =>
-    cached(STATIC_TTL_MS, `NvidiaGpu.GetClockOffsetRange(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetClockOffsetRange(gpuIndex)),
+  GetGpuCurveCapabilities: (gpuIndex?: number) =>
+    cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuCurveCapabilities(${gpuIndex ?? ''})`, () =>
+      call(raw.NvidiaGpu.GetGpuCurveCapabilities(gpuIndex)),
     ),
-  GetClockOffsets: (gpuIndex?: number) => call(raw.NvidiaGpu.GetClockOffsets(gpuIndex)),
-  ApplyClockOffsets: (coreMhz: number, memoryMhz: number, gpuIndex?: number) =>
-    call(raw.NvidiaGpu.ApplyClockOffsets(coreMhz, memoryMhz, gpuIndex ?? -1)),
-  SetCoreClockOffset: (mhz: number, gpuIndex?: number) =>
-    call(raw.NvidiaGpu.SetCoreClockOffset(mhz, gpuIndex)),
-  SetMemoryClockOffset: (mhz: number, gpuIndex?: number) =>
-    call(raw.NvidiaGpu.SetMemoryClockOffset(mhz, gpuIndex)),
-  ResetClockOffsets: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetClockOffsets(gpuIndex)),
-  GetVoltageBoostPercent: (gpuIndex?: number) =>
-    call(raw.NvidiaGpu.GetVoltageBoostPercent(gpuIndex)),
-  SetVoltageBoostPercent: (percent: number, gpuIndex?: number) =>
-    call(raw.NvidiaGpu.SetVoltageBoostPercent(percent, gpuIndex)),
-  GetGpuPowerPolicy: (gpuIndex?: number) => call(raw.NvidiaGpu.GetGpuPowerPolicy(gpuIndex)),
-  SetGpuPowerPolicy: (watts: number, gpuIndex?: number) =>
-    call(raw.NvidiaGpu.SetGpuPowerPolicy(watts, gpuIndex)),
-  GetGpuThermalPolicy: (gpuIndex?: number) => call(raw.NvidiaGpu.GetGpuThermalPolicy(gpuIndex)),
-  SetGpuThermalPolicy: (tempCelsius: number, gpuIndex?: number) =>
-    call(raw.NvidiaGpu.SetGpuThermalPolicy(tempCelsius, gpuIndex)),
-  GetGpuFanControl: (gpuIndex?: number) => call(raw.NvidiaGpu.GetGpuFanControl(gpuIndex)),
-  SetGpuFanLevel: (percent: number, gpuIndex?: number) =>
-    call(raw.NvidiaGpu.SetGpuFanLevel(percent, gpuIndex)),
-  SetGpuFanAuto: (gpuIndex?: number) => call(raw.NvidiaGpu.SetGpuFanAuto(gpuIndex)),
-  GetOverclockCapabilities: (gpuIndex?: number) =>
-    cached(STATIC_TTL_MS, `NvidiaGpu.GetOverclockCapabilities(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetOverclockCapabilities(gpuIndex)),
-    ),
+  GetGpuCurveStatus: (gpuIndex?: number) => call(raw.NvidiaGpu.GetGpuCurveStatus(gpuIndex)),
+  SetGpuOffsets: (coreOffsetMhz: number, memoryOffsetMhz: number, gpuIndex?: number) =>
+    call(raw.NvidiaGpu.SetGpuOffsets(coreOffsetMhz, memoryOffsetMhz, gpuIndex)),
+  ResetGpuCurve: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetGpuCurve(gpuIndex)),
 }
 
 export const SystemInfo = {

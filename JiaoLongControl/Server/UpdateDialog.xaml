@@ -68,6 +68,9 @@
             <Button Content="立即更新" Width="90" Height="30" Click="BtnUpdate_Click"
                     IsDefault="True" Margin="5,0"
                     Background="#4A90D9" Foreground="White" BorderThickness="0"/>
+            <Button x:Name="BtnMirrorDownload" Content="中国大陆下载" Width="100" Height="30"
+                    Click="BtnMirrorDownload_Click" Margin="5,0"
+                    ToolTip="通过 gh-proxy.org 镜像加速下载,适用于中国大陆地区"/>
             <Button Content="跳过该版本" Width="90" Height="30" Click="BtnSkip_Click" Margin="5,0"/>
             <Button Content="稍后提醒" Width="90" Height="30" Click="BtnLater_Click"
                     IsCancel="True" Margin="5,0"/>

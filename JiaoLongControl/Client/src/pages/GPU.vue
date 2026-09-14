@@ -1,15 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, type Ref, watch } from 'vue'
-import { Message } from '@arco-design/web-vue'
-import {
-  NvidiaGpu,
-  type CommandResult,
-  type OverclockCapabilities,
-} from '@/utils/bridge'
-import { buildSparkline } from '@/utils/chart'
-import { useConfigStore } from '@/stores/config'
-import { useSystemInfoStore } from '@/stores/systemInfo'
-import { storeToRefs } from 'pinia'
+import {computed, onMounted, onUnmounted, ref, type Ref, watch} from 'vue'
+import {Message} from '@arco-design/web-vue'
+import {type GpuCurveCapabilitiesInfo, type GpuCurveStatusInfo, NvidiaGpu,} from '@/utils/bridge'
+import {buildSparkline} from '@/utils/chart'
+import {useConfigStore} from '@/stores/config'
+import {useSystemInfoStore} from '@/stores/systemInfo'
+import {storeToRefs} from 'pinia'
 
 const configStore = useConfigStore()
 const systemInfoStore = useSystemInfoStore()
@@ -88,38 +84,17 @@ const fanChart = computed(() => generateSvgPath(fanSpeedHistory.value, 40)) // C
 
 // --- Settings and Presets Logic ---
 const GPUData = computed(() => configStore.config?.Gpu)
-const gpuClockOffset = ref(0)
-const memClockOffset = ref(0)
-const voltageBoostPercent = ref(0)
-const tempWall = ref(87)
 const coreClockRange = ref({ Min: 0, Max: 500 })
 const memClockRange = ref({ Min: 0, Max: 1500 })
 const powerLimitRange = ref({ Min: 50, Max: 140 })
-const offsetRange = ref({ Core: { Min: -1000, Max: 1000 }, Memory: { Min: -1000, Max: 3000 } })
-const thermalPolicy = ref({ CurrentTemp: 87, MinTemp: 65, DefaultTemp: 83, MaxTemp: 90 })
-const ocCaps = ref<OverclockCapabilities>({
-  CoreOffset: true,
-  MemoryOffset: true,
-  VoltageBoost: true,
-  ThermalPolicy: true,
-  PowerPolicy: true,
-})
 
 async function fetchGpuRanges() {
   try {
-    const [core, mem, power, ocRange, ocOffsets, thermal, caps] = await Promise.all([
+    const [core, mem, power] = await Promise.all([
       NvidiaGpu.GetGpuCoreClockRange(),
       NvidiaGpu.GetGpuMemoryClockRange(),
       NvidiaGpu.GetGpuPowerLimitRange(),
-      NvidiaGpu.GetClockOffsetRange(),
-      NvidiaGpu.GetClockOffsets().catch(() => null),
-      NvidiaGpu.GetGpuThermalPolicy().catch(() => null),
-      NvidiaGpu.GetOverclockCapabilities().catch(() => null),
     ])
-
-    if (caps && caps.Success && caps.Data) {
-      ocCaps.value = caps.Data
-    }
 
     if (core.Success && core.Data) {
       const min = core.Data.Min ?? 0
@@ -147,34 +122,55 @@ async function fetchGpuRanges() {
         GPUData.value.PowerLimit = max
       }
     }
-
-    if (ocRange.Success && ocRange.Data) {
-      offsetRange.value = {
-        Core: { Min: ocRange.Data.Core?.Min ?? -1000, Max: ocRange.Data.Core?.Max ?? 1000 },
-        Memory: { Min: ocRange.Data.Memory?.Min ?? -1000, Max: ocRange.Data.Memory?.Max ?? 3000 },
-      }
-    }
-
-    // 偏移量以驱动当前实际值为准, 读取失败时回落到配置持久化值
-    if (ocOffsets && ocOffsets.Success && ocOffsets.Data) {
-      gpuClockOffset.value = ocOffsets.Data.CoreMhz
-      memClockOffset.value = ocOffsets.Data.MemoryMhz
-    } else if (GPUData.value) {
-      gpuClockOffset.value = GPUData.value.CoreClockOffset ?? 0
-      memClockOffset.value = GPUData.value.MemoryClockOffset ?? 0
-    }
-
-    if (thermal && thermal.Success && thermal.Data) {
-      thermalPolicy.value = thermal.Data
-      tempWall.value = thermal.Data.CurrentTemp
-    }
   } catch (err) {
     console.error('Failed to fetch GPU ranges', err)
   }
 }
 
-await fetchGpuRanges()
+// --- 核心/显存频率偏移 (Afterburner 主滑条模型) ---
+const curveCaps = ref<GpuCurveCapabilitiesInfo | null>(null)
+const curveStatus = ref<GpuCurveStatusInfo | null>(null)
+const coreOffset = ref(0)
+const memOffset = ref(0)
+const curveApplying = ref(false)
+const memOffsetMax = computed(() => Math.max(500, curveStatus.value?.MemoryOffsetMaxMhz ?? 1500))
+const coreOffsetMin = computed(
+  () => curveStatus.value?.CoreOffsetMinMhz ?? curveCaps.value?.CoreOffsetMinMhz ?? -250,
+)
+const coreOffsetMax = computed(
+  () => curveStatus.value?.CoreOffsetMaxMhz ?? curveCaps.value?.CoreOffsetMaxMhz ?? 250,
+)
 
+/// 把已保存配置映射到界面控件 (页面初始化与取消修改共用)
+function initCurveUiFromConfig() {
+  if (!GPUData.value) return
+  coreOffset.value = Math.min(
+    Math.max(GPUData.value.CoreClockOffsetMhz ?? 0, coreOffsetMin.value),
+    coreOffsetMax.value,
+  )
+  if (curveStatus.value) {
+    memOffset.value = Math.min(
+      Math.max(GPUData.value.MemoryClockOffsetMhz ?? 0, 0),
+      curveStatus.value.MemoryOffsetMaxMhz,
+    )
+  }
+}
+
+async function fetchGpuCurve() {
+  try {
+    const caps = await NvidiaGpu.GetGpuCurveCapabilities()
+    if (caps.Success && caps.Data) curveCaps.value = caps.Data
+
+    const status = await NvidiaGpu.GetGpuCurveStatus().catch(() => null)
+    if (status?.Success && status.Data) curveStatus.value = status.Data
+
+    initCurveUiFromConfig()
+  } catch (err) {
+    console.error('Failed to fetch GPU curve state', err)
+  }
+}
+
+/// 常规设置: 只应用 GPU/显存锁频, 不动高级超频
 async function handleApplyNormal() {
   if (!GPUData.value) return
   loading.value = true
@@ -202,6 +198,7 @@ async function handleApplyNormal() {
   }
 }
 
+/// 常规设置: 只重置锁频到睿频上限, 不动高级超频
 async function handleResetNormal() {
   loading.value = true
   try {
@@ -233,88 +230,45 @@ async function handleResetNormal() {
   }
 }
 
-async function handleApplyAdvanced() {
+/// 高级超频: 只应用核心/显存频率偏移, 不动常规锁频
+async function handleApplyCurve() {
   if (!GPUData.value) return
-  loading.value = true
+  curveApplying.value = true
   try {
-    if (ocCaps.value.CoreOffset) {
-      const coreRes = await NvidiaGpu.SetCoreClockOffset(gpuClockOffset.value)
-      if (!coreRes.Success) {
-        Message.error(coreRes.Message || '核心频率偏移失败')
-        return
-      }
+    const curveRes = await NvidiaGpu.SetGpuOffsets(coreOffset.value, memOffset.value)
+    if (!curveRes.Success) {
+      Message.error(curveRes.Message || '频率偏移设置失败')
+      return
     }
-    if (ocCaps.value.MemoryOffset) {
-      const memRes = await NvidiaGpu.SetMemoryClockOffset(memClockOffset.value)
-      if (!memRes.Success) {
-        Message.error(memRes.Message || '显存频率偏移失败')
-        return
-      }
-    }
-    if (ocCaps.value.VoltageBoost) {
-      const voltRes = await NvidiaGpu.SetVoltageBoostPercent(voltageBoostPercent.value)
-      if (!voltRes.Success) {
-        Message.error(voltRes.Message || '核心电压提升设置失败')
-        return
-      }
-    }
-    if (ocCaps.value.ThermalPolicy && tempWall.value !== thermalPolicy.value.CurrentTemp) {
-      const tempRes = await NvidiaGpu.SetGpuThermalPolicy(tempWall.value)
-      if (!tempRes.Success) {
-        Message.error(tempRes.Message || '温度墙设置失败')
-        return
-      }
-      thermalPolicy.value.CurrentTemp = tempWall.value
-    }
-    GPUData.value.CoreClockOffset = gpuClockOffset.value
-    GPUData.value.MemoryClockOffset = memClockOffset.value
-    GPUData.value.VoltageBoostPercent = voltageBoostPercent.value
+    GPUData.value.CoreClockOffsetMhz = coreOffset.value
+    GPUData.value.MemoryClockOffsetMhz = memOffset.value
     const saveRes = await configStore.saveConfig()
-    if (saveRes?.Success) {
-      Message.success('高级超频已应用并保存')
-    } else {
-      Message.error(saveRes?.Message || '设置保存失败')
+    if (!saveRes?.Success) {
+      Message.error(saveRes?.Message || '设置已应用但保存失败')
+      return
     }
+    Message.success(curveRes.Message || '高级超频已应用')
   } catch {
     Message.error('应用失败，请检查显卡驱动及桥接服务')
   } finally {
-    loading.value = false
+    curveApplying.value = false
   }
 }
 
-async function handleResetAdvanced() {
-  loading.value = true
+/// 高级超频: 只清零核心/显存偏移, 不动常规锁频
+async function handleResetCurve() {
+  curveApplying.value = true
   try {
-    if (ocCaps.value.CoreOffset || ocCaps.value.MemoryOffset) {
-      const res = await NvidiaGpu.ResetClockOffsets()
-      if (!res.Success) {
-        Message.error(res.Message || '超频重置失败')
-        return
-      }
+    const curveRes = await NvidiaGpu.ResetGpuCurve()
+    if (!curveRes.Success) {
+      Message.error(curveRes.Message || '偏移重置失败')
+      return
     }
-    if (ocCaps.value.VoltageBoost) {
-      const voltRes = await NvidiaGpu.SetVoltageBoostPercent(0)
-      if (!voltRes.Success) {
-        Message.error(voltRes.Message || '电压提升重置失败')
-        return
-      }
-    }
-    if (
-      ocCaps.value.ThermalPolicy &&
-      tempWall.value !== thermalPolicy.value.DefaultTemp
-    ) {
-      // 温度墙恢复默认失败不阻塞整体重置
-      const tempRes = await NvidiaGpu.SetGpuThermalPolicy(thermalPolicy.value.DefaultTemp)
-      if (tempRes.Success) thermalPolicy.value.CurrentTemp = thermalPolicy.value.DefaultTemp
-    }
-    gpuClockOffset.value = 0
-    memClockOffset.value = 0
-    voltageBoostPercent.value = 0
-    tempWall.value = thermalPolicy.value.DefaultTemp
+    coreOffset.value = 0
+    memOffset.value = 0
     if (GPUData.value) {
-      GPUData.value.CoreClockOffset = 0
-      GPUData.value.MemoryClockOffset = 0
-      GPUData.value.VoltageBoostPercent = 0
+      GPUData.value.CoreClockOffsetMhz = 0
+      GPUData.value.MemoryClockOffsetMhz = 0
     }
     const saveRes = await configStore.saveConfig()
     if (saveRes?.Success) {
@@ -325,9 +279,41 @@ async function handleResetAdvanced() {
   } catch {
     Message.error('重置失败，请检查显卡驱动及桥接服务')
   } finally {
-    loading.value = false
+    curveApplying.value = false
   }
 }
+
+// --- 名词解释 ---
+const showGlossary = ref(false)
+const glossary = [
+  {
+    term: 'V/F 曲线',
+    desc: '电压与频率的对应关系：电压越高，GPU 能稳定运行的频率越高。降压的本质是让曲线在更低电压处达到目标频率。',
+  },
+  {
+    term: '睿频 (Boost)',
+    desc: '负载下 GPU 自动提升到的高频状态，实际频率受功耗、温度和电压共同约束。',
+  },
+  {
+    term: '核心频率偏移',
+    desc: '把整条 V/F 曲线统一平移：+100 MHz 即全频段超频 100 MHz，-50 MHz 即全频段降压 50 MHz。与 Afterburner 的核心时钟偏移 (Core Clock Offset) 相同。',
+  },
+  {
+    term: '显存频率偏移',
+    desc: '在出厂显存频率基础上的增量 (MHz)，提升显存带宽，高分辨率游戏受益明显。设置后重启会自动恢复。',
+  },
+  {
+    term: '锁频 (常规设置)',
+    desc: '把核心/显存频率固定在指定值，不随负载浮动。把频率拉到睿频上限可以作为超频被锁时的替代方案。',
+  },
+  {
+    term: '工作点',
+    desc: '负载下睿频实际停留的电压/频率位置，可在高级超频面板的提示中查看。',
+  },
+]
+
+await fetchGpuRanges()
+await fetchGpuCurve()
 </script>
 
 <template>
@@ -376,28 +362,28 @@ async function handleResetAdvanced() {
         </div>
         <!-- 3. 模式切换按钮 -->
         <div class="flex gap-2">
-<!--          <button-->
-<!--            @click="showAdvanced = false"-->
-<!--            :class="[-->
-<!--              'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',-->
-<!--              !showAdvanced-->
-<!--                ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'-->
-<!--                : 'bg-ink/[0.02] text-gray-400 border-ink/10 hover:text-ink hover:border-ink/20',-->
-<!--            ]"-->
-<!--          >-->
-<!--            常规设置-->
-<!--          </button>-->
-<!--          <button-->
-<!--            @click="showAdvanced = true"-->
-<!--            :class="[-->
-<!--              'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',-->
-<!--              showAdvanced-->
-<!--                ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'-->
-<!--                : 'bg-ink/[0.02] text-gray-400 border-ink/10 hover:text-ink hover:border-ink/20',-->
-<!--            ]"-->
-<!--          >-->
-<!--            高级超频-->
-<!--          </button>-->
+          <button
+            :class="[
+              'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',
+              !showAdvanced
+                ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'
+                : 'bg-ink/[0.02] text-gray-400 border-ink/10 hover:text-ink hover:border-ink/20',
+            ]"
+            @click="showAdvanced = false"
+          >
+            常规设置
+          </button>
+          <button
+            :class="[
+              'flex-1 text-xs font-medium px-4 py-2.5 rounded-lg transition-all border',
+              showAdvanced
+                ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white border-transparent shadow-[0_0_12px_rgba(138,43,226,0.25)]'
+                : 'bg-ink/[0.02] text-gray-400 border-ink/10 hover:text-ink hover:border-ink/20',
+            ]"
+            @click="showAdvanced = true"
+          >
+            高级超频
+          </button>
         </div>
 
         <!-- 常规设置面板 -->
@@ -461,7 +447,7 @@ async function handleResetAdvanced() {
             </button>
             <button
               :disabled="loading"
-              class="text-xs font-medium text-ink bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 disabled:opacity-50 px-6 py-2 rounded-lg transition-all shadow-[0_0_15px_rgba(138,43,226,0.3)]"
+              class="text-xs font-medium text-white bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 disabled:opacity-50 px-6 py-2 rounded-lg transition-all shadow-[0_0_15px_rgba(138,43,226,0.3)]"
               @click="handleApplyNormal"
             >
               {{ loading ? '应用中...' : '应用' }}
@@ -470,129 +456,78 @@ async function handleResetAdvanced() {
         </div>
 
         <!-- 高级超频面板 -->
-<!--        <div-->
-<!--          v-if="showAdvanced"-->
-<!--          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-5"-->
-<!--        >-->
-<!--          <div class="space-y-5">-->
-<!--            <div-->
-<!--              v-if="!ocCaps.CoreOffset || !ocCaps.MemoryOffset || !ocCaps.VoltageBoost"-->
-<!--              class="text-[11px] text-amber-400/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2"-->
-<!--            >-->
-<!--              本机驱动已锁定部分超频能力 (OEM 限制)，对应滑条已置灰。可用「常规设置」的锁频拉满睿频代替。-->
-<!--            </div>-->
+        <div
+          v-if="showAdvanced"
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-6"
+        >
+          <div
+            v-if="curveCaps && !curveCaps.Supported"
+            class="text-[11px] text-amber-400/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2"
+          >
+            本机不支持核心频率偏移：{{ curveCaps.Reason }}。显存偏移仍可设置，超频可用「常规设置」的锁频代替。
+          </div>
 
-<!--            <div class="space-y-2">-->
-<!--              <div class="flex justify-between items-center text-xs">-->
-<!--                <span class="text-gray-300 flex items-center gap-1"-->
-<!--                  >核心频率偏移-->
-<!--                  <span-->
-<!--                    v-if="!ocCaps.CoreOffset"-->
-<!--                    class="text-[9px] text-rose-400/90 border border-rose-500/30 rounded px-1"-->
-<!--                    >驱动已锁定</span-->
-<!--                  >-->
-<!--                  <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span-->
-<!--                >-->
-<!--                <span class="text-purple-400 font-medium font-mono"-->
-<!--                  >{{ gpuClockOffset > 0 ? '+' : '' }}{{ gpuClockOffset }} MHz</span-->
-<!--                >-->
-<!--              </div>-->
-<!--              <a-slider-->
-<!--                v-model="gpuClockOffset"-->
-<!--                :min="offsetRange.Core.Min"-->
-<!--                :max="offsetRange.Core.Max"-->
-<!--                :disabled="!ocCaps.CoreOffset"-->
-<!--                class="w-full"-->
-<!--              />-->
-<!--            </div>-->
+          <!-- 核心频率偏移 -->
+          <div v-if="curveCaps?.Supported" class="space-y-2">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-gray-300 flex items-center gap-1"
+                >核心频率偏移
+                <span
+                  class="text-gray-500 cursor-pointer text-[10px] hover:text-gray-300"
+                  title="把整条 V/F 曲线统一平移：+100 MHz 即全频段超频 100 MHz，-50 MHz 即全频段降压（与 Afterburner 的核心时钟偏移相同）"
+                  >ⓘ</span
+                ></span
+              >
+              <span class="text-purple-400 font-medium font-mono">
+                {{ coreOffset >= 0 ? '+' : '' }}{{ coreOffset }} MHz
+                <span
+                  v-if="coreOffset !== 0"
+                  :class="coreOffset > 0 ? 'text-amber-400' : 'text-emerald-400'"
+                  class="text-[10px] font-sans"
+                  >{{ coreOffset > 0 ? '超频' : '降压' }}</span
+                >
+              </span>
+            </div>
+            <a-slider
+              v-model="coreOffset"
+              :max="coreOffsetMax"
+              :min="coreOffsetMin"
+              :step="5"
+              class="w-full"
+            />
+          </div>
 
-<!--            <div class="space-y-2">-->
-<!--              <div class="flex justify-between items-center text-xs">-->
-<!--                <span class="text-gray-300 flex items-center gap-1"-->
-<!--                  >显存频率偏移-->
-<!--                  <span-->
-<!--                    v-if="!ocCaps.MemoryOffset"-->
-<!--                    class="text-[9px] text-rose-400/90 border border-rose-500/30 rounded px-1"-->
-<!--                    >不支持</span-->
-<!--                  >-->
-<!--                  <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span-->
-<!--                >-->
-<!--                <span class="text-purple-400 font-medium font-mono"-->
-<!--                  >{{ memClockOffset > 0 ? '+' : '' }}{{ memClockOffset }} MHz</span-->
-<!--                >-->
-<!--              </div>-->
-<!--              <a-slider-->
-<!--                v-model="memClockOffset"-->
-<!--                :min="offsetRange.Memory.Min"-->
-<!--                :max="offsetRange.Memory.Max"-->
-<!--                :disabled="!ocCaps.MemoryOffset"-->
-<!--                class="w-full"-->
-<!--              />-->
-<!--            </div>-->
+          <!-- 显存频率偏移 -->
+          <div class="space-y-2">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-gray-300 flex items-center gap-1">显存频率偏移</span>
+              <span class="text-purple-400 font-medium font-mono">+{{ memOffset }} MHz</span>
+            </div>
+            <a-slider
+              v-model="memOffset"
+              :max="memOffsetMax"
+              :min="0"
+              :step="50"
+              class="w-full"
+            />
+          </div>
 
-<!--            <div class="space-y-2">-->
-<!--              <div class="flex justify-between items-center text-xs">-->
-<!--                <span class="text-gray-300 flex items-center gap-1"-->
-<!--                  >核心电压提升-->
-<!--                  <span-->
-<!--                    v-if="!ocCaps.VoltageBoost"-->
-<!--                    class="text-[9px] text-rose-400/90 border border-rose-500/30 rounded px-1"-->
-<!--                    >驱动已锁定</span-->
-<!--                  >-->
-<!--                  <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span-->
-<!--                >-->
-<!--                <span class="text-purple-400 font-medium font-mono"-->
-<!--                  >+{{ voltageBoostPercent }} %</span-->
-<!--                >-->
-<!--              </div>-->
-<!--              <a-slider-->
-<!--                v-model="voltageBoostPercent"-->
-<!--                :min="0"-->
-<!--                :max="100"-->
-<!--                :disabled="!ocCaps.VoltageBoost"-->
-<!--                class="w-full"-->
-<!--              />-->
-<!--            </div>-->
-
-<!--            <div class="space-y-2">-->
-<!--              <div class="flex justify-between items-center text-xs">-->
-<!--                <span class="text-gray-300 flex items-center gap-1"-->
-<!--                  >温度墙上限-->
-<!--                  <span-->
-<!--                    v-if="!ocCaps.ThermalPolicy"-->
-<!--                    class="text-[9px] text-rose-400/90 border border-rose-500/30 rounded px-1"-->
-<!--                    >不支持</span-->
-<!--                  >-->
-<!--                  <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span-->
-<!--                >-->
-<!--                <span class="text-purple-400 font-medium font-mono">{{ tempWall }} ℃</span>-->
-<!--              </div>-->
-<!--              <a-slider-->
-<!--                v-model="tempWall"-->
-<!--                :min="thermalPolicy.MinTemp"-->
-<!--                :max="thermalPolicy.MaxTemp"-->
-<!--                :disabled="!ocCaps.ThermalPolicy"-->
-<!--                class="w-full"-->
-<!--              />-->
-<!--            </div>-->
-<!--          </div>-->
-
-<!--          <div class="flex justify-between items-center pt-2 border-t border-ink/[0.04]">-->
-<!--            <button-->
-<!--              class="flex items-center gap-2 text-xs text-gray-400 hover:text-ink border border-ink/10 hover:border-ink/20 bg-ink/[0.02] hover:bg-ink/[0.05] px-4 py-2 rounded-lg transition-colors"-->
-<!--              @click="handleResetAdvanced"-->
-<!--            >-->
-<!--              重置-->
-<!--            </button>-->
-<!--            <button-->
-<!--              :disabled="loading"-->
-<!--              class="text-xs font-medium text-ink bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 disabled:opacity-50 px-6 py-2 rounded-lg transition-all shadow-[0_0_15px_rgba(138,43,226,0.3)]"-->
-<!--              @click="handleApplyAdvanced"-->
-<!--            >-->
-<!--              {{ loading ? '应用中...' : '应用' }}-->
-<!--            </button>-->
-<!--          </div>-->
-<!--        </div>-->
+          <div class="flex justify-between items-center pt-2 border-t border-ink/[0.04]">
+            <button
+              class="flex items-center gap-2 text-xs text-gray-400 hover:text-ink border border-ink/10 hover:border-ink/20 bg-ink/[0.02] hover:bg-ink/[0.05] px-4 py-2 rounded-lg transition-colors"
+              @click="handleResetCurve"
+            >
+              重置
+            </button>
+            <button
+              :disabled="curveApplying"
+              class="text-xs font-medium text-white bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 disabled:opacity-50 px-6 py-2 rounded-lg transition-all shadow-[0_0_15px_rgba(138,43,226,0.3)]"
+              @click="handleApplyCurve"
+            >
+              {{ curveApplying ? '应用中...' : '应用' }}
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- ==================== 右侧：显卡信息与实时监控栏 ==================== -->
@@ -746,6 +681,30 @@ async function handleResetAdvanced() {
                 <path :d="fanChart.line" fill="none" stroke="#3B82F6" stroke-width="1.2" />
                 <path :d="fanChart.area" fill="url(#g-blue)" />
               </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- 说明卡片 -->
+        <div
+          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-2.5"
+        >
+          <h2 class="text-[13px] font-semibold text-gray-300">说明</h2>
+          <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">
+            <p>核心频率偏移把整条电压-频率曲线统一平移：正值超频，负值降压。</p>
+            <p>显存频率偏移在出厂显存频率基础上提升带宽。</p>
+            <p>修改设置后请点击"应用"以生效。</p>
+          </div>
+          <div
+            class="text-[11px] text-blue-400 hover:text-blue-300 cursor-pointer pt-1 flex items-center gap-0.5 font-medium transition-colors"
+            @click="showGlossary = !showGlossary"
+          >
+            {{ showGlossary ? '收起术语说明' : '了解更多' }} <span>&gt;</span>
+          </div>
+          <div v-if="showGlossary" class="space-y-2.5 pt-1">
+            <div v-for="item in glossary" :key="item.term" class="text-[11px] leading-relaxed">
+              <span class="text-gray-300 font-medium">{{ item.term }}</span>
+              <span class="text-gray-500 ml-2">{{ item.desc }}</span>
             </div>
           </div>
         </div>

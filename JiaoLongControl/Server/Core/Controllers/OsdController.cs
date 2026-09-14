@@ -27,6 +27,11 @@ namespace JiaoLongControl.Server.Core.Controllers
         // 连续按键 (含长按重复) 防抖: 最后一次按键后再显示, 让系统先完成音量/锁定状态变更
         private const int DebounceDelayMs = 120;
 
+        // 同类 OSD 已驻留时的原位快刷节流窗口: 连续滚动/连按音量键时数值即时跟上,
+        // 窗口内合并重复按键不重置计时, 到点读取当时真实状态 (低级钩子在系统处理
+        // 按键之前触发, 仍留少量时间给系统完成音量变更)
+        private const int LiveRefreshMs = 40;
+
         // 强调色 = 工具箱现有主题色板
         private const string AccentVolume = "#3B82F6";      // 蓝 (信息)
         private const string AccentLock = "#FF7D00";        // 橙 (提示)
@@ -619,15 +624,12 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         private void OnMediaCurrentSessionChanged(GlobalSystemMediaTransportControlsSessionManager sender, object args)
         {
-            Logger.Debug("媒体会话事件: CurrentSessionChanged");
             HookMediaSession(sender.GetCurrentSession());
             _ = ShowMediaAsync(sender.GetCurrentSession());
         }
 
         private void OnMediaSessionsChanged(GlobalSystemMediaTransportControlsSessionManager sender, object args)
         {
-            // 会话增减后"当前会话"可能切换, 重新对准并尝试提示 (如音乐软件刚开播)
-            Logger.Debug("媒体会话事件: SessionsChanged");
             HookMediaSession(sender.GetCurrentSession());
             _ = ShowMediaAsync(sender.GetCurrentSession());
         }
@@ -640,7 +642,6 @@ namespace JiaoLongControl.Server.Core.Controllers
                 if (!_loggedNoSession)
                 {
                     _loggedNoSession = true;
-                    Logger.Debug("媒体会话监视: 当前无活动会话");
                 }
                 return;
             }
@@ -659,13 +660,10 @@ namespace JiaoLongControl.Server.Core.Controllers
                 _mediaSession.MediaPropertiesChanged += OnMediaSessionUpdated;
                 _mediaSession.PlaybackInfoChanged += OnMediaSessionUpdated;
             }
-
-            Logger.Debug($"媒体会话监视: 已挂接会话 {session.SourceAppUserModelId}");
         }
 
         private void OnMediaSessionUpdated(GlobalSystemMediaTransportControlsSession sender, object args)
         {
-            Logger.Debug($"媒体会话事件: {args?.GetType().Name} @ {sender.SourceAppUserModelId}");
             _ = ShowMediaAsync(sender);
         }
 
@@ -680,7 +678,6 @@ namespace JiaoLongControl.Server.Core.Controllers
                 var cfg = Bridge.Instance.Config.Osd;
                 if (!force && (!cfg.Enabled || !cfg.ShowMedia))
                 {
-                    Logger.Debug("媒体提示: OSD 或媒体开关未启用, 跳过");
                     return;
                 }
 
@@ -690,12 +687,9 @@ namespace JiaoLongControl.Server.Core.Controllers
                 {
                     var playback = session.GetPlaybackInfo();
                     playing = playback.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
-                    Logger.Debug($"媒体提示: 状态 {playback.PlaybackStatus}");
                     if (playing)
                     {
-                        // 官方投影的方法名为 TryGetMediaPropertiesAsync (类上无 GetMediaPropertiesAsync)
                         var props = await session.GetMediaPropertiesOrNullAsync();
-                        Logger.Debug($"媒体提示: 曲目 {props?.Title} - {props?.Artist}");
                         if (props != null && !string.IsNullOrWhiteSpace(props.Title))
                         {
                             title = props.Title.Trim();
@@ -1011,16 +1005,25 @@ namespace JiaoLongControl.Server.Core.Controllers
             {
                 try
                 {
+                    // 同类 OSD 已驻留: 走节流快刷 (窗口内不重置计时, 到点读最新状态),
+                    // 连续滚动/连按音量键时数值即时跟进, 不必等停止后再刷新;
+                    // 否则按完整防抖等首次显示。锁定键的 kind 为 lock, 与
+                    // capslock/numlock/scrolllock 键名不匹配, 自动维持原防抖行为
+                    var live = _window?.IsDwellingKind(key) == true;
                     if (_pending.TryGetValue(key, out var pending))
                     {
+                        if (pending.Live || live) return; // 快刷窗口进行中: 合并本次按键
                         pending.Timer.Stop();
                         pending.Action = action;
                         pending.Timer.Start();
                         return;
                     }
 
-                    var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(DebounceDelayMs) };
-                    var entry = new PendingOsd { Timer = timer, Action = action };
+                    var timer = new DispatcherTimer
+                    {
+                        Interval = TimeSpan.FromMilliseconds(live ? LiveRefreshMs : DebounceDelayMs),
+                    };
+                    var entry = new PendingOsd { Timer = timer, Action = action, Live = live };
                     timer.Tick += (_, _) =>
                     {
                         timer.Stop();
@@ -1068,6 +1071,9 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             public DispatcherTimer Timer { get; init; } = null!;
             public Action Action { get; set; } = null!;
+
+            /// <summary>true = 原位快刷节流窗口 (到点直接读最新状态, 不重置); false = 首次显示防抖。</summary>
+            public bool Live { get; init; }
         }
     }
 

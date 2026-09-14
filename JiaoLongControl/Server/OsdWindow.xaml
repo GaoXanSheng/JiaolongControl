@@ -49,8 +49,7 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 RenderTransformOrigin="0.5,0.5"
-                BorderThickness="1"
-                ClipToBounds="True">
+                BorderThickness="1">
             <Border.RenderTransform>
                 <TransformGroup>
                     <ScaleTransform x:Name="PillScale" />
@@ -76,10 +75,7 @@
             <Border.BorderBrush>
                 <SolidColorBrush x:Name="PanelBorder" Color="#24FFFFFF" />
             </Border.BorderBrush>
-            <Grid>
-                <!-- 柔光跟随鼠标: 垫在内容之下只照亮面板, 避免半透明层盖住文字导致
-                     ClearType 失效发虚 (光标轮询驱动)。
-                     MappingMode=Absolute: 光源为与胶囊宽高比无关的正圆 -->
+            <Grid ClipToBounds="True">
                 <Border x:Name="HoverGlow"
                         Opacity="0"
                         IsHitTestVisible="False">

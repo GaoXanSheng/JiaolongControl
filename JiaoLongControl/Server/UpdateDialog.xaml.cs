@@ -13,6 +13,11 @@ namespace JiaoLongControl.Server
             Later
         }
 
+        /// <summary>
+        /// 中国大陆地区下载镜像前缀,拼接在 GitHub 下载地址前
+        /// </summary>
+        private const string MirrorPrefix = "https://gh-proxy.org/";
+
         private readonly string _downloadUrl;
         private CancellationTokenSource? _cts;
 
@@ -33,12 +38,24 @@ namespace JiaoLongControl.Server
 
         private async void BtnUpdate_Click(object sender, RoutedEventArgs e)
         {
+            await StartDownloadAsync(_downloadUrl);
+        }
+
+        private async void BtnMirrorDownload_Click(object sender, RoutedEventArgs e)
+        {
+            await StartDownloadAsync(MirrorPrefix + _downloadUrl);
+        }
+
+        private async Task StartDownloadAsync(string url)
+        {
+            bool isMirror = url != _downloadUrl;
+
             ButtonPanel.Visibility = Visibility.Collapsed;
             DownloadPanel.Visibility = Visibility.Visible;
 
             try
             {
-                DownloadedFilePath = await DownloadAsync();
+                DownloadedFilePath = await DownloadAsync(url);
             }
             catch (OperationCanceledException)
             {
@@ -48,9 +65,21 @@ namespace JiaoLongControl.Server
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"下载失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 ButtonPanel.Visibility = Visibility.Visible;
                 DownloadPanel.Visibility = Visibility.Collapsed;
+
+                if (isMirror)
+                {
+                    MessageBox.Show($"下载失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                if (MessageBox.Show(
+                        $"下载失败: {ex.Message}\n\n是否使用中国大陆镜像重试?",
+                        "下载失败", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                {
+                    await StartDownloadAsync(MirrorPrefix + _downloadUrl);
+                }
                 return;
             }
 
@@ -78,7 +107,7 @@ namespace JiaoLongControl.Server
             _cts?.Cancel();
         }
 
-        private async Task<string> DownloadAsync()
+        private async Task<string> DownloadAsync(string url)
         {
             _cts = new CancellationTokenSource();
             var token = _cts.Token;
@@ -87,7 +116,7 @@ namespace JiaoLongControl.Server
 
             using var client = new HttpClient();
             using var response = await client.GetAsync(
-                _downloadUrl, HttpCompletionOption.ResponseHeadersRead, token);
+                url, HttpCompletionOption.ResponseHeadersRead, token);
             response.EnsureSuccessStatusCode();
 
             long totalBytes = response.Content.Headers.ContentLength ?? -1;
