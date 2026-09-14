@@ -91,6 +91,12 @@ namespace JiaoLongControl.Server
         /// <summary>当前驻留的 OSD 类型 (供控制器判断是否需要原位刷新)。</summary>
         public string CurrentKind { get; private set; } = "";
 
+        /// <summary>
+        /// 窗口可见且正驻留指定类型的 OSD, 且未在退场。
+        /// 供控制器区分"原位快刷"与"首次防抖显示" (退场中需走恢复流程, 不算驻留)。
+        /// </summary>
+        public bool IsDwellingKind(string kind) => IsVisible && !_exiting && CurrentKind == kind;
+
         /// <summary>音量滑条被拖动/点击到某比例 (0~1, UI 线程回调)。</summary>
         public event Action<double>? VolumeSelected;
 
@@ -889,6 +895,16 @@ namespace JiaoLongControl.Server
         {
             StopTitleMarquee();
             if (!IsVisible || CurrentKind != "media") return;
+
+            // 胶囊宽度仍被入场/恢复动画驱动时可视区尚未定型 (展开中偏小, 末端 BackEase 过冲偏大):
+            // 溢出判定会失真 — 短曲名被误判溢出而滚动, 长曲名平移目标偏短。
+            // 驻留中切歌若撞上上一轮动画未结束 (SMTC 切歌会连发多条刷新), 在此等待重试,
+            // 宽度回到满宽基准值 (动画 FillBehavior.Stop 后回落到 ApplyLayoutScale 设置的值) 再测量
+            if (Math.Abs(Pill.Width - PillW * _uiScale) > 0.5)
+            {
+                ScheduleTitleMarquee(100);
+                return;
+            }
 
             // 已显示状态下切歌时, 新文本的布局可能尚未跑完, 强制同步完成,
             // 否则 ActualWidth 会是上一首的旧宽度 → 误判"未超宽"而放弃平移 (概率性不滚动)

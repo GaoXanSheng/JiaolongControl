@@ -109,14 +109,11 @@ public class GpuSection
     [ConfigComment("GPU功率限制 (W)")]
     public int PowerLimit { get; set; } = 140;
 
-    [ConfigComment("核心频率偏移 (MHz, 负值为降频)")]
-    public int CoreClockOffset { get; set; }
+    [ConfigComment("GPU核心频率偏移 (MHz, 负值为降压)")]
+    public int CoreClockOffsetMhz { get; set; }
 
-    [ConfigComment("显存频率偏移 (MHz)")]
-    public int MemoryClockOffset { get; set; }
-
-    [ConfigComment("核心电压提升 (%)")]
-    public int VoltageBoostPercent { get; set; }
+    [ConfigComment("GPU显存频率偏移 (MHz)")]
+    public int MemoryClockOffsetMhz { get; set; }
 }
 
 public class FanSection
