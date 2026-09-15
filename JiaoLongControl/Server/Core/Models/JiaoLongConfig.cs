@@ -36,6 +36,9 @@ public class AppSection
     [ConfigComment("开机自动开启键盘渐变")]
     public bool BootKeyboardGradient { get; set; }
 
+    [ConfigComment("启用后 CPU 页面的核心电压偏移替换为分核心降压 (应用时逐核心写入 Curve Optimizer Per Core 数值)")]
+    public bool CpuCurveOptimizerPerCore { get; set; }
+
     [ConfigComment("界面主题: light / dark / system (默认跟随系统)")]
     public string Theme { get; set; } = "system";
 }

@@ -16,6 +16,7 @@ export interface AppSectionType {
   BootSetRyzenSumCurveOptimizerAll: boolean
   BootSetRyzenSmuCurveOptimizerPerCore: boolean
   BootKeyboardGradient: boolean
+  CpuCurveOptimizerPerCore: boolean
   Theme: ThemeMode
 }
 
