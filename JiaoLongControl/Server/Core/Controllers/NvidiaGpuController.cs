@@ -436,7 +436,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         }
 
         /// <summary>
-        /// 应用核心/显存频率偏移 (Afterburner 主滑条模型): 核心偏移 = 整条 V/F 曲线统一平移
+        /// 应用核心/显存频率偏移: 核心偏移 = 整条 V/F 曲线统一平移
         /// (正值超频/负值降压), 显存偏移 = P0 显存频率增量。写入含清零与读回验证,
         /// 未落地自动回滚, 约需 1~2 秒。
         /// </summary>

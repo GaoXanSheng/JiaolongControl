@@ -39,6 +39,9 @@ public class AppSection
     [ConfigComment("启用后 CPU 页面的核心电压偏移替换为分核心降压 (应用时逐核心写入 Curve Optimizer Per Core 数值)")]
     public bool CpuCurveOptimizerPerCore { get; set; }
 
+    [ConfigComment("开机自动应用GPU参数时改用高级超频数值 (频率偏移代替频率锁定)")]
+    public bool BootGpuUseAdvancedOffsets { get; set; }
+
     [ConfigComment("界面主题: light / dark / system (默认跟随系统)")]
     public string Theme { get; set; } = "system";
 }

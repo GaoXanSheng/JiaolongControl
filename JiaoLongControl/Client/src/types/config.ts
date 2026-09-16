@@ -17,6 +17,7 @@ export interface AppSectionType {
   BootSetRyzenSmuCurveOptimizerPerCore: boolean
   BootKeyboardGradient: boolean
   CpuCurveOptimizerPerCore: boolean
+  BootGpuUseAdvancedOffsets: boolean
   Theme: ThemeMode
 }
 
