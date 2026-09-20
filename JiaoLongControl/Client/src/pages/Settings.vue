@@ -35,6 +35,12 @@ const toggleCards: ToggleCard[] = [
     configPath: 'App.BootAdvancedGPUSystem',
   },
   {
+    title: 'GPU 自动应用高级超频数值',
+    description: '启用后，开机自动应用 GPU 参数时改用【GPU】页面高级超频中保存的核心/显存频率偏移（V/F 曲线偏移），代替常规的频率锁定',
+    configPath: 'App.BootGpuUseAdvancedOffsets',
+    visibleWhen: (config) => config.App.BootAdvancedGPUSystem,
+  },
+  {
     title: 'RyzenSMU 降压自动应用',
     description: '在软件启动时，自动应用【Ryzen SMU】页面中保存的 Curve Optimizer 降压设定（全核或分核，由下方选项决定）',
     configPath: 'App.BootSetRyzenSumCurveOptimizerAll',

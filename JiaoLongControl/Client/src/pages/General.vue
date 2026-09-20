@@ -112,6 +112,11 @@ onMounted(() => {
             description="启用后，软件将在【风扇曲线】页面中将所有风扇的曲线合并为一条曲线，方便用户统一调整风扇转速"
             title="风扇曲线合并"
           />
+          <SettingToggle
+            config-path="App.CpuCurveOptimizerPerCore"
+            description="启用后，【CPU】页面的核心电压偏移将由全核滑条替换为分核心降压：应用设置时逐核心写入 Curve Optimizer 数值（各核心数值在【Ryzen SMU】页面的分核矩阵中设置）"
+            title="CPU 分核心降压"
+          />
         </div>
 
         <!-- ==================== 右列: 说明 ==================== -->

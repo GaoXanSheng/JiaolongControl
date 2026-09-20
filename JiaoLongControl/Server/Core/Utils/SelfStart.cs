@@ -47,14 +47,18 @@ public class SelfStart
     {
         var bridge = Bridge.Instance;
         var gpu = bridge.Config.Gpu;
-        bridge.NvidiaGpu.LockGpuClock(gpu.GpuClock);
-        bridge.NvidiaGpu.LockMemoryClock(gpu.MemoryClock);
-        // bridge.NvidiaGpu.SetPowerLimit(gpu.PowerLimit);
-        if (gpu.CoreClockOffsetMhz != 0 || gpu.MemoryClockOffsetMhz != 0)
+        if (bridge.Config.App.BootGpuUseAdvancedOffsets)
         {
-            // 频率偏移自恢复: 内部自含清零+读回验证+失败回滚,
-            // 电源状态过渡期曲线读取失败等场景由其返回失败结果, 不抛出不阻塞其它自启项
-            bridge.NvidiaGpu.SetGpuOffsets(gpu.CoreClockOffsetMhz, gpu.MemoryClockOffsetMhz);
+            // 高级超频: 应用已保存的核心/显存频率偏移 (内部自含清零+读回验证+失败回滚,
+            // 电源状态过渡期曲线读取失败等场景由其返回失败结果, 不抛出不阻塞其它自启项); 均为 0 时无需写入
+            if (gpu.CoreClockOffsetMhz != 0 || gpu.MemoryClockOffsetMhz != 0)
+                bridge.NvidiaGpu.SetGpuOffsets(gpu.CoreClockOffsetMhz, gpu.MemoryClockOffsetMhz);
+        }
+        else
+        {
+            bridge.NvidiaGpu.LockGpuClock(gpu.GpuClock);
+            bridge.NvidiaGpu.LockMemoryClock(gpu.MemoryClock);
+            // bridge.NvidiaGpu.SetPowerLimit(gpu.PowerLimit);
         }
     }
 }

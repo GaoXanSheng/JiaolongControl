@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import CpuDie from '@/components/common/CpuDie.vue'
 
-import { ref, computed } from 'vue'
-import { Message } from '@arco-design/web-vue'
-import { CPU, Power, RyzenSmu, type CpuInfo } from '@/utils/bridge.ts'
-import { useConfigStore } from '@/stores/config'
-import { useSystemInfoStore } from '@/stores/systemInfo'
-import type { CpuProfileDataType } from '@/types/config'
-import { CPU_PROFILE_DEFAULTS } from '@/constants'
+import {computed, ref} from 'vue'
+import {Message} from '@arco-design/web-vue'
+import {CPU, type CpuInfo, Power, RyzenSmu} from '@/utils/bridge.ts'
+import {useConfigStore} from '@/stores/config'
+import {useSystemInfoStore} from '@/stores/systemInfo'
+import type {CpuProfileDataType} from '@/types/config'
+import {CPU_PROFILE_DEFAULTS} from '@/constants'
 
 const loading = ref(false)
 const configStore = useConfigStore()
@@ -27,6 +27,9 @@ if (infoResult.Success) {
 const CPUData = computed(() => configStore.config?.Cpu)
 const SmuData = computed(() => configStore.config?.Smu)
 const cpuStats = computed(() => systemInfoStore.cpuStats)
+
+// 分核心降压模式: 常规设置启用后, CO 滑条替换为提示, 应用时逐核心写入分核数值
+const perCoreMode = computed(() => configStore.config?.App.CpuCurveOptimizerPerCore ?? false)
 
 // 页面内部交互状态
 const selectedProfile = ref('default')
@@ -110,12 +113,23 @@ async function handleApplyAll() {
         return
       }
     }
-    // 6. 设置核心电压偏移 (Curve Optimizer All)
+    // 6. 核心电压偏移: 分核模式下逐核心写入已保存的分核数值 (列表为空则跳过), 否则保持全核偏移
     if (configStore.config?.Smu) {
-      const curveRes = await RyzenSmu.SetCurveOptimizerAll(configStore.config.Smu.CurveOptimizerAll)
-      if (!curveRes.Success) {
-        Message.error(curveRes.Message || '核心电压偏移设置失败')
-        return
+      if (perCoreMode.value) {
+        const perCore = configStore.config.Smu.CurveOptimizerPerCore
+        for (let i = 0; i < perCore.length; i++) {
+          const curveRes = await RyzenSmu.SetCurveOptimizerPerCore(i, perCore[i] ?? 0)
+          if (!curveRes.Success) {
+            Message.error(curveRes.Message || `核心 ${i} 电压偏移设置失败`)
+            return
+          }
+        }
+      } else {
+        const curveRes = await RyzenSmu.SetCurveOptimizerAll(configStore.config.Smu.CurveOptimizerAll)
+        if (!curveRes.Success) {
+          Message.error(curveRes.Message || '核心电压偏移设置失败')
+          return
+        }
       }
     }
 
@@ -235,7 +249,7 @@ async function handleCancel() {
               <a-slider v-model="activeProfile.CpuShortPower" :min="30" :max="255" class="w-full" />
             </div>
 
-            <!-- 核心电压偏移 (Curve Optimizer) -->
+            <!-- 核心电压偏移 (Curve Optimizer): 启用分核降压后替换为文本提示, 应用时逐核心写入 -->
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1"
@@ -244,17 +258,24 @@ async function handleCancel() {
                     >ⓘ</span
                   ></span
                 >
-                <span class="text-purple-400 font-medium font-mono">{{
+                <span v-if="!perCoreMode" class="text-purple-400 font-medium font-mono">{{
                   configStore.config?.Smu?.CurveOptimizerAll ?? 0
                 }}</span>
               </div>
               <a-slider
-                v-if="SmuData"
+                v-if="SmuData && !perCoreMode"
                 v-model="SmuData.CurveOptimizerAll"
                 :min="-50"
                 :max="50"
                 class="w-full"
               />
+              <div
+                v-else
+                class="text-[11px] text-gray-500 leading-relaxed bg-ink/[0.02] border border-ink/[0.04] rounded-lg px-3 py-2.5"
+              >
+                已启用分核心降压：应用设置时将逐核心写入【Ryzen SMU】页面中保存的分核心 Curve
+                Optimizer 数值
+              </div>
             </div>
 
             <!-- CPU 温度墙 -->

@@ -1,7 +1,7 @@
 namespace JiaoLongControl.Server.Core.Native;
 
 /// <summary>
-/// GPU 频率偏移调校算法 (Afterburner 主滑条模型): 核心偏移 = 整条 V/F 曲线统一平移
+/// GPU 频率偏移调校算法 : 核心偏移 = 整条 V/F 曲线统一平移
 /// (所有锚点写相同 delta, 正值超频/负值降压), 显存偏移 = P0 显存频率增量。
 /// 写入含清零与读回验证, 未落地自动回滚。
 ///
@@ -189,7 +189,7 @@ internal static class GpuCurveTuning
     // ===== 偏移应用 =====
 
     /// <summary>
-    /// 应用核心/显存频率偏移 (Afterburner 主滑条模型): 核心偏移 = 整条 V/F 曲线统一
+    /// 应用核心/显存频率偏移: 核心偏移 = 整条 V/F 曲线统一
     /// 平移 (所有锚点写相同 delta, 正值超频/负值降压), 显存偏移走 Pstates 通道。
     /// 顺序约束: 写 Pstates 会重建性能表并抹掉曲线 delta, 必须先写显存再写曲线。
     /// 只调显存时不依赖曲线接口 — 被 OEM 桩化 V/F 接口的卡也可用。核心偏移写入后
