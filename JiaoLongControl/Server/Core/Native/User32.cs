@@ -33,6 +33,7 @@ namespace JiaoLongControl.Server.Core.Native
         public const int WS_EX_NOACTIVATE = 0x08000000;
 
         public const uint MONITOR_DEFAULTTOPRIMARY = 1;
+        public const uint MONITOR_DEFAULTTONEAREST = 2;
         public const int MDT_EFFECTIVE_DPI = 0;
         public const uint SWP_NOSIZE = 0x0001;
         public const uint SWP_NOMOVE = 0x0002;
@@ -71,6 +72,9 @@ namespace JiaoLongControl.Server.Core.Native
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         public static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         [return: MarshalAs(UnmanagedType.Bool)]
