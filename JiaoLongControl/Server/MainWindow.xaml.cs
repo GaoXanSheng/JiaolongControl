@@ -2,13 +2,10 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Interop;
 using System.Windows.Media;
 using Hardcodet.Wpf.TaskbarNotification;
-using JiaoLongControl.Server.Core.Native;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
 using log4net;
@@ -63,6 +60,7 @@ namespace JiaoLongControl.Server
             // 配置已在 App.OnStartup 初始化完成, 此处解析主题并先于 WebView 创建着色, 避免启动闪色
             _isLight = UiTheme.IsLight(Bridge.Instance.Config.App.Theme);
             ApplyThemeColors();
+            RestoreWindowSize();
             InitializePaths();
             InitializeTray();
             CreateWebView();
@@ -76,7 +74,36 @@ namespace JiaoLongControl.Server
             Bridge.Instance.Osd.Start();
 
             Closing += OnClosing;
+            SizeChanged += OnWindowSizeChanged;
             SystemEvents.PowerModeChanged += OnPowerModeChanged;
+        }
+
+        /// <summary>恢复上次记忆的窗口尺寸 (App.WindowWidth/Height, 0 = 未记忆, 保持 XAML 默认)。</summary>
+        private void RestoreWindowSize()
+        {
+            var app = Bridge.Instance.Config?.App;
+            if (app == null || app.WindowWidth <= 0 || app.WindowHeight <= 0)
+                return;
+
+            Width = app.WindowWidth;
+            Height = app.WindowHeight;
+        }
+
+        /// <summary>
+        /// 记忆窗口尺寸: 写入内存配置, 由 Bridge.FlushIfDirty 定时与磁盘比对差异后落盘。
+        /// 最大化/最小化的瞬时尺寸不记忆; 还原为 Normal 时 SizeChanged 会再次触发, 届时才更新。
+        /// </summary>
+        private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (WindowState != WindowState.Normal)
+                return;
+
+            var app = Bridge.Instance.Config?.App;
+            if (app == null)
+                return;
+
+            app.WindowWidth = Math.Round(Width);
+            app.WindowHeight = Math.Round(Height);
         }
 
         /// <summary>在后台应用开机自启策略，异常不外泄。</summary>
@@ -866,71 +893,6 @@ namespace JiaoLongControl.Server
         #endregion
 
         #region 窗口控制
-
-        // 首选窗口设计尺寸 (DIP), 与 XAML 保持一致
-        private const double PreferredWindowWidth = 1300;
-        private const double PreferredWindowHeight = 820;
-
-        protected override void OnSourceInitialized(EventArgs e)
-        {
-            base.OnSourceInitialized(e);
-            // 跨屏拖动/系统缩放变化都会触发 DpiChanged, 在此重算约束, 保证任何 DPI 下不被屏幕裁切
-            DpiChanged += OnDpiChanged;
-            UpdateWindowSizeConstraints();
-        }
-
-        private void OnDpiChanged(object sender, DpiChangedEventArgs e)
-        {
-            UpdateWindowSizeConstraints();
-        }
-
-        /// <summary>
-        /// 按窗口所在显示器工作区钳制窗口尺寸: 首选 1300x820 (DIP), 放不下时收缩到 95% 工作区。
-        /// MinWidth=1300 (DIP) 在 1080p@150% 屏换算为 1950 物理像素, 创建即超出屏幕且无法缩小;
-        /// 且换算上限随显示器/缩放变化, 必须在启动与 DPI 变化时都重算。
-        /// </summary>
-        private void UpdateWindowSizeConstraints()
-        {
-            try
-            {
-                IntPtr hwnd = new WindowInteropHelper(this).Handle;
-                if (hwnd == IntPtr.Zero)
-                    return;
-
-                IntPtr monitor = User32.MonitorFromWindow(hwnd, User32.MONITOR_DEFAULTTONEAREST);
-                var info = new User32.MONITORINFO { cbSize = Marshal.SizeOf<User32.MONITORINFO>() };
-                if (monitor == IntPtr.Zero || !User32.GetMonitorInfoW(monitor, ref info))
-                    return;
-
-                double scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
-                if (scale <= 0)
-                    return;
-
-                // 工作区 (物理像素) → DIP 上限, 留 5% 余量
-                double maxWidth = (info.rcWork.Right - info.rcWork.Left) / scale * 0.95;
-                double maxHeight = (info.rcWork.Bottom - info.rcWork.Top) / scale * 0.95;
-
-                MinWidth = Math.Min(PreferredWindowWidth, maxWidth);
-                MinHeight = Math.Min(PreferredWindowHeight, maxHeight);
-
-                if (!IsLoaded)
-                {
-                    // 首次显示: 首选尺寸, 放不下则收缩
-                    Width = MinWidth;
-                    Height = MinHeight;
-                }
-                else if (ActualWidth > maxWidth || ActualHeight > maxHeight)
-                {
-                    // DPI 变化后 WPF 自动重算不足以适配新屏时的兜底: 显式收缩到工作区内
-                    Width = Math.Min(ActualWidth, maxWidth);
-                    Height = Math.Min(ActualHeight, maxHeight);
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Warn($"窗口尺寸 DPI 自适应失败: {ex.Message}");
-            }
-        }
 
         private void ShowMainWindow()
         {
