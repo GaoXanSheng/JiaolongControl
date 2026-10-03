@@ -70,75 +70,77 @@ function selectProfile(profile: string) {
   if (CPUData.value) CPUData.value.CpuProfile = profile
 }
 
-// 统一应用逻辑
+// 统一应用逻辑: best-effort——单步失败记录并继续, 最后保存配置并汇总结果。
+// 不做"全有全无": 单点失败(如 SMU 邮箱异常)不应让已生效的功耗/温度设置整体丢失配置。
 async function handleApplyAll() {
   if (!CPUData.value || !activeProfile.value) return
   loading.value = true
   try {
+    const failures: string[] = []
     // 1. 设置长时功耗限制 (PL1)
     const longPowerRes = await CPU.SetCpuLongPower(activeProfile.value.CpuLongPower)
     if (!longPowerRes.Success) {
-      Message.error(longPowerRes.Message || '长时功耗限制设置失败')
-      return
+      failures.push(longPowerRes.Message || '长时功耗限制设置失败')
     }
     // 2. 设置短时功耗限制 (PL2)
     const shortPowerRes = await CPU.SetCpuShortPower(activeProfile.value.CpuShortPower)
     if (!shortPowerRes.Success) {
-      Message.error(shortPowerRes.Message || '短时功耗限制设置失败')
-      return
+      failures.push(shortPowerRes.Message || '短时功耗限制设置失败')
     }
     // 3. 设置温度墙
     const tempWallRes = await CPU.SetCPUTempWall(activeProfile.value.CpuTempWall)
     if (!tempWallRes.Success) {
-      Message.error(tempWallRes.Message || '温度墙设置失败')
-      return
+      failures.push(tempWallRes.Message || '温度墙设置失败')
     }
     // 4. 设置最大频率
     const maxFreqRes = await Power.SetCPUMaxFrequency(activeProfile.value.CpuMaxFrequency)
     if (!maxFreqRes.Success) {
-      Message.error(maxFreqRes.Message || '最大频率设置失败')
-      return
+      failures.push(maxFreqRes.Message || '最大频率设置失败')
     }
     // 5. 设置睿频开关
-    if (activeProfile.value.CpuTurbo) {
-      const turboRes = await Power.EnableTurbo()
-      if (!turboRes.Success) {
-        Message.error(turboRes.Message || '睿频开启失败')
-        return
-      }
-    } else {
-      const turboRes = await Power.DisableTurbo()
-      if (!turboRes.Success) {
-        Message.error(turboRes.Message || '睿频关闭失败')
-        return
-      }
+    const turboRes = activeProfile.value.CpuTurbo
+      ? await Power.EnableTurbo()
+      : await Power.DisableTurbo()
+    if (!turboRes.Success) {
+      failures.push(turboRes.Message || (activeProfile.value.CpuTurbo ? '睿频开启失败' : '睿频关闭失败'))
     }
     // 6. 核心电压偏移: 分核模式下逐核心写入已保存的分核数值 (列表为空则跳过), 否则保持全核偏移
+    //    分核失败只汇总计数, 不逐核 toast, 避免十几核时消息刷屏
     if (configStore.config?.Smu) {
       if (perCoreMode.value) {
         const perCore = configStore.config.Smu.CurveOptimizerPerCore
+        let failedCores = 0
+        let firstError = ''
         for (let i = 0; i < perCore.length; i++) {
           const curveRes = await RyzenSmu.SetCurveOptimizerPerCore(i, perCore[i] ?? 0)
           if (!curveRes.Success) {
-            Message.error(curveRes.Message || `核心 ${i} 电压偏移设置失败`)
-            return
+            failedCores++
+            if (!firstError) firstError = curveRes.Message || `核心 ${i} 电压偏移设置失败`
           }
+        }
+        if (failedCores > 0) {
+          failures.push(`${failedCores} 个核心电压偏移失败 (${firstError})`)
         }
       } else {
         const curveRes = await RyzenSmu.SetCurveOptimizerAll(configStore.config.Smu.CurveOptimizerAll)
         if (!curveRes.Success) {
-          Message.error(curveRes.Message || '核心电压偏移设置失败')
-          return
+          failures.push(curveRes.Message || '核心电压偏移设置失败')
         }
       }
     }
 
-    // 7. 保存主配置（含当前档位块参数与选中档位，供开机自启等使用）
+    // 7. 保存主配置（含当前档位块参数与选中档位，供开机自启等使用）。
+    //    无论单项成败都保存: 已生效项的配置不因个别失败而整体丢失。
     const saveRes = await configStore.saveConfig()
-    if (saveRes?.Success) {
+    if (!saveRes?.Success) {
+      Message.error(saveRes?.Message || '设置保存失败')
+      return
+    }
+
+    if (failures.length === 0) {
       Message.success('设置应用成功')
     } else {
-      Message.error(saveRes?.Message || '设置保存失败')
+      Message.warning(`配置已保存，${failures.length} 项应用失败：${failures.join('；')}`)
     }
   } catch {
     Message.error('应用设置失败，请检查桥接服务。')

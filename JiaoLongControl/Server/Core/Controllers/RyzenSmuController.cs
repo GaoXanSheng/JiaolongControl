@@ -5,6 +5,7 @@ using JiaoLongControl.Server.Core.Drivers;
 using JiaoLongControl.Server.Core.Native;
 using JiaoLongControl.Server.Core.Utils;
 using LibreHardwareMonitor.Hardware;
+using log4net;
 using Microsoft.Win32;
 
 namespace JiaoLongControl.Server.Core.Controllers;
@@ -19,50 +20,60 @@ public enum RyzenSmuFamily
 
 [ComVisible(true)]
 [ClassInterface(ClassInterfaceType.AutoDual)]
-public class RyzenSmuController : PawnIO 
+public class RyzenSmuController : PawnIO
 {
+    private static readonly ILog Logger = LogManager.GetLogger(typeof(RyzenSmuController));
+
     public RyzenSmuController()
     {
         try
         {
-            string cpuName = GetCpuNameFast();
-            if (string.IsNullOrWhiteSpace(cpuName))
-            {
-                using var searcher = new ManagementObjectSearcher("SELECT Name FROM Win32_Processor");
-                foreach (ManagementObject obj in searcher.Get())
-                {
-                    cpuName = obj["Name"]?.ToString() ?? "";
-                    break;
-                }
-            }
-
-            if (cpuName.Contains("7945") || cpuName.Contains("7845") || cpuName.Contains("7745"))
-                CurrentFamily = RyzenSmuFamily.AM5_V1;
-            else if (cpuName.Contains("HX 370") || cpuName.Contains("AI 9") || cpuName.Contains("AI 7") || cpuName.Contains("365") || cpuName.Contains("370") || cpuName.Contains("Strix"))
-                CurrentFamily = RyzenSmuFamily.FP7_FP8_Strix;
-            else if (cpuName.Contains("7735") || cpuName.Contains("6800") || cpuName.Contains("6900") || cpuName.Contains("7840") || cpuName.Contains("7940") || cpuName.Contains("8840") || cpuName.Contains("8845"))
-                CurrentFamily = RyzenSmuFamily.FP7_FP8;
-            else if (cpuName.Contains("5800") || cpuName.Contains("5900") || cpuName.Contains("5600") || cpuName.Contains("4800") || cpuName.Contains("4600"))
-                CurrentFamily = RyzenSmuFamily.FP6;
-            else
-                CurrentFamily = RyzenSmuFamily.AM5_V1;
+            (string brand, string identifier) = GetCpuIdentityFast();
+            CpuIdentity cpu = SmuFamilyResolver.FromBrandAndIdentifier(brand, identifier);
+            CurrentFamily = SmuFamilyResolver.Resolve(cpu, out string evidence);
+            // 判定证据必须留痕: 品牌串误判类问题（如 7940HX 曾被 7940 子串误吞）只能靠这条日志定位
+            Logger.Info($"SMU 平台判定: {CurrentFamily} [{evidence}] 品牌: \"{cpu.BrandName}\"");
         }
-        catch { }
+        catch (Exception ex)
+        {
+            // 判定异常不再静默吞掉: 保持默认 AM5_V1, 但必须记录原因
+            Logger.Error("SMU 平台判定异常, 保持默认 AM5_V1", ex);
+        }
     }
 
     public RyzenSmuFamily CurrentFamily { get; set; } = RyzenSmuFamily.AM5_V1;
 
-    private static string GetCpuNameFast()
+    /// <summary>
+    /// 快速获取 CPU 身份: 注册表同键一次读出品牌串与 Identifier（即 CPUID Family/Model 的十进制文本）。
+    /// 注册表不可用时回退 WMI（Description 与 Identifier 同格式）。
+    /// </summary>
+    private static (string Brand, string Identifier) GetCpuIdentityFast()
     {
+        string brand = "";
+        string identifier = "";
         try
         {
             using var key = Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\CentralProcessor\0");
-            return key?.GetValue("ProcessorNameString")?.ToString() ?? "";
+            brand = key?.GetValue("ProcessorNameString")?.ToString() ?? "";
+            identifier = key?.GetValue("Identifier")?.ToString() ?? "";
         }
         catch
         {
-            return "";
+            // 注册表不可用时走 WMI 回退
         }
+
+        if (string.IsNullOrWhiteSpace(brand))
+        {
+            using var searcher = new ManagementObjectSearcher("SELECT Name, Description FROM Win32_Processor");
+            foreach (ManagementObject obj in searcher.Get())
+            {
+                brand = obj["Name"]?.ToString() ?? "";
+                identifier = obj["Description"]?.ToString() ?? "";
+                break;
+            }
+        }
+
+        return (brand, identifier);
     }
 
     private CommandResult Send(uint cmd, uint arg, bool isMp1, string name)

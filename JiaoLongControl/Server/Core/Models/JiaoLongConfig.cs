@@ -44,6 +44,12 @@ public class AppSection
 
     [ConfigComment("界面主题: light / dark / system (默认跟随系统)")]
     public string Theme { get; set; } = "system";
+
+    [ConfigComment("主窗口记忆宽度 (DIP), 0 = 未记忆, 按默认 1300 启动")]
+    public double WindowWidth { get; set; }
+
+    [ConfigComment("主窗口记忆高度 (DIP), 0 = 未记忆, 按默认 820 启动")]
+    public double WindowHeight { get; set; }
 }
 
 public class CpuSection

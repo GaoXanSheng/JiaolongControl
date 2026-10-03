@@ -60,6 +60,7 @@ namespace JiaoLongControl.Server
             // 配置已在 App.OnStartup 初始化完成, 此处解析主题并先于 WebView 创建着色, 避免启动闪色
             _isLight = UiTheme.IsLight(Bridge.Instance.Config.App.Theme);
             ApplyThemeColors();
+            RestoreWindowSize();
             InitializePaths();
             InitializeTray();
             CreateWebView();
@@ -73,7 +74,36 @@ namespace JiaoLongControl.Server
             Bridge.Instance.Osd.Start();
 
             Closing += OnClosing;
+            SizeChanged += OnWindowSizeChanged;
             SystemEvents.PowerModeChanged += OnPowerModeChanged;
+        }
+
+        /// <summary>恢复上次记忆的窗口尺寸 (App.WindowWidth/Height, 0 = 未记忆, 保持 XAML 默认)。</summary>
+        private void RestoreWindowSize()
+        {
+            var app = Bridge.Instance.Config?.App;
+            if (app == null || app.WindowWidth <= 0 || app.WindowHeight <= 0)
+                return;
+
+            Width = app.WindowWidth;
+            Height = app.WindowHeight;
+        }
+
+        /// <summary>
+        /// 记忆窗口尺寸: 写入内存配置, 由 Bridge.FlushIfDirty 定时与磁盘比对差异后落盘。
+        /// 最大化/最小化的瞬时尺寸不记忆; 还原为 Normal 时 SizeChanged 会再次触发, 届时才更新。
+        /// </summary>
+        private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (WindowState != WindowState.Normal)
+                return;
+
+            var app = Bridge.Instance.Config?.App;
+            if (app == null)
+                return;
+
+            app.WindowWidth = Math.Round(Width);
+            app.WindowHeight = Math.Round(Height);
         }
 
         /// <summary>在后台应用开机自启策略，异常不外泄。</summary>

@@ -10,6 +10,12 @@ if (args.Length == 0 || args.Any(a => a is "-h" or "--help"))
 
 WriteBanner(args);
 
+// --selftest: 无硬件自检, 只验证 SmuFamilyResolver 判定表, 不构造控制器、不加载 PawnIO
+if (args.Contains("--selftest"))
+{
+    return RunSelfTest();
+}
+
 var exitCode = 0;
 RyzenSmuController? controller = null;
 
@@ -563,6 +569,76 @@ static int RunCommand(RyzenSmuController ctrl, Func<CommandResult> action, strin
 }
 
 // ================================================================
+//  SmuFamilyResolver 无硬件自检
+// ================================================================
+
+// 每行 = (品牌串, CPUID Family, CPUID Model, 期望 family, 备注);
+// Family/Model 为 null 表示 Identifier 缺失, 走纯品牌串回退链
+static int RunSelfTest()
+{
+    var cases = new (string Brand, int? Family, int? Model, RyzenSmuFamily Expected, string Note)[]
+    {
+        // 本 bug 主角: 7940HX 曾被品牌串 "7940" 子串误判为 Phoenix, 所有 SMU 写入超时
+        ("AMD Ryzen 9 7940HX with Radeon Graphics", 25, 99, RyzenSmuFamily.AM5_V1, "CPUID 主信号 (Dragon Range)"),
+        ("AMD Ryzen 9 7940HX with Radeon Graphics", null, null, RyzenSmuFamily.AM5_V1, "品牌串回退 (数字HX 规则)"),
+        ("AMD Ryzen 9 7945HX with Radeon Graphics", 25, 99, RyzenSmuFamily.AM5_V1, "回归: 不变"),
+        ("AMD Ryzen 9 7945HX with Radeon Graphics", null, null, RyzenSmuFamily.AM5_V1, "回归: 不变"),
+        ("AMD Ryzen 7 7845HX with Radeon Graphics", null, null, RyzenSmuFamily.AM5_V1, "回归: 不变"),
+        ("AMD Ryzen 7 7745HX with Radeon Graphics", null, null, RyzenSmuFamily.AM5_V1, "回归: 不变"),
+        ("AMD Ryzen 9 8940HX with Radeon Graphics", 25, 99, RyzenSmuFamily.AM5_V1, "Dragon Range Refresh"),
+        ("AMD Ryzen 9 8945HX with Radeon Graphics", null, null, RyzenSmuFamily.AM5_V1, "回归: 原靠默认兜底碰巧正确"),
+        ("AMD Ryzen 9 7945HX3D with Radeon Graphics", null, null, RyzenSmuFamily.AM5_V1, "HX3D 后缀须命中数字HX"),
+        // Phoenix / Hawk Point: 与 7940HX 共享 7940 子串但平台不同, 不得被误吞
+        ("AMD Ryzen 9 7940HS with Radeon Graphics", 25, 117, RyzenSmuFamily.FP7_FP8, "回归: 不变 (Phoenix)"),
+        ("AMD Ryzen 9 7940HS with Radeon Graphics", null, null, RyzenSmuFamily.FP7_FP8, "回退链 7940 规则"),
+        ("AMD Ryzen 7 7840HS with Radeon Graphics", null, null, RyzenSmuFamily.FP7_FP8, "回归: 不变"),
+        ("AMD Ryzen 7 8845HS with Radeon Graphics", 25, 123, RyzenSmuFamily.FP7_FP8, "Hawk Point"),
+        ("AMD Ryzen 7 8840HS with Radeon Graphics", null, null, RyzenSmuFamily.FP7_FP8, "回归: 不变"),
+        // Strix Point (Zen5, CPUID 未入表 → 品牌串回退, 与历史行为同级)
+        ("AMD Ryzen AI 9 HX 370 with Radeon Graphics", null, null, RyzenSmuFamily.FP7_FP8_Strix, "HX 370 不得被数字HX 误吞"),
+        ("AMD Ryzen AI 9 HX 375 with Radeon Graphics", null, null, RyzenSmuFamily.FP7_FP8_Strix, "AI 9 规则"),
+        ("AMD Ryzen AI 9 365 with Radeon Graphics", null, null, RyzenSmuFamily.FP7_FP8_Strix, "回归: 不变"),
+        ("AMD Ryzen AI 7 350 with Radeon Graphics", null, null, RyzenSmuFamily.FP7_FP8_Strix, "Krackan Point"),
+        // Cezanne / Rembrandt / 老平台
+        ("AMD Ryzen 9 5900HX with Radeon Graphics", 25, 80, RyzenSmuFamily.FP6, "Cezanne HX: 数字HX 不得先于 FP6 规则"),
+        ("AMD Ryzen 9 5900HX with Radeon Graphics", null, null, RyzenSmuFamily.FP6, "回归: 不变"),
+        ("AMD Ryzen 7 5800H with Radeon Graphics", 25, 80, RyzenSmuFamily.FP6, "Cezanne"),
+        ("AMD Ryzen 7 4800H with Radeon Graphics", 23, 96, RyzenSmuFamily.FP6, "Renoir"),
+        ("AMD Ryzen 7 6800H with Radeon Graphics", 25, 68, RyzenSmuFamily.FP7_FP8, "Rembrandt"),
+        ("AMD Ryzen 7 7735HS with Radeon Graphics", null, null, RyzenSmuFamily.FP7_FP8, "回归: 不变"),
+        ("AMD Ryzen 5 5500U with Radeon Graphics", 23, 104, RyzenSmuFamily.FP6, "Lucienne: 原漏判为默认 AM5_V1, 顺带修复"),
+        // 桌面
+        ("AMD Ryzen 9 7950X 16-Core Processor", 25, 97, RyzenSmuFamily.AM5_V1, "桌面 Raphael"),
+        // 未知 / 兜底
+        ("Some Future CPU", null, null, RyzenSmuFamily.AM5_V1, "未知 → 默认兜底 (与历史行为一致)"),
+    };
+
+    Log("");
+    Log(">>> SmuFamilyResolver 自检 (无需硬件) ...");
+    int failed = 0;
+    foreach (var (brand, family, model, expected, note) in cases)
+    {
+        string identifier = family == null || model == null
+            ? ""
+            : $"AMD64 Family {family} Model {model} Stepping 1";
+        CpuIdentity cpu = SmuFamilyResolver.FromBrandAndIdentifier(brand, identifier);
+        RyzenSmuFamily actual = SmuFamilyResolver.Resolve(cpu, out string evidence);
+
+        bool ok = actual == expected;
+        if (!ok) failed++;
+        string mark = ok ? "PASS" : "FAIL";
+        Log($"  [{mark}] {brand,-46} → {actual} (期望 {expected})  [{note}]  信号: {evidence}");
+    }
+
+    Log("");
+    Log($"  自检结果: {cases.Length - failed}/{cases.Length} 通过");
+    if (failed > 0)
+        LogError($"  自检失败 {failed} 例");
+    Log("");
+    return failed == 0 ? 0 : 1;
+}
+
+// ================================================================
 //  Arg parsers
 // ================================================================
 
@@ -690,6 +766,7 @@ SMU 命令行测试工具 — 支持所有 RyzenSmuController 操作
   --oc-volt <mV>           OC Voltage
 
 === 其他 ===
+  --selftest               无硬件自检: 验证 CPU → SMU 平台判定表后退出
   -h, --help               显示帮助
 
 例: RyzenSmuControllerTest --curve-all -20

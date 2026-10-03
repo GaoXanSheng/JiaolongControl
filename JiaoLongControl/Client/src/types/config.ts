@@ -19,6 +19,10 @@ export interface AppSectionType {
   CpuCurveOptimizerPerCore: boolean
   BootGpuUseAdvancedOffsets: boolean
   Theme: ThemeMode
+  /** 主窗口记忆宽度 (DIP), 0 = 未记忆 */
+  WindowWidth: number
+  /** 主窗口记忆高度 (DIP), 0 = 未记忆 */
+  WindowHeight: number
 }
 
 export interface CpuProfileDataType {
