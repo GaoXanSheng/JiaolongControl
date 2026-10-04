@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Hardcodet.Wpf.TaskbarNotification;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
@@ -23,7 +24,14 @@ namespace JiaoLongControl.Server
 
         private bool _allowClose;
 
+        // 复位 _isDpiChanging 的延迟操作: 连续 DPI 变化时先 Abort 旧的, 避免提前复位漏记
+        private DispatcherOperation? _dpiChangingReset;
+
         private Grid? _errorOverlay;
+
+        // DPI 变化 (跨屏/改缩放) 中: WPF 按比例自动修改 DIP 尺寸引起的 SizeChanged 属系统行为,
+        // 不代表用户意图, 记忆尺寸时须跳过
+        private bool _isDpiChanging;
 
         // 当前是否浅色主题: 由配置(App.Theme)解析, 前端切换主题时经 theme-changed 消息同步
         private bool _isLight;
@@ -60,7 +68,6 @@ namespace JiaoLongControl.Server
             // 配置已在 App.OnStartup 初始化完成, 此处解析主题并先于 WebView 创建着色, 避免启动闪色
             _isLight = UiTheme.IsLight(Bridge.Instance.Config.App.Theme);
             ApplyThemeColors();
-            RestoreWindowSize();
             InitializePaths();
             InitializeTray();
             CreateWebView();
@@ -78,32 +85,87 @@ namespace JiaoLongControl.Server
             SystemEvents.PowerModeChanged += OnPowerModeChanged;
         }
 
-        /// <summary>恢复上次记忆的窗口尺寸 (App.WindowWidth/Height, 0 = 未记忆, 保持 XAML 默认)。</summary>
-        private void RestoreWindowSize()
+        /// <summary>
+        /// 句柄创建后窗口已落在目标显示器上, 此时 GetDpi 才是该屏的有效 DPI;
+        /// 在构造函数里恢复无法得知启动屏 DPI, 物理像素换算会失真。
+        /// </summary>
+        protected override void OnSourceInitialized(EventArgs e)
         {
-            var app = Bridge.Instance.Config?.App;
-            if (app == null || app.WindowWidth <= 0 || app.WindowHeight <= 0)
-                return;
-
-            Width = app.WindowWidth;
-            Height = app.WindowHeight;
+            base.OnSourceInitialized(e);
+            RestoreWindowSize();
         }
 
         /// <summary>
-        /// 记忆窗口尺寸: 写入内存配置, 由 Bridge.FlushIfDirty 定时与磁盘比对差异后落盘。
-        /// 最大化/最小化的瞬时尺寸不记忆; 还原为 Normal 时 SizeChanged 会再次触发, 届时才更新。
+        /// 恢复上次记忆的窗口尺寸 (App.WindowPixelWidth/Height, 物理像素, 0 = 未记忆)。
+        /// 物理像素按当前屏 DPI 换算回 DIP, 保证跨 DPI/缩放后窗口物理大小不变。
+        /// 老配置只有 DIP 值 (WindowWidth/Height) 时按旧行为直接使用, 并换算出物理像素密封迁移。
+        /// 上限钳制到工作区 95%: 自愈被旧版 DIP 反馈 bug 撑爆的存量配置。
+        /// </summary>
+        private void RestoreWindowSize()
+        {
+            var app = Bridge.Instance.Config?.App;
+            if (app == null)
+                return;
+
+            double dpi = VisualTreeHelper.GetDpi(this).DpiScaleX;
+            double width, height;
+
+            if (app.WindowPixelWidth > 0 && app.WindowPixelHeight > 0)
+            {
+                width = app.WindowPixelWidth * 96 / dpi;
+                height = app.WindowPixelHeight * 96 / dpi;
+            }
+            else if (app.WindowWidth > 0 && app.WindowHeight > 0)
+            {
+                // 老值按当前屏 DIP 解释并密封迁移, 之后只认物理像素字段
+                width = app.WindowWidth;
+                height = app.WindowHeight;
+                app.WindowPixelWidth = Math.Round(width * dpi);
+                app.WindowPixelHeight = Math.Round(height * dpi);
+            }
+            else
+            {
+                return;
+            }
+
+            var work = SystemParameters.WorkArea;
+            Width = Math.Min(width, work.Width * 0.95);
+            Height = Math.Min(height, work.Height * 0.95);
+        }
+
+        /// <summary>
+        /// 记忆窗口尺寸: 按当前窗口 DPI 换算为物理像素写入内存配置, 由 Bridge.FlushIfDirty 定时落盘。
+        /// 物理像素与显示器缩放无关, 跨 DPI 屏不会产生反馈放大。
+        /// 最大化/最小化的瞬时尺寸不记忆; DPI 变化引起的自动缩放不记忆; 还原为 Normal 时 SizeChanged 会再次触发, 届时才更新。
         /// </summary>
         private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
         {
-            if (WindowState != WindowState.Normal)
+            if (WindowState != WindowState.Normal || _isDpiChanging)
                 return;
 
             var app = Bridge.Instance.Config?.App;
             if (app == null)
                 return;
 
-            app.WindowWidth = Math.Round(Width);
-            app.WindowHeight = Math.Round(Height);
+            double dpi = VisualTreeHelper.GetDpi(this).DpiScaleX;
+            app.WindowPixelWidth = Math.Round(Width * dpi);
+            app.WindowPixelHeight = Math.Round(Height * dpi);
+        }
+
+        /// <summary>
+        /// 跨屏/改缩放时 WPF 保持物理像素并按比例修改 DIP 尺寸, 随之的 SizeChanged 需要抑制;
+        /// 以 Background 优先级延迟复位, 等 DPI 变化引发的全部布局落定, 连续变化时先 Abort 旧操作。
+        /// </summary>
+        protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+        {
+            base.OnDpiChanged(oldDpi, newDpi);
+            _isDpiChanging = true;
+            _dpiChangingReset?.Abort();
+            _dpiChangingReset = Dispatcher.InvokeAsync(() =>
+            {
+                _isDpiChanging = false;
+                _dpiChangingReset = null;
+            }, DispatcherPriority.Background);
         }
 
         /// <summary>在后台应用开机自启策略，异常不外泄。</summary>
