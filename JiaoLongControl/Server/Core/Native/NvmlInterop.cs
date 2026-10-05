@@ -186,6 +186,15 @@ internal static class NvmlInterop
         return ((int)min, (int)max);
     }
 
+    /// <summary>
+    /// 驱动当前生效的最大 SM 频率 (MHz)。应用曲线偏移后该读数是否随偏移上移,
+    /// 是「锁频上限是否动态含偏移」的观测点 — 决定锁最低频率与超频能否共存。
+    /// </summary>
+    public static int GetMaxSmClockMhz(int gpuIndex)
+    {
+        return (int)GetMaxClock(gpuIndex, NvmlClockSm);
+    }
+
     // --- 内部工具 ---
 
     private static IntPtr GetDevice(int gpuIndex)

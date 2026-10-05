@@ -94,6 +94,7 @@ export interface OsdSectionType {
   ShowFnLock: boolean
   ShowTouchpad: boolean
   ShowMedia: boolean
+  SuppressNativeVolumeOsd: boolean
   AnimationMs: number
   DurationMs: number
   PollIntervalMs: number

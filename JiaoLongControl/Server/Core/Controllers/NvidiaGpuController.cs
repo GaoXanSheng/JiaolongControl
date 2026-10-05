@@ -430,6 +430,11 @@ namespace JiaoLongControl.Server.Core.Controllers
                 var (memMinKhz, memMaxKhz) = GpuCurveTuning.GetMemoryOffsetRangeKhz(gpu);
                 var op = GpuCurveTuning.EffectiveOperatingPoint(curve);
 
+                // NVML 侧的最大 SM 频率读数: 应用核心偏移后观察它是否随偏移上移,
+                // 判定锁频上限是动态含偏移 (锁最低频率与超频可共存) 还是静态出厂值 (互斥)
+                int? nvmlMaxSmMhz = null;
+                try { nvmlMaxSmMhz = NvmlInterop.GetMaxSmClockMhz(ResolveGpuIndex(gpuIndex)); } catch { }
+
                 return new CommandResult(true, "获取成功", new
                 {
                     CoreOffsetMhz = GpuCurveTuning.GetCoreOffsetKhz(gpu) / 1000,
@@ -440,6 +445,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                     MemoryOffsetMaxMhz = memMaxKhz / 1000,
                     BaseMemoryClockMhz = GpuCurveTuning.BaseMemoryClockMhz(gpu),
                     OperatingPoint = op is { } point ? new { point.Mv, point.Mhz } : null,
+                    NvmlMaxSmClockMhz = nvmlMaxSmMhz,
                 });
             }
             catch (Exception ex)

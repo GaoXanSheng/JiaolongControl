@@ -248,6 +248,8 @@ async function handleApplyCurve() {
       return
     }
     Message.success(curveRes.Message || '高级超频已应用')
+    // 刷新曲线状态, 让「驱动锁频上限读数」反映偏移后的即时值
+    await fetchGpuCurve()
   } catch {
     Message.error('应用失败，请检查显卡驱动及桥接服务')
   } finally {
@@ -474,6 +476,21 @@ await fetchGpuCurve()
             class="text-[11px] text-amber-400/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2"
           >
             本机不支持核心频率偏移：{{ curveCaps.Reason }}。显存偏移仍可设置，超频可用「常规设置」把显存最低频率拉满代替。
+          </div>
+
+          <!-- 锁频上限观测: 应用核心偏移后此读数若随偏移上移, 说明「锁最低频率」与超频可共存 -->
+          <div
+            v-if="curveStatus && curveStatus.NvmlMaxSmClockMhz != null"
+            class="flex justify-between items-center text-[11px] text-gray-500"
+            title="驱动侧最大 SM 频率读数。应用核心偏移后点击应用, 此值随偏移上涨即代表锁最低频率不会封顶超频"
+          >
+            <span class="flex items-center gap-1"
+              >驱动锁频上限读数
+              <span class="text-gray-600 cursor-pointer text-[10px] hover:text-gray-400">ⓘ</span>
+            </span>
+            <span class="font-mono text-gray-400"
+              >{{ curveStatus.NvmlMaxSmClockMhz }} MHz</span
+            >
           </div>
 
           <!-- 核心频率偏移 -->

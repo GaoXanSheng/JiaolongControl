@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Windows;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Navigation;
 using Markdig;
@@ -36,7 +37,12 @@ namespace JiaoLongControl.Server
         private static readonly SolidColorBrush HeaderBackground = FromRgb(0xF5, 0xF5, 0xF5);
         private static readonly SolidColorBrush LineBrush = FromRgb(0xE0, 0xE0, 0xE0);
 
-        /// <summary>渲染 Markdown 为 FlowDocument, 已挂接超链接点击打开浏览器</summary>
+        /// <summary>
+        /// 渲染 Markdown 为 FlowDocument。
+        /// 超链接的点击在 MakeHyperlink 里逐个挂接实例级 RequestNavigate 处理器 ——
+        /// 不能挂在 FlowDocument 上: FlowDocument 自身注册的内部处理器会先于
+        /// document 级实例处理器执行并标记 Handled, 导致后者永远不触发 (实测)。
+        /// </summary>
         public static FlowDocument ToFlowDocument(string markdown)
         {
             // GitHub 发布说明中单个换行按硬换行渲染 (与 GitHub 页面行为一致)
@@ -48,10 +54,6 @@ namespace JiaoLongControl.Server
                 .Build();
 
             var document = CreateDocument();
-            document.AddHandler(
-                Hyperlink.RequestNavigateEvent,
-                new RequestNavigateEventHandler(OnLinkNavigate));
-
             var markdownDocument = Markdown.Parse(markdown, pipeline);
             var renderer = new Renderer(document);
             renderer.RenderBlocks(markdownDocument, document.Blocks, inQuote: false);
@@ -341,7 +343,13 @@ namespace JiaoLongControl.Server
             {
                 var hyperlink = new Hyperlink { Foreground = LinkBrush };
                 if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" or "mailto")
+                {
                     hyperlink.NavigateUri = uri;
+                    // 实例级处理器在冒泡路由的源节点最先执行, 先于 FlowDocument 内部处理器;
+                    // 显式 Hand 光标, 不依赖宿主对 IsEnabled 的处理
+                    hyperlink.RequestNavigate += OnLinkNavigate;
+                    hyperlink.Cursor = Cursors.Hand;
+                }
                 // 相对路径/锚点链接不设 NavigateUri, 仅作蓝色文本展示
                 if (content is not null)
                     RenderInlines(content, hyperlink.Inlines, inQuote);
