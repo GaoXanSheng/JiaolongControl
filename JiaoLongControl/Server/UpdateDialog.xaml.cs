@@ -28,9 +28,9 @@ namespace JiaoLongControl.Server
 
             TxtCurrentVersion.Text = currentVersion;
             TxtNewVersion.Text = newVersion;
-            TxtReleaseNotes.Text = string.IsNullOrWhiteSpace(releaseNotes)
-                ? "此版本无更新日志。"
-                : releaseNotes;
+            TxtReleaseNotes.Document = string.IsNullOrWhiteSpace(releaseNotes)
+                ? ReleaseNotesMarkdown.PlainText("此版本无更新日志。")
+                : ReleaseNotesMarkdown.ToFlowDocument(releaseNotes);
         }
 
         public UpdateChoice Result { get; private set; } = UpdateChoice.Later;

@@ -45,10 +45,10 @@ public class AppSection
     [ConfigComment("界面主题: light / dark / system (默认跟随系统)")]
     public string Theme { get; set; } = "system";
 
-    [ConfigComment("主窗口记忆宽度 (物理像素), 0 = 未记忆, 按默认 1300 启动。物理像素与显示器 DPI/缩放无关, 跨屏不会放大")]
+    [ConfigComment("主窗口记忆宽度 (物理像素), 0 = 未记忆, 默认按 1300×820 物理像素启动, 不随 DPI/缩放放大, 跨屏物理大小不变")]
     public double WindowPixelWidth { get; set; }
 
-    [ConfigComment("主窗口记忆高度 (物理像素), 0 = 未记忆, 按默认 820 启动。物理像素与显示器 DPI/缩放无关, 跨屏不会放大")]
+    [ConfigComment("主窗口记忆高度 (物理像素), 0 = 未记忆, 默认按 1300×820 物理像素启动, 不随 DPI/缩放放大, 跨屏物理大小不变")]
     public double WindowPixelHeight { get; set; }
 
     [ConfigComment("旧版主窗口宽度 (DIP), 仅用于老配置一次性迁移, 不再写入")]

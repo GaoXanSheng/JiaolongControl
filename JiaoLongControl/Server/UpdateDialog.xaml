@@ -48,10 +48,11 @@
                 <Border Background="#FAFAFA" Padding="10,6" CornerRadius="3,3,0,0">
                     <TextBlock Text="更新日志" FontSize="13" FontWeight="SemiBold" Foreground="#555"/>
                 </Border>
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="10,8">
-                    <TextBlock x:Name="TxtReleaseNotes" TextWrapping="Wrap" FontSize="13"
-                               Foreground="#444" LineHeight="20"/>
-                </ScrollViewer>
+                <RichTextBox x:Name="TxtReleaseNotes" Grid.Row="1" Margin="10,8"
+                             IsReadOnly="True" Focusable="False"
+                             BorderThickness="0" Background="Transparent"
+                             VerticalScrollBarVisibility="Auto"
+                             FontFamily="Microsoft YaHei UI, Segoe UI" FontSize="13"/>
             </Grid>
         </Border>
 

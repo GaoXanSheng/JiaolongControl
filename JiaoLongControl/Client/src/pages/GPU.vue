@@ -170,19 +170,19 @@ async function fetchGpuCurve() {
   }
 }
 
-/// 常规设置: 只应用 GPU/显存锁频, 不动高级超频
+/// 常规设置: 只应用 GPU/显存最低频率限制, 不动高级超频
 async function handleApplyNormal() {
   if (!GPUData.value) return
   loading.value = true
   try {
     const clockRes = await NvidiaGpu.LockGpuClock(GPUData.value.GpuClock)
     if (!clockRes.Success) {
-      Message.error(clockRes.Message || 'GPU 频率锁定失败')
+      Message.error(clockRes.Message || 'GPU 最低频率限制失败')
       return
     }
     const memClockRes = await NvidiaGpu.LockMemoryClock(GPUData.value.MemoryClock)
     if (!memClockRes.Success) {
-      Message.error(memClockRes.Message || '显存频率锁定失败')
+      Message.error(memClockRes.Message || '显存最低频率限制失败')
       return
     }
     const saveRes = await configStore.saveConfig()
@@ -198,7 +198,7 @@ async function handleApplyNormal() {
   }
 }
 
-/// 常规设置: 只重置锁频到睿频上限, 不动高级超频
+/// 常规设置: 只解除频率限制并重置滑条, 不动高级超频
 async function handleResetNormal() {
   loading.value = true
   try {
@@ -303,8 +303,8 @@ const glossary = [
     desc: '在出厂显存频率基础上的增量 (MHz)，提升显存带宽，高分辨率游戏受益明显。设置后重启会自动恢复。',
   },
   {
-    term: '锁频 (常规设置)',
-    desc: '把核心/显存频率固定在指定值，不随负载浮动。把频率拉到睿频上限可以作为超频被锁时的替代方案。',
+    term: '最低频率限制 (常规设置)',
+    desc: '把核心/显存频率限制在不低于指定值：负载时可自然睿频到驱动上限，不会降到设置值以下，睿频能力不受影响。',
   },
   {
     term: '工作点',
@@ -395,8 +395,12 @@ await fetchGpuCurve()
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1"
-                  >GPU 频率
-                  <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span>
+                  >GPU 最低频率
+                  <span
+                    class="text-gray-500 cursor-pointer text-[10px] hover:text-gray-300"
+                    title="设置频率下限：负载时可自然睿频到驱动上限，但不会降到该值以下，睿频能力不受影响"
+                    >ⓘ</span
+                  >
                 </span>
                 <span class="text-purple-400 font-medium font-mono"
                   >{{ GPUData.GpuClock }} MHz</span
@@ -413,7 +417,12 @@ await fetchGpuCurve()
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1"
-                  >显存频率 <span class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span
+                  >显存最低频率
+                  <span
+                    class="text-gray-500 cursor-pointer text-[10px] hover:text-gray-300"
+                    title="设置频率下限：可自然跑满驱动上限，但不会降到该值以下"
+                    >ⓘ</span
+                  ></span
                 >
                 <span class="text-purple-400 font-medium font-mono"
                   >{{ GPUData.MemoryClock }} MHz</span
@@ -464,7 +473,7 @@ await fetchGpuCurve()
             v-if="curveCaps && !curveCaps.Supported"
             class="text-[11px] text-amber-400/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2"
           >
-            本机不支持核心频率偏移：{{ curveCaps.Reason }}。显存偏移仍可设置，超频可用「常规设置」的锁频代替。
+            本机不支持核心频率偏移：{{ curveCaps.Reason }}。显存偏移仍可设置，超频可用「常规设置」把显存最低频率拉满代替。
           </div>
 
           <!-- 核心频率偏移 -->

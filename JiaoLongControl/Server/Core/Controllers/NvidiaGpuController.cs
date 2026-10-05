@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Management;
 using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Models;
@@ -22,6 +21,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         public void Dispose()
         {
             try { NVIDIA.Unload(); } catch { }
+            try { NvmlInterop.Release(); } catch { }
             GC.SuppressFinalize(this);
         }
 
@@ -242,84 +242,97 @@ namespace JiaoLongControl.Server.Core.Controllers
             catch { return new CommandResult(true, "获取成功 (Fallback)", new { Min = 50, Max = 175 }); }
         }
 
+        /// <summary>
+        /// 下限模式锁核频: 负载下可自然睿频到驱动上限, 不低于 freq。
+        /// </summary>
         public CommandResult LockGpuClock(int freq, int gpuIndex = -1)
         {
-            return LockGpuClock(freq, freq, gpuIndex);
+            try
+            {
+                NvmlInterop.SetGpuClockFloor(ResolveGpuIndex(gpuIndex), freq);
+                return new CommandResult(true, $"GPU 最低频率已限制为 {freq} MHz (睿频不受限)");
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"[NvidiaGpuController] 限制 GPU 最低频率失败: {ex.Message}");
+            }
         }
 
+        /// <summary>显式范围锁核频 (min=max 即钉死在固定频率)。</summary>
         public CommandResult LockGpuClock(int minFreq, int maxFreq, int gpuIndex = -1)
         {
-            var result = RunNvidiaSmi("-i", ResolveGpuIndex(gpuIndex).ToString(), "-lgc", $"{minFreq},{maxFreq}");
-            if (!result.Success)
-                return result;
-            string message = minFreq == maxFreq
-                ? $"GPU 频率已锁定 {minFreq} MHz"
-                : $"GPU 频率范围已锁定 {minFreq}-{maxFreq} MHz";
-            return new CommandResult(true, message);
+            try
+            {
+                NvmlInterop.SetGpuLockedClocks(ResolveGpuIndex(gpuIndex), minFreq, maxFreq);
+                return new CommandResult(true, $"GPU 频率范围已锁定 {minFreq}-{maxFreq} MHz");
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"[NvidiaGpuController] 锁定 GPU 频率范围失败: {ex.Message}");
+            }
         }
 
         public CommandResult ResetGpuClock(int gpuIndex = -1)
         {
-            var result = RunNvidiaSmi("-i", ResolveGpuIndex(gpuIndex).ToString(), "-rgc");
-            return result.Success ? new CommandResult(true, "GPU 频率已重置") : result;
+            try
+            {
+                NvmlInterop.ResetGpuLockedClocks(ResolveGpuIndex(gpuIndex));
+                return new CommandResult(true, "GPU 频率已重置");
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"[NvidiaGpuController] 重置 GPU 频率失败: {ex.Message}");
+            }
         }
 
+        /// <summary>
+        /// 下限模式锁显存频率: 可自然跑满驱动上限, 不低于 freq。
+        /// </summary>
         public CommandResult LockMemoryClock(int freq, int gpuIndex = -1)
         {
-            var result = RunNvidiaSmi("-i", ResolveGpuIndex(gpuIndex).ToString(), "-lmc", $"{freq},{freq}");
-            return result.Success ? new CommandResult(true, $"显存频率已锁定 {freq} MHz") : result;
+            try
+            {
+                NvmlInterop.SetMemoryClockFloor(ResolveGpuIndex(gpuIndex), freq);
+                return new CommandResult(true, $"显存最低频率已限制为 {freq} MHz (睿频不受限)");
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"[NvidiaGpuController] 限制显存最低频率失败: {ex.Message}");
+            }
         }
 
         public CommandResult ResetMemoryClock(int gpuIndex = -1)
         {
-            var result = RunNvidiaSmi("-i", ResolveGpuIndex(gpuIndex).ToString(), "-rmc");
-            return result.Success ? new CommandResult(true, "显存频率已重置") : result;
+            try
+            {
+                NvmlInterop.ResetMemoryLockedClocks(ResolveGpuIndex(gpuIndex));
+                return new CommandResult(true, "显存频率已重置");
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"[NvidiaGpuController] 重置显存频率失败: {ex.Message}");
+            }
         }
 
         public CommandResult SetPowerLimit(int watts, int gpuIndex = -1)
         {
-            var result = RunNvidiaSmi("-i", ResolveGpuIndex(gpuIndex).ToString(), "-pl", watts.ToString());
-            return result.Success ? new CommandResult(true, $"功耗限制已设置为 {watts} W") : result;
+            try
+            {
+                // NVML 的功耗上限单位是毫瓦 (nvidia-smi -pl 是瓦), 先按驱动允许范围钳制
+                var (minMw, maxMw) = NvmlInterop.GetPowerManagementLimitConstraints(ResolveGpuIndex(gpuIndex));
+                int milliwatts = Math.Clamp(watts * 1000, minMw, maxMw);
+                NvmlInterop.SetPowerManagementLimit(ResolveGpuIndex(gpuIndex), milliwatts);
+                return new CommandResult(true, $"功耗限制已设置为 {watts} W");
+            }
+            catch (Exception ex)
+            {
+                return new CommandResult(false, $"[NvidiaGpuController] 设置功耗限制失败: {ex.Message}");
+            }
         }
 
         private int ResolveGpuIndex(int gpuIndex)
         {
             return gpuIndex >= 0 ? gpuIndex : 0;
-        }
-
-        private CommandResult RunNvidiaSmi(params string[] arguments)
-        {
-            try
-            {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "nvidia-smi",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true
-                };
-                // ArgumentList 逐项传递并自动转义, 不构造命令行字符串, 避免参数注入
-                foreach (var arg in arguments)
-                    psi.ArgumentList.Add(arg);
-
-                using var process = Process.Start(psi);
-                string output = process!.StandardOutput.ReadToEnd();
-                string error = process.StandardError.ReadToEnd();
-                process.WaitForExit(5000);
-
-                if (process.ExitCode != 0)
-                {
-                    string message = string.IsNullOrWhiteSpace(error) ? output : error;
-                    return new CommandResult(false, $"[NvidiaGpuController] nvidia-smi {string.Join(" ", arguments)} 失败: {message.Trim()}");
-                }
-            }
-            catch (Exception ex)
-            {
-                return new CommandResult(false, $"[NvidiaGpuController] 执行 nvidia-smi 异常: {ex.Message}");
-            }
-
-            return new CommandResult(true, "执行成功");
         }
 
         public class GpuStatsInfo

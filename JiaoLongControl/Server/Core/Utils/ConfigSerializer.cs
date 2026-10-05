@@ -4,6 +4,7 @@ using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.ObjectGraphVisitors;
+using Version = System.Version;
 
 namespace JiaoLongControl.Server.Core.Utils;
 
@@ -22,15 +23,22 @@ public static class ConfigSerializer
         .ConfigureDefaultValuesHandling(DefaultValuesHandling.Preserve)
         .Build();
 
+    // 窗口尺寸记忆自该版本起统一为物理像素语义 (默认 1300×820 px, 不随 DPI/缩放放大)。
+    // 更早版本固化的记忆值 (旧 DIP 字段 WindowWidth/Height, 或按 DIP 默认×缩放倍数
+    // 算出的像素值, 如 150% 屏上的 1824×1026) 与真实用户调整无法区分, 升级时清零:
+    // 首次启动回到新默认, 之后的手动调整正常记忆。
+    private static readonly Version PixelSizeSemanticsVersion = new("10.19.31");
+
     public static string ConfigDir { get; set; } = Path.Combine(AppContext.BaseDirectory, "config");
     public static string ConfigPath => Path.Combine(ConfigDir, FileName);
     private static string TempPath => ConfigPath + TempExt;
     private static string BackupPath => ConfigPath + BackupExt;
-    
+
     public static string Serialize<T>(T config)
     {
         return Serializer.Serialize(config);
     }
+
     public static string? ReadFileContent()
     {
         if (!File.Exists(ConfigPath))
@@ -106,6 +114,16 @@ public static class ConfigSerializer
 
     public static void Update(JiaoLongConfig LowConfig, string version)
     {
+        // 版本号缺失或解析失败按旧版本处理
+        if (!Version.TryParse(LowConfig.Version, out var oldVersion) ||
+            oldVersion < PixelSizeSemanticsVersion)
+        {
+            LowConfig.App.WindowPixelWidth = 0;
+            LowConfig.App.WindowPixelHeight = 0;
+            LowConfig.App.WindowWidth = 0;
+            LowConfig.App.WindowHeight = 0;
+        }
+
         // 默认无损迁移
         LowConfig.Version = version;
         Save(LowConfig);

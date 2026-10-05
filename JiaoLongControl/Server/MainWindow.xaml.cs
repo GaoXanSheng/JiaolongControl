@@ -19,6 +19,12 @@ namespace JiaoLongControl.Server
 {
     public partial class MainWindow : Window
     {
+        // 默认窗口尺寸 (物理像素): 与配置字段 WindowPixel* 同语义, 也与 XAML Width/Height
+        // (100% 缩放下的等价值) 一致。无记忆时按当前屏 DPI 换算成 DIP 使用,
+        // 高 DPI 屏上默认窗口不再随缩放放大 (150% 下若按 DIP 解释会是 1950×1230, 直接超 1080p 屏)。
+        private const double DefaultPixelWidth = 1300;
+        private const double DefaultPixelHeight = 820;
+
         private static readonly ILog Logger =
             LogManager.GetLogger(typeof(MainWindow));
 
@@ -99,7 +105,8 @@ namespace JiaoLongControl.Server
         /// 恢复上次记忆的窗口尺寸 (App.WindowPixelWidth/Height, 物理像素, 0 = 未记忆)。
         /// 物理像素按当前屏 DPI 换算回 DIP, 保证跨 DPI/缩放后窗口物理大小不变。
         /// 老配置只有 DIP 值 (WindowWidth/Height) 时按旧行为直接使用, 并换算出物理像素密封迁移。
-        /// 上限钳制到工作区 95%: 自愈被旧版 DIP 反馈 bug 撑爆的存量配置。
+        /// 无记忆时默认 1300×820 按物理像素解释, 不随缩放放大 (超小屏由 95% 钳制兜底)。
+        /// 上限一律钳制到工作区 95%: 自愈被旧版 DIP 反馈 bug 撑爆的存量配置。
         /// </summary>
         private void RestoreWindowSize()
         {
@@ -125,7 +132,9 @@ namespace JiaoLongControl.Server
             }
             else
             {
-                return;
+                // 无记忆: 默认尺寸按物理像素换算成当前屏 DIP
+                width = DefaultPixelWidth * 96 / dpi;
+                height = DefaultPixelHeight * 96 / dpi;
             }
 
             var work = SystemParameters.WorkArea;
@@ -136,6 +145,7 @@ namespace JiaoLongControl.Server
         /// <summary>
         /// 记忆窗口尺寸: 按当前窗口 DPI 换算为物理像素写入内存配置, 由 Bridge.FlushIfDirty 定时落盘。
         /// 物理像素与显示器缩放无关, 跨 DPI 屏不会产生反馈放大。
+        /// 落盘前钳制到工作区 95%, 与恢复时一致: 未钳制值 (如高 DPI 小屏上的首启动默认) 不固化进配置。
         /// 最大化/最小化的瞬时尺寸不记忆; DPI 变化引起的自动缩放不记忆; 还原为 Normal 时 SizeChanged 会再次触发, 届时才更新。
         /// </summary>
         private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
@@ -148,8 +158,9 @@ namespace JiaoLongControl.Server
                 return;
 
             double dpi = VisualTreeHelper.GetDpi(this).DpiScaleX;
-            app.WindowPixelWidth = Math.Round(Width * dpi);
-            app.WindowPixelHeight = Math.Round(Height * dpi);
+            var work = SystemParameters.WorkArea;
+            app.WindowPixelWidth = Math.Round(Math.Min(Width, work.Width * 0.95) * dpi);
+            app.WindowPixelHeight = Math.Round(Math.Min(Height, work.Height * 0.95) * dpi);
         }
 
         /// <summary>
