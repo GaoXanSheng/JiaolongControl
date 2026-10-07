@@ -5,6 +5,7 @@
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         ResizeMode="CanResize"
+        UseLayoutRounding="True"
         Width="1300" Height="820"
 >
 
