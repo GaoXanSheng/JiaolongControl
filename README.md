@@ -52,6 +52,18 @@ dotnet publish JiaoLongControl/JiaoLongControl.csproj -c Release
 - 程序清单要求**管理员权限**运行（硬件访问所需）
 - 配置文件位于程序目录 `config/config.yaml`，字段含义见文件内注释
 
+### 版本号规则
+
+版本号唯一来源是 `JiaoLongControl/JiaoLongControl.csproj` 的 `AppVersion`（如 `10.19.30`），发布与安装包版本均自动读取，三段含义如下：
+
+| 段位 | 含义 | 示例（10.**19**.30） |
+| --- | --- | --- |
+| 第一位 | 破坏性更新 | `10` |
+| 第二位 | 小功能改进 | `19` |
+| 第三位 | bug 修复 | `30` |
+
+发布时按本次改动类型递增对应段位，后续段位归零。
+
 ---
 
 ## 许可证

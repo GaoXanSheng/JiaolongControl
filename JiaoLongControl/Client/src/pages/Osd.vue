@@ -164,6 +164,11 @@ onMounted(() => {
             title="音量指示"
           />
           <SettingToggle
+            config-path="Osd.SuppressNativeVolumeOsd"
+            description="开启后，按下音量增大 / 减小 / 静音键不再弹出 Windows 原生音量面板，改由本程序接管按键调整系统音量并显示自绘 OSD（需「启用 OSD 屏幕显示」开启；关闭本项立即恢复系统原生行为）"
+            title="屏蔽系统原生音量弹窗"
+          />
+          <SettingToggle
             description="按下大写锁定 / 数字锁定 / 滚动锁定键时，显示对应的开关状态"
             title="锁定键状态"
             config-path="Osd.ShowLockKeys"

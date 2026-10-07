@@ -40,7 +40,8 @@ JiaoLongControl.sln.DotSettings.user
 # 本地工具运行时状态 (Mimosa 钩子 / ZCode 缓存), 不进入仓库
 .mimosa/
 .zcode/
-
+# 生成的文档
+.md-smoke/
 # Python 本地缓存
 __pycache__/
 *.pyc

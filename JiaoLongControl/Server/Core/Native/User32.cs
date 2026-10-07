@@ -11,7 +11,9 @@ namespace JiaoLongControl.Server.Core.Native
 
         public const int WH_KEYBOARD_LL = 13;
         public const int WM_KEYDOWN = 0x0100;
+        public const int WM_KEYUP = 0x0102;
         public const int WM_SYSKEYDOWN = 0x0104;
+        public const int WM_SYSKEYUP = 0x0106;
 
         // OSD 关心的虚拟键码
         public const int VK_CAPITAL = 0x14;      // 大写锁定
@@ -33,6 +35,7 @@ namespace JiaoLongControl.Server.Core.Native
         public const int WS_EX_NOACTIVATE = 0x08000000;
 
         public const uint MONITOR_DEFAULTTOPRIMARY = 1;
+        public const uint MONITOR_DEFAULTTONEAREST = 2;
         public const int MDT_EFFECTIVE_DPI = 0;
         public const uint SWP_NOSIZE = 0x0001;
         public const uint SWP_NOMOVE = 0x0002;
@@ -73,11 +76,18 @@ namespace JiaoLongControl.Server.Core.Native
         public static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        public static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint dwFlags);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool GetMonitorInfoW(IntPtr hMonitor, ref MONITORINFO lpmi);
 
         [DllImport("shcore.dll")]
         public static extern int GetDpiForMonitor(IntPtr hMonitor, int dpiType, out uint dpiX, out uint dpiY);
+
+        /// <summary>窗口的有效 DPI (每英寸点数, 96 = 100%), Win10 1607+ 可用。</summary>
+        [DllImport("user32.dll")]
+        public static extern uint GetDpiForWindow(IntPtr hWnd);
 
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]

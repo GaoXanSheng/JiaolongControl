@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Hardcodet.Wpf.TaskbarNotification;
+using JiaoLongControl.Server.Core.Native;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
 using log4net;
@@ -18,6 +19,12 @@ namespace JiaoLongControl.Server
 {
     public partial class MainWindow : Window
     {
+        // 默认窗口尺寸 (物理像素): 与配置字段 WindowPixel* 同语义, 也与 XAML Width/Height
+        // (100% 缩放下的等价值) 一致。无记忆时按当前屏 DPI 换算成 DIP 使用,
+        // 高 DPI 屏上默认窗口不再随缩放放大 (150% 下若按 DIP 解释会是 1950×1230, 直接超 1080p 屏)。
+        private const double DefaultPixelWidth = 1300;
+        private const double DefaultPixelHeight = 820;
+
         private static readonly ILog Logger =
             LogManager.GetLogger(typeof(MainWindow));
 
@@ -25,7 +32,7 @@ namespace JiaoLongControl.Server
 
         private Grid? _errorOverlay;
 
-        // 当前是否浅色主题: 由配置(App.Theme)解析, 前端切换主题时经 theme-changed 消息同步
+        // 是否已浅色主题: 由配置(App.Theme)解析, 前端切换主题时经 theme-changed 消息同步
         private bool _isLight;
 
         // 退出中：抑制退出阶段 ProcessFailed 等无意义日志/重建（浏览器进程被销毁时正常退出）
@@ -41,6 +48,15 @@ namespace JiaoLongControl.Server
 
         // 连续重建计数：自动重建超过上限则停止，避免进程反复崩溃时无限重建
         private int _recreateCount;
+
+        // 上次写入配置的物理尺寸 (与 WindowPixel* 同语义): SizeChanged 时与本次换算值比对,
+        // 差值在门限内的属 DPI 缩放引起的 DIP 抖动而非用户调整, 不写配置
+        private int _savedPhysHeight;
+        private int _savedPhysWidth;
+
+        // 窗口所在显示器的有效缩放缓存: OnSourceInitialized 判定, OnDpiChanged 刷新
+        private double _scaleX = 1;
+        private double _scaleY = 1;
 
         private TaskbarIcon _taskbarIcon = null!;
         private string _webRoot = string.Empty;
@@ -60,7 +76,6 @@ namespace JiaoLongControl.Server
             // 配置已在 App.OnStartup 初始化完成, 此处解析主题并先于 WebView 创建着色, 避免启动闪色
             _isLight = UiTheme.IsLight(Bridge.Instance.Config.App.Theme);
             ApplyThemeColors();
-            RestoreWindowSize();
             InitializePaths();
             InitializeTray();
             CreateWebView();
@@ -78,20 +93,81 @@ namespace JiaoLongControl.Server
             SystemEvents.PowerModeChanged += OnPowerModeChanged;
         }
 
-        /// <summary>恢复上次记忆的窗口尺寸 (App.WindowWidth/Height, 0 = 未记忆, 保持 XAML 默认)。</summary>
-        private void RestoreWindowSize()
+        /// <summary>
+        /// 句柄创建后窗口已落在目标显示器上, 此时按该显示器判定 DPI 与工作区才有效;
+        /// 在构造函数里恢复无法得知启动屏信息, 物理像素换算会失真。
+        /// </summary>
+        protected override void OnSourceInitialized(EventArgs e)
         {
-            var app = Bridge.Instance.Config?.App;
-            if (app == null || app.WindowWidth <= 0 || app.WindowHeight <= 0)
-                return;
-
-            Width = app.WindowWidth;
-            Height = app.WindowHeight;
+            base.OnSourceInitialized(e);
+            RestoreWindowSize();
         }
 
         /// <summary>
-        /// 记忆窗口尺寸: 写入内存配置, 由 Bridge.FlushIfDirty 定时与磁盘比对差异后落盘。
-        /// 最大化/最小化的瞬时尺寸不记忆; 还原为 Normal 时 SizeChanged 会再次触发, 届时才更新。
+        /// 恢复上次记忆的窗口尺寸 (App.WindowPixelWidth/Height, 物理像素, 0 = 未记忆)。
+        /// DPI 与工作区一律按窗口所在显示器判定 (DisplayInterop), 物理像素按该屏缩放换算回
+        /// DIP, 保证跨 DPI/缩放后窗口物理大小不变; 老配置只有 DIP 值 (WindowWidth/Height) 时
+        /// 按旧行为直接使用, 并换算出物理像素密封迁移。无记忆时默认 1300×820 按物理像素解释,
+        /// 不随缩放放大。上限一律钳制到所在显示器工作区 95%: 自愈被旧版 DIP 反馈 bug 撑爆的
+        /// 存量配置。最后按所在显示器工作区重新居中 —— WindowStartupLocation 只在句柄创建时按
+        /// XAML 旧尺寸居中一次, 高 DPI 屏上恢复尺寸后若不校正, 窗口会明显偏离中心。
+        /// </summary>
+        private void RestoreWindowSize()
+        {
+            var app = Bridge.Instance.Config?.App;
+            if (app == null)
+                return;
+
+            // 判定失败 (异常环境) 时保持 XAML 默认尺寸与居中, 不猜测
+            if (!DisplayInterop.TryGetForWindow(this, out var display))
+                return;
+
+            _scaleX = display.ScaleX;
+            _scaleY = display.ScaleY;
+
+            double width, height;
+            if (app.WindowPixelWidth > 0 && app.WindowPixelHeight > 0)
+            {
+                width = app.WindowPixelWidth / _scaleX;
+                height = app.WindowPixelHeight / _scaleY;
+            }
+            else if (app.WindowWidth > 0 && app.WindowHeight > 0)
+            {
+                // 老值按当前屏 DIP 解释并密封迁移, 之后只认物理像素字段
+                width = app.WindowWidth;
+                height = app.WindowHeight;
+                app.WindowPixelWidth = Math.Round(width * _scaleX);
+                app.WindowPixelHeight = Math.Round(height * _scaleY);
+            }
+            else
+            {
+                // 无记忆: 默认尺寸按物理像素换算成当前屏 DIP
+                width = DefaultPixelWidth / _scaleX;
+                height = DefaultPixelHeight / _scaleY;
+            }
+
+            // 钳制到所在显示器工作区 95% (物理 → DIP)
+            double workW = display.WorkArea.Right - display.WorkArea.Left;
+            double workH = display.WorkArea.Bottom - display.WorkArea.Top;
+            Width = Math.Min(width, workW * 0.95 / _scaleX);
+            Height = Math.Min(height, workH * 0.95 / _scaleY);
+
+            // 按所在显示器工作区居中 (物理 → DIP)
+            Left = (display.WorkArea.Left + (workW - Width * _scaleX) / 2) / _scaleX;
+            Top = (display.WorkArea.Top + (workH - Height * _scaleY) / 2) / _scaleY;
+
+            // 基准物理尺寸: 之后的 SizeChanged 与此比对, 门限内的视为 DPI 缩放而非用户调整
+            _savedPhysWidth = (int)Math.Round(Width * _scaleX);
+            _savedPhysHeight = (int)Math.Round(Height * _scaleY);
+        }
+
+        /// <summary>
+        /// 记忆窗口尺寸: 按当前缩放换算为物理像素写入内存配置, 由 Bridge.FlushIfDirty 定时落盘。
+        /// DPI 变化 (跨屏/改缩放) 时 WPF 保持物理像素不变、按比例修改 DIP, 其引发的 SizeChanged
+        /// 与上次记忆值的物理差在门限内, 直接跳过 —— 物理尺寸差是确定性判据, 不依赖事件时序;
+        /// 用户拖拽的差值会持续扩大, 累计超出门限才记忆。最大化/最小化的瞬时尺寸不记忆; 还原为
+        /// Normal 时 SizeChanged 再次触发, 差值超门限则正常记忆。落盘前钳制到窗口所在显示器
+        /// 工作区 95% (物理像素): 与恢复时一致, 未钳制值不固化进配置。
         /// </summary>
         private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
         {
@@ -102,8 +178,33 @@ namespace JiaoLongControl.Server
             if (app == null)
                 return;
 
-            app.WindowWidth = Math.Round(Width);
-            app.WindowHeight = Math.Round(Height);
+            int physW = (int)Math.Round(Width * _scaleX);
+            int physH = (int)Math.Round(Height * _scaleY);
+            const int jitterPx = 8; // DPI 换算的 DIP 取整抖动上限, 远小于可感知的人工调整
+            if (Math.Abs(physW - _savedPhysWidth) <= jitterPx
+                && Math.Abs(physH - _savedPhysHeight) <= jitterPx)
+                return;
+
+            if (!DisplayInterop.TryGetForWindow(this, out var display))
+                return;
+
+            physW = (int)Math.Min(physW, (display.WorkArea.Right - display.WorkArea.Left) * 0.95);
+            physH = (int)Math.Min(physH, (display.WorkArea.Bottom - display.WorkArea.Top) * 0.95);
+            app.WindowPixelWidth = physW;
+            app.WindowPixelHeight = physH;
+            _savedPhysWidth = physW;
+            _savedPhysHeight = physH;
+        }
+
+        /// <summary>
+        /// 跨屏/改缩放: 仅刷新缓存的缩放值, 系统引起的 SizeChanged 由物理尺寸门限过滤,
+        /// 不再需要事件时序上的抑制。
+        /// </summary>
+        protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+        {
+            base.OnDpiChanged(oldDpi, newDpi);
+            _scaleX = newDpi.DpiScaleX;
+            _scaleY = newDpi.DpiScaleY;
         }
 
         /// <summary>在后台应用开机自启策略，异常不外泄。</summary>

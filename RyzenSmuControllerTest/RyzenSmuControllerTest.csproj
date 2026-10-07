@@ -6,7 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
-        <RootNamespace>test</RootNamespace>
+        <RootNamespace>RyzenSmuControllerTest</RootNamespace>
         <SatelliteResourceLanguages>zh-CN</SatelliteResourceLanguages>
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     </PropertyGroup>

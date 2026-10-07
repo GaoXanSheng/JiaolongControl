@@ -1,5 +1,4 @@
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -48,14 +47,23 @@ namespace JiaoLongControl.Server
         // 入场/出场动画的总时长 (= 配置的出入场时长, 默认 480ms), 各阶段节奏按基准编排等比缩放
         private double _animMs = 480;
         private double _barWidth = 84;
+
+        // 当前缩放 (96 DPI = 1): MoveToTarget 判定, OnDpiChanged 刷新, 供悬停柔光做光标物理像素 → 窗口 DIP 换算
         private double _dip = 1;
 
         // 驻留时长 (= 配置的显示时长): 悬停离开后按此时长重新计时, 到点才播离场动画
         private double _dwellMs = 2000;
-        private DispatcherTimer? _exitTimer;
         private bool _exiting;
+        private DispatcherTimer? _exitTimer;
         private SolidColorBrush _faintBrush = new(Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF));
         private bool _hoverInside;
+        private int _lastCustomX;
+
+        private int _lastCustomY;
+
+        // 最近一次定位参数: 驻留期间 DPI 变化时按此重算位置
+        private string _lastPosition = "TopCenter";
+
         private double _lightOpacity;
         private double _lightOpacityTarget;
 
@@ -607,13 +615,16 @@ namespace JiaoLongControl.Server
 
         private void MoveToTarget(string position, int customX, int customY, double uiScale)
         {
-            var hMon = User32.MonitorFromPoint(new User32.POINT { X = 0, Y = 0 }, User32.MONITOR_DEFAULTTOPRIMARY);
-            var mi = new User32.MONITORINFO { cbSize = Marshal.SizeOf<User32.MONITORINFO>() };
-            if (!User32.GetMonitorInfoW(hMon, ref mi)) return;
-            if (User32.GetDpiForMonitor(hMon, User32.MDT_EFFECTIVE_DPI, out var dpi, out _) != 0) return;
+            // OSD 固定驻留主屏; 首次显示时窗口句柄尚未创建, 无法按窗口取, 故按 (0,0) 落点取主屏
+            if (!DisplayInterop.TryGetForPrimary(out var display))
+                return;
 
-            var dip = dpi / 96.0;
+            _lastPosition = position;
+            _lastCustomX = customX;
+            _lastCustomY = customY;
+            var dip = display.ScaleX;
             _dip = dip; // 供悬停柔光做光标物理像素 → 窗口 DIP 换算
+            var work = display.WorkArea;
             var pillPxW = PillW * dip * uiScale;
             var pillPxH = PillH * dip * uiScale;
             var margin = 28 * dip;
@@ -622,26 +633,37 @@ namespace JiaoLongControl.Server
             switch (position)
             {
                 case "BottomCenter":
-                    pillLeft = mi.rcWork.Left + ((mi.rcWork.Right - mi.rcWork.Left) - pillPxW) / 2;
-                    pillTop = mi.rcWork.Bottom - margin - pillPxH;
+                    pillLeft = work.Left + ((work.Right - work.Left) - pillPxW) / 2;
+                    pillTop = work.Bottom - margin - pillPxH;
                     break;
                 case "Custom":
                     // 自定义位置 = 胶囊在主屏工作区"可移动行程"的百分比 (0% 贴左/上边缘, 100% 贴右/下边缘),
                     // 与界面缩放无关; 与设置页预览区的映射保持一致
-                    var travelW = Math.Max(0, mi.rcWork.Right - mi.rcWork.Left - pillPxW);
-                    var travelH = Math.Max(0, mi.rcWork.Bottom - mi.rcWork.Top - pillPxH);
-                    pillLeft = mi.rcWork.Left + travelW * Math.Clamp(customX, 0, 100) / 100.0;
-                    pillTop = mi.rcWork.Top + travelH * Math.Clamp(customY, 0, 100) / 100.0;
+                    var travelW = Math.Max(0, work.Right - work.Left - pillPxW);
+                    var travelH = Math.Max(0, work.Bottom - work.Top - pillPxH);
+                    pillLeft = work.Left + travelW * Math.Clamp(customX, 0, 100) / 100.0;
+                    pillTop = work.Top + travelH * Math.Clamp(customY, 0, 100) / 100.0;
                     break;
                 default: // TopCenter
-                    pillLeft = mi.rcWork.Left + ((mi.rcWork.Right - mi.rcWork.Left) - pillPxW) / 2;
-                    pillTop = mi.rcWork.Top + margin;
+                    pillLeft = work.Left + ((work.Right - work.Left) - pillPxW) / 2;
+                    pillTop = work.Top + margin;
                     break;
             }
 
             // 窗口左上角 = 胶囊位置 - 胶囊在窗口内的居中偏移; 物理像素 → 该显示器 DIP
             Left = (pillLeft - OffsetX * dip * uiScale) / dip;
             Top = (pillTop - OffsetY * dip * uiScale) / dip;
+        }
+
+        /// <summary>
+        /// 驻留期间系统缩放变化: 刷新缩放缓存并按上次定位参数重算位置,
+        /// 悬停柔光的命中判定 (_dip) 随之保持正确。
+        /// </summary>
+        protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+        {
+            base.OnDpiChanged(oldDpi, newDpi);
+            _dip = newDpi.DpiScaleX;
+            MoveToTarget(_lastPosition, _lastCustomX, _lastCustomY, _uiScale);
         }
 
         private void ReassertTopmost()
@@ -697,7 +719,7 @@ namespace JiaoLongControl.Server
                 return;
             }
 
-            // 光标物理像素 → 窗口 DIP → 胶囊归一化坐标 (与 MoveToTarget 同用主显示器 DPI)
+            // 光标物理像素 → 窗口 DIP → 胶囊归一化坐标 (_dip 由 MoveToTarget 判定, OnDpiChanged 刷新)
             var inside = false;
             var nx = 0.5;
             var ny = 0.5;

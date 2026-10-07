@@ -106,6 +106,9 @@ export interface GpuCurveStatusInfo {
   MemoryOffsetMaxMhz: number
   BaseMemoryClockMhz: number
   OperatingPoint: VfPoint | null
+  /** NVML 驱动最大 SM 频率读数 (MHz): 应用核心偏移后观察其是否随偏移上移,
+   * 判定锁频上限动态含偏移 (锁最低频率与超频可共存) 或静态出厂值 (互斥) */
+  NvmlMaxSmClockMhz: number | null
 }
 
 export interface SmuTelemetry {

@@ -245,43 +245,56 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             try
             {
-                if (nCode >= 0 &&
-                    (wParam == (IntPtr)User32.WM_KEYDOWN || wParam == (IntPtr)User32.WM_SYSKEYDOWN))
+                if (nCode >= 0)
                 {
                     var kb = Marshal.PtrToStructure<User32.KBDLLHOOKSTRUCT>(lParam);
-                    switch ((int)kb.vkCode)
+                    bool isDown = wParam == (IntPtr)User32.WM_KEYDOWN || wParam == (IntPtr)User32.WM_SYSKEYDOWN;
+                    int vk = (int)kb.vkCode;
+
+                    // 接管音量键: 吞掉 DOWN/UP 阻止系统原生音量弹窗, 由本程序调整音量
+                    if ((vk == User32.VK_VOLUME_UP || vk == User32.VK_VOLUME_DOWN || vk == User32.VK_VOLUME_MUTE) &&
+                        IsVolumeKeyTakeoverEnabled())
                     {
-                        case User32.VK_VOLUME_UP:
-                        case User32.VK_VOLUME_DOWN:
-                        case User32.VK_VOLUME_MUTE:
-                            DebounceShow("volume", () => ShowVolumeOsd(force: false));
-                            break;
-                        case User32.VK_CAPITAL:
-                            DebounceShow("capslock", () =>
-                            {
-                                // 同步事件/轮询基线, 避免对同一变化重复弹 OSD
-                                _lastCaps = User32.IsToggleOn(User32.VK_CAPITAL);
-                                NotifyLockStatesChanged();
-                                ShowLockOsd(User32.VK_CAPITAL, "大写锁定", force: false);
-                            });
-                            break;
-                        case User32.VK_NUMLOCK:
-                            DebounceShow("numlock", () =>
-                            {
-                                // 同步事件/轮询基线, 避免对同一变化重复弹 OSD
-                                _lastNum = User32.IsToggleOn(User32.VK_NUMLOCK);
-                                NotifyLockStatesChanged();
-                                ShowLockOsd(User32.VK_NUMLOCK, "数字锁定", force: false);
-                            });
-                            break;
-                        case User32.VK_SCROLL:
-                            DebounceShow("scrolllock", () =>
-                            {
-                                _lastScroll = User32.IsToggleOn(User32.VK_SCROLL);
-                                NotifyLockStatesChanged();
-                                ShowLockOsd(User32.VK_SCROLL, "滚动锁定", force: false);
-                            });
-                            break;
+                        if (isDown) OnVolumeKeySwallowed(vk);
+                        return (IntPtr)1;
+                    }
+
+                    if (isDown)
+                    {
+                        switch (vk)
+                        {
+                            case User32.VK_VOLUME_UP:
+                            case User32.VK_VOLUME_DOWN:
+                            case User32.VK_VOLUME_MUTE:
+                                DebounceShow("volume", () => ShowVolumeOsd(force: false));
+                                break;
+                            case User32.VK_CAPITAL:
+                                DebounceShow("capslock", () =>
+                                {
+                                    // 同步事件/轮询基线, 避免对同一变化重复弹 OSD
+                                    _lastCaps = User32.IsToggleOn(User32.VK_CAPITAL);
+                                    NotifyLockStatesChanged();
+                                    ShowLockOsd(User32.VK_CAPITAL, "大写锁定", force: false);
+                                });
+                                break;
+                            case User32.VK_NUMLOCK:
+                                DebounceShow("numlock", () =>
+                                {
+                                    // 同步事件/轮询基线, 避免对同一变化重复弹 OSD
+                                    _lastNum = User32.IsToggleOn(User32.VK_NUMLOCK);
+                                    NotifyLockStatesChanged();
+                                    ShowLockOsd(User32.VK_NUMLOCK, "数字锁定", force: false);
+                                });
+                                break;
+                            case User32.VK_SCROLL:
+                                DebounceShow("scrolllock", () =>
+                                {
+                                    _lastScroll = User32.IsToggleOn(User32.VK_SCROLL);
+                                    NotifyLockStatesChanged();
+                                    ShowLockOsd(User32.VK_SCROLL, "滚动锁定", force: false);
+                                });
+                                break;
+                        }
                     }
                 }
             }
@@ -292,6 +305,42 @@ namespace JiaoLongControl.Server.Core.Controllers
 
             // 不吞按键, 继续传递给系统
             return User32.CallNextHookEx(_hook, nCode, wParam, lParam);
+        }
+
+        /// <summary>是否接管音量键 (吞键 + 本程序调音量); 每次按键现读配置, 开关即时生效。</summary>
+        private bool IsVolumeKeyTakeoverEnabled()
+        {
+            var cfg = Bridge.Instance.Config.Osd;
+            return cfg.Enabled && cfg.SuppressNativeVolumeOsd;
+        }
+
+        /// <summary>接管后的音量键处理: 按系统原生步进调整音量, 再弹自绘 OSD (音量指示关闭时纯静默调整)。</summary>
+        private void OnVolumeKeySwallowed(int vk)
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null) return;
+            dispatcher.BeginInvoke(() =>
+            {
+                try
+                {
+                    var state = CoreAudio.GetVolumeState();
+                    if (vk == User32.VK_VOLUME_MUTE)
+                    {
+                        CoreAudio.SetMute(!state.Muted);
+                    }
+                    else
+                    {
+                        const float step = 0.02f; // 与 Windows 原生音量键步进一致 (2)
+                        var target = Math.Clamp(state.Volume + (vk == User32.VK_VOLUME_UP ? step : -step), 0f, 1f);
+                        CoreAudio.SetVolume(target);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warn($"OSD 接管音量键调整失败: {ex.Message}");
+                }
+                DebounceShow("volume", () => ShowVolumeOsd(force: false));
+            });
         }
 
         // ===== 触发源 =====

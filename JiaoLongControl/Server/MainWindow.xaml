@@ -5,6 +5,7 @@
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         ResizeMode="CanResize"
+        UseLayoutRounding="True"
         Width="1300" Height="820"
 >
 
@@ -16,9 +17,7 @@
     </WindowChrome.WindowChrome>
 
     <Grid>
-        <!-- 5px 边框: 这圈是 WPF 自己的区域 (不被 WebView2 子窗口覆盖), WindowChrome 的
-             6px 缩放命中区在其上才能生效; WebView2 会吞掉边缘鼠标消息, 没有这圈边框时
-             左右下三边与两个下角无法拖拽缩放 -->
-        <Grid x:Name="WebViewHost" Margin="5"/>
+        <!-- 2px 边框: 这圈是 WPF 自己的区域 (不被 WebView2 子窗口覆盖), WebView2 会吞掉边缘鼠标消息, 没有这圈边框时 左右下三边与两个下角无法拖拽缩放 -->
+        <Grid x:Name="WebViewHost" Margin="2"/>
     </Grid>
 </Window>
