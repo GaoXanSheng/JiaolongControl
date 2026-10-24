@@ -14,7 +14,7 @@ namespace JiaoLongControl.Server.Core.Controllers
 {
     /// <summary>
     /// OSD 屏显控制器: 三条触发链路。
-    /// 1) 全局低级键盘钩子监听音量/锁定键 (不吞键), 防抖后读取真实系统状态;
+    /// 1) 全局低级键盘钩子监听音量/锁定键 (默认不吞键; 开启“屏蔽系统原生音量弹窗”后接管音量键), 防抖后读取真实系统状态;
     /// 2) 官方 HID_EVENT20 WMI 事件通道 —— 原生 Fn 热键 (性能模式/背光/Fn锁/触摸板锁/锁定键) 在 EC 层直接生效,
     ///    事件到达后复用检测逻辑读取真实状态;
     /// 3) 事件通道订阅失败时退回 EC 状态轮询兜底。
@@ -63,7 +63,6 @@ namespace JiaoLongControl.Server.Core.Controllers
         private SystemPerMode? _lastPerf;
         private bool? _lastScroll;
         private ResultState? _lastTouchpad;
-        private bool _loggedNoSession;
         private GlobalSystemMediaTransportControlsSessionManager? _mediaManager;
         private DispatcherTimer? _mediaPollTimer;
         private GlobalSystemMediaTransportControlsSession? _mediaSession;
@@ -85,6 +84,11 @@ namespace JiaoLongControl.Server.Core.Controllers
             {
                 _mediaPollTimer?.Stop();
                 _pollCts?.Cancel();
+                foreach (var pending in _pending.Values)
+                {
+                    pending.Timer.Stop();
+                }
+                _pending.Clear();
             }
             catch
             {
@@ -104,7 +108,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                 if (_mediaManager != null)
                 {
                     _mediaManager.CurrentSessionChanged -= OnMediaCurrentSessionChanged;
-                    _mediaManager.SessionsChanged -= OnMediaSessionsChanged;
+                    _mediaManager.SessionsChanged -= OnMediaCurrentSessionChanged;
                 }
             }
             catch
@@ -228,10 +232,6 @@ namespace JiaoLongControl.Server.Core.Controllers
                     }
 
                     token.WaitHandle.WaitOne(Math.Clamp(cfg.PollIntervalMs, 500, 5000));
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
                 }
                 catch (Exception ex)
                 {
@@ -546,7 +546,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             {
                 Kind = "touchpad",
                 IconGlyph = "\uE7E2",
-                IconImage = IconPackBase + "TouchPad.png", // 禁用/启动同用触摸板图标
+                IconImage = IconPackBase + "TouchPad.png", // 禁用/启用同用触摸板图标
                 AccentHex = AccentTouchpad,
                 Title = "触摸板",
                 Subtitle = state == ResultState.ON ? "已锁定" : "已解锁",
@@ -651,7 +651,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                 _mediaManager = await Task.Run(() =>
                     GlobalSystemMediaTransportControlsSessionManager.RequestAsync().AsTask());
                 _mediaManager.CurrentSessionChanged += OnMediaCurrentSessionChanged;
-                _mediaManager.SessionsChanged += OnMediaSessionsChanged;
+                _mediaManager.SessionsChanged += OnMediaCurrentSessionChanged;
                 HookMediaSession(_mediaManager.GetCurrentSession());
                 Logger.Info($"媒体会话监视: 初始化完成, 当前会话={(_mediaSession != null ? "已就绪" : "无 (等待音乐程序注册)")}");
 
@@ -673,29 +673,17 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         private void OnMediaCurrentSessionChanged(GlobalSystemMediaTransportControlsSessionManager sender, object args)
         {
-            HookMediaSession(sender.GetCurrentSession());
-            _ = ShowMediaAsync(sender.GetCurrentSession());
-        }
-
-        private void OnMediaSessionsChanged(GlobalSystemMediaTransportControlsSessionManager sender, object args)
-        {
-            HookMediaSession(sender.GetCurrentSession());
-            _ = ShowMediaAsync(sender.GetCurrentSession());
+            var session = sender.GetCurrentSession();
+            HookMediaSession(session);
+            _ = ShowMediaAsync(session);
         }
 
         /// <summary>把事件挂接从旧会话迁移到新的当前会话 (Session 为运行时新实例, 需按引用换绑)。</summary>
         private void HookMediaSession(GlobalSystemMediaTransportControlsSession? session)
         {
             if (session == null)
-            {
-                if (!_loggedNoSession)
-                {
-                    _loggedNoSession = true;
-                }
                 return;
-            }
 
-            _loggedNoSession = false;
             lock (_mediaLock)
             {
                 if (ReferenceEquals(session, _mediaSession)) return;
@@ -1126,10 +1114,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         }
     }
 
-    /// <summary>
-    /// CsWinRT v2 投影适配: 官方投影的方法名为 TryGetMediaPropertiesAsync
-    /// (learn.microsoft.com 类成员列表确认, 类上不存在 GetMediaPropertiesAsync)。
-    /// </summary>
+    /// <summary>TryGetMediaPropertiesAsync 包装: 会话失效等异常统一记录并返回 null。</summary>
     internal static class SmtcExtensions
     {
         private static readonly ILog Logger = LogManager.GetLogger(typeof(SmtcExtensions));
@@ -1143,7 +1128,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             }
             catch (Exception ex)
             {
-                Logger.Warn($"SMTC 适配: TryGetMediaPropertiesAsync 失败: {ex.Message}");
+                Logger.Warn($"读取媒体属性失败: {ex.Message}");
                 return null;
             }
         }

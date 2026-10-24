@@ -55,8 +55,8 @@ namespace JiaoLongControl.Server
 
             var document = CreateDocument();
             var markdownDocument = Markdown.Parse(markdown, pipeline);
-            var renderer = new Renderer(document);
-            renderer.RenderBlocks(markdownDocument, document.Blocks, inQuote: false);
+            var renderer = new Renderer();
+            renderer.RenderBlocks(markdownDocument, document.Blocks);
             return document;
         }
 
@@ -103,11 +103,7 @@ namespace JiaoLongControl.Server
 
         private sealed class Renderer
         {
-            public Renderer(FlowDocument document) => Document = document;
-
-            public FlowDocument Document { get; }
-
-            public void RenderBlocks(IEnumerable<MdBlock> blocks, BlockCollection target, bool inQuote)
+            public void RenderBlocks(IEnumerable<MdBlock> blocks, BlockCollection target)
             {
                 foreach (var block in blocks)
                 {
@@ -115,7 +111,7 @@ namespace JiaoLongControl.Server
                     {
                         case HeadingBlock heading:
                             var head = new Paragraph { Foreground = HeadingBrush };
-                            RenderInlines(heading.Inline, head.Inlines, inQuote);
+                            RenderInlines(heading.Inline, head.Inlines);
                             (head.FontSize, head.FontWeight, head.Margin) = heading.Level switch
                             {
                                 1 => (20.0, FontWeights.Bold, new Thickness(0, 4, 0, 8)),
@@ -129,12 +125,12 @@ namespace JiaoLongControl.Server
 
                         case ParagraphBlock paragraph:
                             var para = new Paragraph { Margin = new Thickness(0, 0, 0, 6) };
-                            RenderInlines(paragraph.Inline, para.Inlines, inQuote);
+                            RenderInlines(paragraph.Inline, para.Inlines);
                             target.Add(para);
                             break;
 
                         case ListBlock list:
-                            target.Add(RenderList(list, inQuote));
+                            target.Add(RenderList(list));
                             break;
 
                         case QuoteBlock quote:
@@ -147,12 +143,12 @@ namespace JiaoLongControl.Server
                                 BorderThickness = new Thickness(3, 0, 0, 0),
                                 Foreground = QuoteBrush,
                             };
-                            RenderBlocks(quote, section.Blocks, inQuote: true);
+                            RenderBlocks(quote, section.Blocks);
                             target.Add(section);
                             break;
 
                         case CodeBlock code: // 含 FencedCodeBlock; Lines 为 LeafBlock 公共字段
-                            var codeText = (code.Lines.Count > 0 ? code.Lines.ToString() : "")
+                            var codeText = code.Lines.ToString()
                                 .Replace("\r\n", "\n").Replace('\r', '\n')
                                 .TrimEnd('\n');
                             var codePara = new Paragraph
@@ -181,15 +177,16 @@ namespace JiaoLongControl.Server
                             break;
 
                         case MdTable table:
-                            target.Add(RenderTable(table, inQuote));
+                            target.Add(RenderTable(table));
                             break;
 
-                            // HtmlBlock 等其余块类型跳过
+                        default: // HtmlBlock 等其余块类型跳过
+                            break;
                     }
                 }
             }
 
-            private List RenderList(ListBlock list, bool inQuote)
+            private List RenderList(ListBlock list)
             {
                 var wpfList = new List
                 {
@@ -200,13 +197,13 @@ namespace JiaoLongControl.Server
                 foreach (ListItemBlock item in list)
                 {
                     var wpfItem = new ListItem { Padding = new Thickness(0) };
-                    RenderBlocks(item, wpfItem.Blocks, inQuote);
+                    RenderBlocks(item, wpfItem.Blocks);
                     wpfList.ListItems.Add(wpfItem);
                 }
                 return wpfList;
             }
 
-            private Table RenderTable(MdTable table, bool inQuote)
+            private Table RenderTable(MdTable table)
             {
                 int columnCount = Math.Max(1, table.ColumnDefinitions.Count);
                 var wpfTable = new Table
@@ -236,14 +233,14 @@ namespace JiaoLongControl.Server
                             wpfCell.Background = HeaderBackground;
                             wpfCell.FontWeight = FontWeights.SemiBold;
                         }
-                        RenderBlocks(cell, wpfCell.Blocks, inQuote);
+                        RenderBlocks(cell, wpfCell.Blocks);
                         wpfRow.Cells.Add(wpfCell);
                     }
                 }
                 return wpfTable;
             }
 
-            private void RenderInlines(ContainerInline? container, InlineCollection target, bool inQuote)
+            private void RenderInlines(ContainerInline? container, InlineCollection target)
             {
                 if (container is null) return;
                 foreach (var inline in container)
@@ -253,7 +250,7 @@ namespace JiaoLongControl.Server
                         case AutolinkInline autolink:
                             // 邮箱自动链接补 mailto: 以支持点击打开
                             var navUrl = autolink.IsEmail ? "mailto:" + autolink.Url : autolink.Url;
-                            target.Add(MakeHyperlink(navUrl, null, autolink.Url, inQuote));
+                            target.Add(MakeHyperlink(navUrl, null, autolink.Url));
                             break;
 
                         case CodeInline code:
@@ -275,12 +272,12 @@ namespace JiaoLongControl.Server
                             break;
 
                         case EmphasisInline emphasis:
-                            AddEmphasis(emphasis, target, inQuote);
+                            AddEmphasis(emphasis, target);
                             break;
 
                         case LinkInline link when !link.IsImage:
                             var linkUrl = link.Url ?? "";
-                            target.Add(MakeHyperlink(linkUrl, link, linkUrl, inQuote));
+                            target.Add(MakeHyperlink(linkUrl, link, linkUrl));
                             break;
 
                         case LinkInline image:
@@ -300,7 +297,7 @@ namespace JiaoLongControl.Server
                             break;
 
                         case ContainerInline nested:
-                            RenderInlines(nested, target, inQuote);
+                            RenderInlines(nested, target);
                             break;
 
                         default:
@@ -310,7 +307,7 @@ namespace JiaoLongControl.Server
                 }
             }
 
-            private void AddEmphasis(EmphasisInline emphasis, InlineCollection target, bool inQuote)
+            private void AddEmphasis(EmphasisInline emphasis, InlineCollection target)
             {
                 bool isStar = emphasis.DelimiterChar is '*' or '_';
                 bool bold = isStar && emphasis.DelimiterCount >= 2;
@@ -335,11 +332,11 @@ namespace JiaoLongControl.Server
                     inner = i;
                 }
 
-                RenderInlines(emphasis, inner.Inlines, inQuote);
+                RenderInlines(emphasis, inner.Inlines);
                 target.Add(wrapper);
             }
 
-            private Hyperlink MakeHyperlink(string url, ContainerInline? content, string fallbackText, bool inQuote)
+            private Hyperlink MakeHyperlink(string url, ContainerInline? content, string fallbackText)
             {
                 var hyperlink = new Hyperlink { Foreground = LinkBrush };
                 if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" or "mailto")
@@ -352,7 +349,7 @@ namespace JiaoLongControl.Server
                 }
                 // 相对路径/锚点链接不设 NavigateUri, 仅作蓝色文本展示
                 if (content is not null)
-                    RenderInlines(content, hyperlink.Inlines, inQuote);
+                    RenderInlines(content, hyperlink.Inlines);
                 if (hyperlink.Inlines.Count == 0)
                     hyperlink.Inlines.Add(new Run(fallbackText));
                 return hyperlink;

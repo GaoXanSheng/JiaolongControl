@@ -7,6 +7,7 @@
         ResizeMode="CanResize"
         UseLayoutRounding="True"
         Width="1300" Height="820"
+        MinHeight="820" MinWidth="1300"
 >
 
     <WindowChrome.WindowChrome>

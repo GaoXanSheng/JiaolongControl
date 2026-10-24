@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CpuDie from '@/components/common/CpuDie.vue'
+import EditableValue from '@/components/common/EditableValue.vue'
 
 import {computed, ref} from 'vue'
 import {Message} from '@arco-design/web-vue'
@@ -155,19 +156,28 @@ async function handleReset() {
   const defaults = CPU_PROFILE_DEFAULTS[key]
   if (!CPUData.value || !defaults) return
   Object.assign(CPUData.value[key], defaults)
-  const saveRes = await configStore.saveConfig()
-  const profileTitle = profiles.find((p) => p.key === selectedProfile.value)?.title ?? ''
-  if (saveRes?.Success) {
-    Message.info(`「${profileTitle}」参数已恢复为出厂默认`)
-  } else {
-    Message.error(saveRes?.Message || '重置值保存失败')
+  try {
+    const saveRes = await configStore.saveConfig()
+    const profileTitle = profiles.find((p) => p.key === selectedProfile.value)?.title ?? ''
+    if (saveRes?.Success) {
+      Message.info(`「${profileTitle}」参数已恢复为出厂默认`)
+    } else {
+      Message.error(saveRes?.Message || '重置值保存失败')
+    }
+  } catch {
+    Message.error('重置值保存失败')
   }
 }
 
 // 取消修改：强制从后端重新加载原始配置
 async function handleCancel() {
-  await configStore.fetchConfig(true) // 重新加载 store 原始配置
-  Message.info('已取消修改')
+  try {
+    await configStore.fetchConfig(true)
+    selectedProfile.value = CPUData.value?.CpuProfile ?? 'default'
+    Message.info('已取消修改')
+  } catch {
+    Message.error('重新加载配置失败')
+  }
 }
 </script>
 
@@ -219,34 +229,42 @@ async function handleCancel() {
           <h2 class="text-[13px] font-semibold text-gray-300">核心设置</h2>
 
           <div class="space-y-6">
-            <!-- 短时功耗限制 (PL1) -->
+            <!-- 长时功耗限制 (PL1) -->
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1"
-                  >功耗限制 (PL1)
+                  >长时功耗限制 (PL1)
                   <span class="text-gray-500 cursor-pointer text-[10px] hover:text-gray-300"
                     >ⓘ</span
                   ></span
                 >
-                <span class="text-purple-400 font-medium font-mono"
-                  >{{ activeProfile.CpuLongPower }} W</span
-                >
+                <EditableValue
+                  v-model="activeProfile.CpuLongPower"
+                  :max="255"
+                  :min="30"
+                  class="text-purple-400 font-medium font-mono"
+                  unit="W"
+                />
               </div>
               <a-slider v-model="activeProfile.CpuLongPower" :min="30" :max="255" class="w-full" />
             </div>
 
-            <!-- 长时功耗限制 (PL2) -->
+            <!-- 短时功耗限制 (PL2) -->
             <div class="space-y-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1"
-                  >长时功耗限制 (PL2)
+                  >短时功耗限制 (PL2)
                   <span class="text-gray-500 cursor-pointer text-[10px] hover:text-gray-300"
                     >ⓘ</span
                   ></span
                 >
-                <span class="text-purple-400 font-medium font-mono"
-                  >{{ activeProfile.CpuShortPower }} W</span
-                >
+                <EditableValue
+                  v-model="activeProfile.CpuShortPower"
+                  :max="255"
+                  :min="30"
+                  class="text-purple-400 font-medium font-mono"
+                  unit="W"
+                />
               </div>
               <a-slider v-model="activeProfile.CpuShortPower" :min="30" :max="255" class="w-full" />
             </div>
@@ -260,9 +278,13 @@ async function handleCancel() {
                     >ⓘ</span
                   ></span
                 >
-                <span v-if="!perCoreMode" class="text-purple-400 font-medium font-mono">{{
-                  configStore.config?.Smu?.CurveOptimizerAll ?? 0
-                }}</span>
+                <EditableValue
+                  v-if="SmuData && !perCoreMode"
+                  v-model="SmuData.CurveOptimizerAll"
+                  :max="50"
+                  :min="-50"
+                  class="text-purple-400 font-medium font-mono"
+                />
               </div>
               <a-slider
                 v-if="SmuData && !perCoreMode"
@@ -272,7 +294,7 @@ async function handleCancel() {
                 class="w-full"
               />
               <div
-                v-else
+                v-else-if="SmuData"
                 class="text-[11px] text-gray-500 leading-relaxed bg-ink/[0.02] border border-ink/[0.04] rounded-lg px-3 py-2.5"
               >
                 已启用分核心降压：应用设置时将逐核心写入【Ryzen SMU】页面中保存的分核心 Curve
@@ -289,9 +311,13 @@ async function handleCancel() {
                     >ⓘ</span
                   ></span
                 >
-                <span class="text-purple-400 font-medium font-mono"
-                  >{{ activeProfile.CpuTempWall }} °C</span
-                >
+                <EditableValue
+                  v-model="activeProfile.CpuTempWall"
+                  :max="105"
+                  :min="60"
+                  class="text-purple-400 font-medium font-mono"
+                  unit="°C"
+                />
               </div>
               <a-slider v-model="activeProfile.CpuTempWall" :min="60" :max="105" class="w-full" />
             </div>
@@ -305,9 +331,16 @@ async function handleCancel() {
                     >ⓘ</span
                   ></span
                 >
-                <span class="text-purple-400 font-medium font-mono"
-                  >{{ (activeProfile.CpuMaxFrequency / 1000).toFixed(1) }} GHz</span
-                >
+                <EditableValue
+                  v-model="activeProfile.CpuMaxFrequency"
+                  :max="5400"
+                  :min="1000"
+                  :precision="1"
+                  :scale="0.001"
+                  :step="100"
+                  class="text-purple-400 font-medium font-mono"
+                  unit="GHz"
+                />
               </div>
               <a-slider
                 v-model="activeProfile.CpuMaxFrequency"
@@ -319,7 +352,7 @@ async function handleCancel() {
             </div>
           </div>
         </div>
-        <!-- 4. 底部全局控制栏 -->
+        <!-- 3. 底部全局控制栏 -->
         <div class="flex justify-between items-center pt-2">
           <button
             class="flex items-center gap-2 text-xs text-gray-400 hover:text-ink border border-ink/10 hover:border-ink/20 bg-ink/[0.02] hover:bg-ink/[0.05] px-4 py-2 rounded-lg transition-colors"
@@ -367,7 +400,7 @@ async function handleCancel() {
             <div
               class="w-16 h-16 bg-ink/[0.02] border border-ink/[0.05] rounded-xl flex items-center justify-center relative"
             >
-                            <CpuDie />
+              <CpuDie />
             </div>
 
             <div class="space-y-1 text-[11px] text-gray-400">
@@ -465,11 +498,6 @@ async function handleCancel() {
         >
           <div class="flex justify-between items-center">
             <h2 class="text-[13px] font-semibold text-gray-300">核心分布</h2>
-            <!-- <button
-              class="bg-ink/[0.04] border border-ink/10 hover:bg-ink/[0.08] text-[10px] text-gray-400 hover:text-ink px-2 py-0.5 rounded transition"
-            >
-              详情
-            </button> -->
           </div>
 
           <div class="space-y-2">
@@ -539,22 +567,5 @@ async function handleCancel() {
 }
 [data-theme='light'] .core-tile .text-purple-300 {
   color: #454d61;
-}
-
-/* 深度重写 Arco Slider 为高透炫光紫色 */
-
-
-/* 深度重写 Arco Switch */
-:deep(.arco-switch-checked) {
-  background-color: var(--color-accent-purple) !important;
-}
-
-/* 重写下拉菜单为深色模式样式 */
-:deep(.select-dark .arco-select-view-single) {
-  background-color: var(--color-panel-elevated) !important;
-  border: 1px solid var(--color-line-soft) !important;
-  color: var(--color-text-main) !important;
-  border-radius: 8px !important;
-  height: 32px !important;
 }
 </style>

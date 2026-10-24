@@ -2,7 +2,7 @@ using JiaoLongControl.Server.Core.Controllers;
 
 namespace RyzenSmuControllerTest.Cli;
 
-/// <summary>单条选项的处理结果。BadArguments 沿用旧版行为：不计入退出码（仅打印错误）。</summary>
+/// <summary>单条选项的处理结果。BadArguments 计入退出码（与 Failed 相同）。</summary>
 internal enum CommandOutcome
 {
     Succeeded,

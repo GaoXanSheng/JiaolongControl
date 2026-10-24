@@ -1,15 +1,13 @@
 ﻿using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Utils;
-using Microsoft.Win32;
 using Microsoft.Win32.TaskScheduler;
+
 namespace JiaoLongControl.Server.Core.Controllers;
 
 [ComVisible(true)]
 [ClassInterface(ClassInterfaceType.AutoDual)]
 public class AutoStartController
 {
-    private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
-
     private const string AppName = "JiaoLongControl";
 
     public CommandResult Enable()

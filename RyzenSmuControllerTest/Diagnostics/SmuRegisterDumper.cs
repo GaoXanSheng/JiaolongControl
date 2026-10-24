@@ -6,9 +6,10 @@ namespace RyzenSmuControllerTest.Diagnostics;
 /// <summary>对任意 SMU/SMN 寄存器地址做 3 次采样读取（--smu-read）。</summary>
 internal static class SmuRegisterDumper
 {
-    public static void Dump(RyzenSmuController ctrl, uint addr)
+    public static bool Dump(RyzenSmuController ctrl, uint addr)
     {
         ConsoleLog.Log($">>> 读取 SMU 寄存器 0x{addr:X6} (3 次采样) ...");
+        bool ok = true;
         try
         {
             for (int i = 0; i < 3; i++)
@@ -21,7 +22,9 @@ internal static class SmuRegisterDumper
         catch (Exception ex)
         {
             ConsoleLog.Error($"    读取失败: {ex.Message}");
+            ok = false;
         }
         ConsoleLog.Log("");
+        return ok;
     }
 }

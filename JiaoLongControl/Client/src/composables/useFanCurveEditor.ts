@@ -1,7 +1,7 @@
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { Message } from '@arco-design/web-vue'
-import { AutoFanControl, Fan } from '@/utils/bridge'
-import { useConfigStore } from '@/stores/config'
+import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
+import {Message} from '@arco-design/web-vue'
+import {AutoFanControl, Fan} from '@/utils/bridge'
+import {useConfigStore} from '@/stores/config'
 
 export interface FanCurvePoint {
   temp: number
@@ -49,8 +49,6 @@ export function useFanCurveEditor() {
   const isServiceRunning = ref(false)
   const serviceLoading = ref(false)
 
-  let autoSaveTimer: number | null = null
-
   const canDelete = computed(() => selectedIndex.value !== null && currentPoints.value.length > 2)
 
   const isValidRender = computed(() => {
@@ -69,7 +67,8 @@ export function useFanCurveEditor() {
 
   const checkServiceStatus = async () => {
     try {
-      isServiceRunning.value = (await AutoFanControl.IsRunning()).Success
+      const res = await AutoFanControl.IsRunning()
+      isServiceRunning.value = res.Success && !!res.Data
     } catch (e) {
       console.error('Failed to check fan control status:', e)
     }
@@ -80,43 +79,29 @@ export function useFanCurveEditor() {
   ): Promise<boolean> => {
     serviceLoading.value = true
     try {
-      if (newValue) {
-        await AutoFanControl.Start()
-        Message.success('自动风扇控制已启用')
-      } else {
-        await AutoFanControl.Stop()
-        Message.info('自动风扇控制已停止')
+      const res = newValue ? await AutoFanControl.Start() : await AutoFanControl.Stop()
+      if (!res.Success) {
+        Message.error(res.Message || '操作失败')
+        return false
       }
-      isServiceRunning.value = (await AutoFanControl.IsRunning()).Success
+      Message.success(res.Message || (newValue ? '自动风扇控制已启用' : '自动风扇控制已停止'))
+      isServiceRunning.value = !!newValue
       return true
     } catch {
       Message.error('操作失败，请检查日志')
-      isServiceRunning.value = (await AutoFanControl.IsRunning()).Success
       return false
     } finally {
       serviceLoading.value = false
-    }
-  }
-  const autoSave = async () => {
-    try {
-      if (configStore.config) {
-        configStore.config.Fan.CpuFanCurve = cpuPoints.value
-        configStore.config.Fan.GpuFanCurve = gpuPoints.value
-        configStore.debouncedSave()
-      }
-    } catch (e) {
-      console.error('Save failed:', e)
+      await checkServiceStatus()
     }
   }
   watch(
     [cpuPoints, gpuPoints],
     () => {
-      if (autoSaveTimer) {
-        clearTimeout(autoSaveTimer)
-      }
-      autoSaveTimer = window.setTimeout(() => {
-        autoSave()
-      }, 500)
+      if (!configStore.config) return
+      configStore.config.Fan.CpuFanCurve = cpuPoints.value
+      configStore.config.Fan.GpuFanCurve = gpuPoints.value
+      configStore.debouncedSave()
     },
     { deep: true },
   )
@@ -220,7 +205,6 @@ export function useFanCurveEditor() {
 
   onUnmounted(() => {
     resizeObserver?.disconnect()
-    if (autoSaveTimer) clearTimeout(autoSaveTimer)
   })
 
   function onDragStart(index: number, e: MouseEvent) {
@@ -262,13 +246,23 @@ export function useFanCurveEditor() {
     top: `${menuPos.y}px`,
   }))
 
+  const MENU_WIDTH = 150
+  const MENU_HEIGHT = 112
+
   function openContextMenu(index: number, e: MouseEvent) {
     selectedIndex.value = index
     menuVisible.value = true
 
-    const rect = containerRef.value!.getBoundingClientRect()
+    const host = (containerRef.value!.offsetParent as HTMLElement | null) ?? containerRef.value!
+    const rect = host.getBoundingClientRect()
     menuPos.x = e.clientX - rect.left + 10
     menuPos.y = e.clientY - rect.top
+    if (menuPos.x + MENU_WIDTH > rect.width) {
+      menuPos.x = Math.max(0, rect.width - MENU_WIDTH)
+    }
+    if (menuPos.y + MENU_HEIGHT > rect.height) {
+      menuPos.y = Math.max(0, rect.height - MENU_HEIGHT)
+    }
   }
 
   function closeMenu() {
@@ -325,17 +319,21 @@ export function useFanCurveEditor() {
   }
 
   async function handleRemoveFanClick() {
-    if (await AutoFanControl.IsRunning()) {
+    const running = await AutoFanControl.IsRunning()
+    if (running.Success && running.Data) {
       await AutoFanControl.Stop()
     }
-    Message.success((await Fan.RemoveFanSpeed()).Message)
-    isServiceRunning.value = false
+    const res = await Fan.RemoveFanSpeed()
+    if (res.Success) {
+      Message.success(res.Message)
+      isServiceRunning.value = false
+    } else {
+      Message.error(res.Message || '取消失败')
+    }
   }
 
   return {
     activeTab,
-    cpuPoints,
-    gpuPoints,
     currentPoints,
     currentTempRange,
     speedRange,
@@ -345,7 +343,6 @@ export function useFanCurveEditor() {
     height,
     draggingIndex,
     menuVisible,
-    menuPos,
     selectedIndex,
     showEdit,
     editForm,
@@ -354,15 +351,10 @@ export function useFanCurveEditor() {
     canDelete,
     isValidRender,
     onTabChange,
-    checkServiceStatus,
     handleServiceToggle,
     handleRemoveFanClick,
     safeMapX,
     safeMapY,
-    mapX,
-    mapY,
-    unmapX,
-    unmapY,
     polylinePoints,
     polygonPoints,
     onDragStart,

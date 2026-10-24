@@ -4,6 +4,7 @@ import {Message} from '@arco-design/web-vue'
 import {AutoFanControl, Fan} from '@/utils/bridge'
 import {useConfigStore} from '@/stores/config'
 import FanSpeed from '@/components/common/FanSpeed.vue'
+import EditableValue from '@/components/common/EditableValue.vue'
 import {FAN_MAX_RPM, FAN_MIN_RPM} from '@/constants'
 
 const loading = ref(false)
@@ -28,18 +29,23 @@ const handleOk = async () => {
   if (!FanPageStore.value) return
   visible.value = false
   loading.value = true
-  const isRunningRes = await AutoFanControl.IsRunning()
-  if (isRunningRes.Success && isRunningRes.Data) {
-    await AutoFanControl.Stop()
+  try {
+    const isRunningRes = await AutoFanControl.IsRunning()
+    if (isRunningRes.Success && isRunningRes.Data) {
+      await AutoFanControl.Stop()
+    }
+    const res = await Fan.SetFanSpeed(FanPageStore.value.ManualFanSpeed)
+    if (res.Success) {
+      Message.success(res.Message)
+      configStore.debouncedSave()
+    } else {
+      Message.error(res.Message)
+    }
+  } catch {
+    Message.error('应用失败，请检查桥接服务')
+  } finally {
+    loading.value = false
   }
-  const res = await Fan.SetFanSpeed(FanPageStore.value.ManualFanSpeed)
-  if (res.Success) {
-    Message.success(res.Message)
-  } else {
-    Message.error(res.Message)
-  }
-  configStore.debouncedSave()
-  loading.value = false
 }
 
 const handleCancel = () => {
@@ -47,15 +53,19 @@ const handleCancel = () => {
 }
 
 async function handleRemoveFanClick() {
-  const isRunningRes = await AutoFanControl.IsRunning()
-  if (isRunningRes.Success && isRunningRes.Data) {
-    await AutoFanControl.Stop()
-  }
-  const res = await Fan.RemoveFanSpeed()
-  if (res.Success) {
-    Message.success(res.Message)
-  } else {
-    Message.error(res.Message)
+  try {
+    const isRunningRes = await AutoFanControl.IsRunning()
+    if (isRunningRes.Success && isRunningRes.Data) {
+      await AutoFanControl.Stop()
+    }
+    const res = await Fan.RemoveFanSpeed()
+    if (res.Success) {
+      Message.success(res.Message)
+    } else {
+      Message.error(res.Message)
+    }
+  } catch {
+    Message.error('操作失败，请检查桥接服务')
   }
 }
 </script>
@@ -84,9 +94,13 @@ async function handleRemoveFanClick() {
                 <h2 class="text-base font-semibold mt-1 text-gray-200">目标转速设定</h2>
               </div>
               <div class="text-right">
-                <span class="text-3xl font-black font-mono text-ink leading-none">{{
-                  FanPageStore.ManualFanSpeed
-                }}</span>
+                <EditableValue
+                  v-model="FanPageStore.ManualFanSpeed"
+                  :max="8000"
+                  :min="0"
+                  :step="100"
+                  class="text-3xl font-black font-mono text-ink leading-none"
+                />
                 <span class="text-gray-500 text-xs ml-1 font-bold font-mono">RPM</span>
               </div>
             </div>
@@ -176,8 +190,6 @@ async function handleRemoveFanClick() {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-
-/* 高发光 Slider 拖拽钮及轨道重写 */
 
 /* 安全警告弹窗的深色皮肤在 src/style.css 全局覆写:
  * Arco Modal 传送至 body 渲染, scoped 样式(:deep)命中不到 */

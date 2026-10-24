@@ -28,7 +28,7 @@ public class AppSection
     public bool BootAdvancedGPUSystem { get; set; }
 
     [ConfigComment("开机自动设置Ryzen SMU Curve Optimizer All")]
-    public bool BootSetRyzenSumCurveOptimizerAll { get; set; }
+    public bool BootSetRyzenSmuCurveOptimizerAll { get; set; }
 
     [ConfigComment("开机自动应用Ryzen SMU Curve Optimizer时使用分核降压 (代替全核)")]
     public bool BootSetRyzenSmuCurveOptimizerPerCore { get; set; }
@@ -194,12 +194,6 @@ public class SmuSection
     [ConfigComment("VRM电流 RSMU (A)")]
     public int VrmCurrentRsmu { get; set; }
 
-    [ConfigComment("TDC限制 MP1 (A)")]
-    public int TdcLimitMp1 { get; set; }
-
-    [ConfigComment("TDC限制 RSMU (A)")]
-    public int TdcLimitRsmu { get; set; }
-
     [ConfigComment("EDC限制 MP1 (A)")]
     public int EdcLimitMp1 { get; set; }
 
@@ -226,6 +220,9 @@ public class SmuSection
 
     [ConfigComment("Curve Optimizer 分核偏移 (负值为降压, 索引=核心号)")]
     public List<int> CurveOptimizerPerCore { get; set; } = new();
+
+    [ConfigComment("开机自动应用的 SMU 字段名列表 (在 Ryzen SMU 页勾选「开机」生成; 值为 0 的项跳过不写入)")]
+    public List<string> BootApplyItems { get; set; } = new();
 }
 
 public class OsdSection

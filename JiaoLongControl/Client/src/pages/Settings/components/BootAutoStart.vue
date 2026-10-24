@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { Message } from '@arco-design/web-vue'
+import {computed, onMounted, ref} from 'vue'
+import {Message} from '@arco-design/web-vue'
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
-import { Boot } from '@/utils/bridge'
-import { useConfigStore } from '@/stores/config'
+import {Boot} from '@/utils/bridge'
+import {useConfigStore} from '@/stores/config'
 
 const configStore = useConfigStore()
 
@@ -109,5 +109,3 @@ async function onMinimizedChange(next: string | number | boolean) {
     </transition>
   </div>
 </template>
-
-<style scoped></style>

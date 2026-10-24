@@ -8,9 +8,10 @@ internal static class SviTelemetryDumper
 {
     private const uint SviBase = 0x0005A000;
 
-    public static void Dump(RyzenSmuController ctrl)
+    public static bool Dump(RyzenSmuController ctrl)
     {
         ConsoleLog.Log(">>> 读取 SMN SVI 遥测寄存器 ...");
+        bool ok = true;
         try
         {
             uint tfn = (uint)ctrl.Execute("ioctl_read_smu_register", [SviBase + 0x8], 1)[0];
@@ -27,7 +28,9 @@ internal static class SviTelemetryDumper
         catch (Exception ex)
         {
             ConsoleLog.Error($"    SVI 遥测读取失败: {ex.Message}");
+            ok = false;
         }
         ConsoleLog.Log("");
+        return ok;
     }
 }

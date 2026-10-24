@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Window } from '@/utils/bridge'
+import {Window} from '@/utils/bridge'
 
 function handleMouseDown(e: MouseEvent) {
   if (e.button === 0) {
@@ -42,7 +42,6 @@ function handleMouseDown(e: MouseEvent) {
     display: flex;
     align-items: center;
     padding-left: 12px;
-    -webkit-app-region: drag;
 
     .logo {
       width: 16px;
@@ -59,8 +58,6 @@ function handleMouseDown(e: MouseEvent) {
 
   .window-actions {
     display: flex;
-
-    -webkit-app-region: no-drag;
 
     .action-btn {
       display: flex;

@@ -189,6 +189,18 @@ html:not([data-theme='light']) .arco-modal-mask {
   color: color-mix(in srgb, var(--color-text-main) 50%, transparent) !important;
   font-size: 11px !important;
 }
+.arco-modal .arco-input-number .arco-input-wrapper,
+.arco-modal .arco-input-number .arco-input-wrapper:hover,
+.arco-modal .arco-input-number .arco-input-wrapper:focus-within {
+  background-color: transparent !important;
+  color: var(--color-text-main) !important;
+}
+.arco-modal .arco-input-number .arco-input {
+  color: var(--color-text-main) !important;
+}
+.arco-modal .arco-input-number:focus-within {
+  border-color: var(--color-accent-purple) !important;
+}
 
 /* ===== 设置卡片弹出动画: 用于 v-if / visibleWhen 显隐的开关卡片 (配合 <transition name="card-pop">) ===== */
 .card-pop-enter-active {

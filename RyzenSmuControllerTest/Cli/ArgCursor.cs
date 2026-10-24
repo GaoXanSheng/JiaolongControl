@@ -1,3 +1,4 @@
+using System.Globalization;
 using RyzenSmuControllerTest.Infrastructure;
 
 namespace RyzenSmuControllerTest.Cli;
@@ -17,6 +18,8 @@ internal sealed class ArgCursor
 
     public bool AtEnd => _i >= _args.Length;
 
+    public string OptionName { get; set; } = "";
+
     public string Current => _args[_i];
 
     public void Advance() => _i++;
@@ -25,7 +28,7 @@ internal sealed class ArgCursor
     {
         value = 0;
         if (!EnsureValue()) return false;
-        if (!uint.TryParse(_args[_i], System.Globalization.NumberStyles.HexNumber, null, out value))
+        if (!uint.TryParse(_args[_i], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value))
         {
             RejectValue("不是有效十六进制数");
             return false;
@@ -38,7 +41,7 @@ internal sealed class ArgCursor
     {
         value = 0;
         if (!EnsureValue()) return false;
-        if (!int.TryParse(_args[_i], out value))
+        if (!int.TryParse(_args[_i], NumberStyles.Integer, CultureInfo.InvariantCulture, out value))
         {
             RejectValue("不是有效整数");
             return false;
@@ -52,9 +55,14 @@ internal sealed class ArgCursor
     {
         value = 0;
         if (!EnsureValue()) return false;
-        if (!double.TryParse(_args[_i], out value))
+        if (!double.TryParse(_args[_i], NumberStyles.Float, CultureInfo.InvariantCulture, out value))
         {
             RejectValue("不是有效数值");
+            return false;
+        }
+        if (!double.IsFinite(value))
+        {
+            RejectValue("不是有限数值");
             return false;
         }
         _i++;
@@ -85,20 +93,14 @@ internal sealed class ArgCursor
     private bool EnsureValue()
     {
         if (_i < _args.Length) return true;
-        ConsoleLog.Error($"参数 {_args[_i - 1]} 缺少值");
+        ConsoleLog.Error($"参数 {OptionName} 缺少值");
         return false;
     }
 
     private void RejectValue(string reason)
     {
-        ConsoleLog.Error($"参数 {_args[_i - 1]} 值 '{_args[_i]}' {reason}");
+        ConsoleLog.Error($"参数 {OptionName} 值 '{_args[_i]}' {reason}");
         _i++;
-    }
-
-    private void WarnOutOfRange(int value, int min, int max)
-    {
-        if (value < min || value > max)
-            ConsoleLog.Log($"    (值 {value} 超出范围 [{min}, {max}], 仍继续执行)");
     }
 
     private void WarnOutOfRange(double value, double min, double max)

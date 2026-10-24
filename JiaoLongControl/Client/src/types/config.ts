@@ -13,7 +13,7 @@ export interface AppSectionType {
   BootAdvancedFanControlSystem: boolean
   BootAdvancedCPUSystem: boolean
   BootAdvancedGPUSystem: boolean
-  BootSetRyzenSumCurveOptimizerAll: boolean
+  BootSetRyzenSmuCurveOptimizerAll: boolean
   BootSetRyzenSmuCurveOptimizerPerCore: boolean
   BootKeyboardGradient: boolean
   CpuCurveOptimizerPerCore: boolean
@@ -69,8 +69,6 @@ export interface SmuSectionType {
   PptLimitRsmu: number
   VrmCurrentMp1: number
   VrmCurrentRsmu: number
-  TdcLimitMp1: number
-  TdcLimitRsmu: number
   EdcLimitMp1: number
   EdcLimitRsmu: number
   TempLimitMp1: number
@@ -80,6 +78,7 @@ export interface SmuSectionType {
   OcVolt: number
   CurveOptimizerAll: number
   CurveOptimizerPerCore: number[]
+  BootApplyItems: string[]
 }
 
 export type OsdPosition = 'TopCenter' | 'BottomCenter' | 'Custom'

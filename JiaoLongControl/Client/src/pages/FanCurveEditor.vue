@@ -168,7 +168,7 @@
                 fill="transparent"
                 cursor="pointer"
                 @mousedown.stop="onDragStart(index, $event)"
-                @contextmenu.prevent.stop="openContextMenu(index, $event)"
+                @contextmenu.prevent.stop="onNodeContextMenu(index, $event)"
               />
               <circle
                 :cx="safeMapX(p.temp)"
@@ -205,9 +205,11 @@
         <div
           v-if="menuVisible"
           class="context-menu"
+          :class="{ armed: menuArmed }"
           :style="menuStyle"
           @click.stop
           @contextmenu.prevent
+          @mousemove="menuArmed = true"
         >
           <div class="menu-item" @click="onAddNode">在此处右侧添加节点</div>
           <div
@@ -258,8 +260,11 @@
 </template>
 
 <script lang="ts" setup>
+import {ref} from 'vue'
 import FanSpeed from '@/components/common/FanSpeed.vue'
 import {useFanCurveEditor} from '@/composables/useFanCurveEditor'
+
+const menuArmed = ref(false)
 
 const {
   activeTab,
@@ -299,6 +304,11 @@ const {
   openEditModal,
   onEditConfirm,
 } = useFanCurveEditor()
+
+function onNodeContextMenu(index: number, e: MouseEvent) {
+  menuArmed.value = false
+  openContextMenu(index, e)
+}
 </script>
 
 <style lang="scss" scoped>
@@ -420,11 +430,10 @@ const {
   position: absolute;
   z-index: 999;
   background: var(--color-popover-bg);
-  backdrop-filter: blur(12px);
   border-radius: 6px;
   box-shadow: 0 8px 24px var(--color-shadow-pop);
   border: 1px solid var(--color-line);
-  min-width: 140px;
+  width: 150px;
   padding: 4px 0;
 
   .menu-item {
@@ -434,16 +443,16 @@ const {
     color: color-mix(in srgb, var(--color-text-main) 80%, transparent);
     transition: all 0.2s;
 
-    &:hover {
-      background: rgba(138, 43, 226, 0.15);
-      color: #a855f7;
-    }
-
     &.disabled {
       color: color-mix(in srgb, var(--color-text-main) 25%, transparent);
       cursor: not-allowed;
       background: transparent !important;
     }
+  }
+
+  &.armed .menu-item:not(.disabled):hover {
+    background: rgba(138, 43, 226, 0.15);
+    color: #a855f7;
   }
 }
 :deep(.radio-group-dark.arco-radio-group-button) {

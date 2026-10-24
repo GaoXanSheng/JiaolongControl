@@ -25,7 +25,6 @@ internal static class NvGpuCurveInterop
 {
     // --- nvapi_QueryInterface 函数 ID ---
     private const uint IdInitialize = 0x0150E828;
-    private const uint IdUnload = 0xD22BDD7E;
     private const uint IdGetErrorMessage = 0x6C2D048C;
     private const uint IdEnumPhysicalGPUs = 0xE5AC921F;
     private const uint IdGpuGetFullName = 0xCEEE8E9F;
@@ -57,9 +56,7 @@ internal static class NvGpuCurveInterop
     /// <summary>NvAPI_GPU_GetArchInfo — 架构 ID (公开文档 API)。</summary>
     private const uint IdGpuGetArchInfo = 0xD8265D24;
 
-    public const uint ClockFreqTypeCurrent = 0;
     public const uint ClockFreqTypeBase = 1;
-    public const uint ClockFreqTypeBoost = 2;
 
     private const int NvapiMaxPhysicalGpus = 64;
     private const int NvapiShortStringMax = 64;
@@ -184,9 +181,6 @@ internal static class NvGpuCurveInterop
         return $"NVAPI 状态码 {status}";
     }
 
-    public static void Initialize()
-        => Check(GetDelegate<NoArgDelegate>(IdInitialize)(), "NvAPI_Initialize");
-
     /// <summary>NVAPI 契约要求先初始化再调用其它函数; 首次使用时自动完成, 进程内仅一次。</summary>
     private static void EnsureInitialized()
     {
@@ -196,18 +190,6 @@ internal static class NvGpuCurveInterop
             if (_initialized) return;
             Check(GetDelegate<NoArgDelegate>(IdInitialize)(), "NvAPI_Initialize");
             _initialized = true;
-        }
-    }
-
-    public static void Unload()
-    {
-        try
-        {
-            GetDelegate<NoArgDelegate>(IdUnload)();
-        }
-        catch
-        {
-            // 卸载属尽力而为的清理
         }
     }
 
@@ -579,13 +561,6 @@ internal static class NvGpuCurveInterop
     }
 
     // --- 核心电压提升百分比 (Afterburner 的 "Core Voltage (%)") ---
-
-    public static uint GetCoreVoltageBoostPercent(IntPtr gpu)
-    {
-        EnsureInitialized();
-        return GetStruct<VoltageBoostPercentV1>(gpu, IdGpuGetCoreVoltageBoostPercent, 1,
-            "NvAPI_GPU_GetCoreVoltageBoostPercent").Percent;
-    }
 
     public static void SetCoreVoltageBoostPercent(IntPtr gpu, uint percent)
     {

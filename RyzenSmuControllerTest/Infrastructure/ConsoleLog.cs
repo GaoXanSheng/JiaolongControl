@@ -1,6 +1,6 @@
 namespace RyzenSmuControllerTest.Infrastructure;
 
-/// <summary>带时间戳的控制台输出原语，全工具唯一的日志出口。</summary>
+/// <summary>带时间戳的控制台输出原语，运行日志统一出口（帮助文本除外）。</summary>
 internal static class ConsoleLog
 {
     public static void Log(string msg)
@@ -22,7 +22,7 @@ internal static class ConsoleLog
     {
         Log("╔══════════════════════════════════════════╗");
         Log("║   SMU 命令行测试工具                     ║");
-        Log($"║   {string.Join(" ", args).Truncate(34)}");
+        Log($"║   {string.Join(" ", args).Truncate(38).PadRight(38)}║");
         Log("╚══════════════════════════════════════════╝");
         Log("");
     }

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Message } from '@arco-design/web-vue'
+import {ref} from 'vue'
+import {Message} from '@arco-design/web-vue'
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
-import { SystemInfo } from '@/utils/bridge'
+import {SystemInfo} from '@/utils/bridge'
 
 const PAWNIO_URL = 'https://pawnio.eu/'
 const loading = ref(false)
@@ -35,5 +35,3 @@ async function openWebsite() {
     </template>
   </setting-card-component>
 </template>
-
-<style scoped></style>

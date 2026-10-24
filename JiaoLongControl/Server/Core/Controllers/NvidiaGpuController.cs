@@ -13,6 +13,8 @@ namespace JiaoLongControl.Server.Core.Controllers
     [ClassInterface(ClassInterfaceType.AutoDual)]
     public class NvidiaGpuController : IDisposable
     {
+        private const int MaxFanRpm = 6800;
+
         public NvidiaGpuController()
         {
             NVIDIA.Initialize();
@@ -39,6 +41,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             try
             {
                 var gpu = GetGPU(gpuIndex);
+                var fan = GetGpuFanSpeed(gpuIndex);
                 var stats = new GpuStatsInfo
                 {
                     GpuName = gpu.FullName,
@@ -51,7 +54,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                     CoreClock = ((int)(gpu.CurrentClockFrequencies.GraphicsClock.Frequency / 1000)).ToString(),
                     MemoryClock = ((int)(gpu.CurrentClockFrequencies.MemoryClock.Frequency / 1000)).ToString(),
                     GpuTemperature = gpu.ThermalInformation.ThermalSensors.First().CurrentTemperature.ToString(),
-                    FanSpeed = GetGpuFanSpeed(gpuIndex).Data.ToString() ?? "0"
+                    FanSpeed = fan.Success && fan.Data != null ? fan.Data.ToString() ?? "0" : "0"
                 };
                 return new CommandResult(true, "获取成功", stats);
             }
@@ -177,16 +180,23 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         public CommandResult GetGpuFanSpeed(int gpuIndex = -1)
         {
-            try { return new CommandResult(true, "获取成功", (int)GetGPU(gpuIndex).CoolerInformation.Coolers.First().CurrentLevel); }
+            try
+            {
+                var fan = Bridge.Instance.Fan.GetFanSpeed();
+                if (fan.Success && fan.Data is FanSpeedInfo info && info.GPUFanSpeed is > 0 and < 10000)
+                    return new CommandResult(true, "获取成功", info.GPUFanSpeed);
+            }
             catch
             {
-                try
-                {
-                    int ecFan = ((FanSpeedInfo)Bridge.Instance.Fan.GetFanSpeed().Data).GPUFanSpeed;
-                    return new CommandResult(true, "获取成功", ecFan);
-                }
-                catch (Exception ex) { return new CommandResult(false, ex.Message); }
             }
+
+            try
+            {
+                int level = (int)GetGPU(gpuIndex).CoolerInformation.Coolers.First().CurrentLevel;
+                int rpm = (int)Math.Round(level / 100.0 * MaxFanRpm);
+                return new CommandResult(true, "获取成功", rpm);
+            }
+            catch (Exception ex) { return new CommandResult(false, ex.Message); }
         }
 
         public CommandResult GetGpuCoreClockRange(int gpuIndex = -1)
@@ -322,7 +332,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                 var (minMw, maxMw) = NvmlInterop.GetPowerManagementLimitConstraints(ResolveGpuIndex(gpuIndex));
                 int milliwatts = Math.Clamp(watts * 1000, minMw, maxMw);
                 NvmlInterop.SetPowerManagementLimit(ResolveGpuIndex(gpuIndex), milliwatts);
-                return new CommandResult(true, $"功耗限制已设置为 {watts} W");
+                return new CommandResult(true, $"功耗限制已设置为 {milliwatts / 1000} W");
             }
             catch (Exception ex)
             {
@@ -352,7 +362,7 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         #region GPU 曲线调校 (NVAPI ClkVfPoints — 移植自 vuplea/simple-nvidia-undervolt, MIT)
 
-        private CommandResult? _curveCapsCache;
+        private readonly Dictionary<int, CommandResult> _curveCapsCache = new();
 
         /// <summary>曲线调校用的物理 GPU 句柄 (NVAPI 枚举序)。</summary>
         private IntPtr GetCurveGpu(int gpuIndex)
@@ -370,8 +380,9 @@ namespace JiaoLongControl.Server.Core.Controllers
         /// </summary>
         public CommandResult GetGpuCurveCapabilities(int gpuIndex = -1)
         {
-            if (_curveCapsCache != null)
-                return _curveCapsCache;
+            int cacheKey = ResolveGpuIndex(gpuIndex);
+            if (_curveCapsCache.TryGetValue(cacheKey, out var cached))
+                return cached;
 
             CommandResult result;
             try
@@ -414,7 +425,8 @@ namespace JiaoLongControl.Server.Core.Controllers
                 result = new CommandResult(false, $"曲线调校能力探测失败: {ex.Message}");
             }
 
-            _curveCapsCache = result;
+            if (result.Success)
+                _curveCapsCache[cacheKey] = result;
             return result;
         }
 

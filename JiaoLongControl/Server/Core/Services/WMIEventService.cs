@@ -42,15 +42,9 @@ namespace JiaoLongControl.Server.Core.Services
                 Logger.Info("HID_EVENT20 事件订阅成功");
                 return true;
             }
-            catch (ManagementException ex)
-            {
-                Logger.Warn($"HID_EVENT20 事件订阅失败: {ex.Message}");
-                Stop();
-                return false;
-            }
             catch (Exception ex)
             {
-                Logger.Warn($"HID_EVENT20 事件订阅异常: {ex.Message}");
+                Logger.Warn($"HID_EVENT20 事件订阅失败: {ex.Message}");
                 Stop();
                 return false;
             }

@@ -16,14 +16,9 @@ defineProps<{
       <p v-if="description" class="text-xs text-gray-400 font-normal leading-relaxed max-w-[550px]">
         {{ description }}
       </p>
-      <div v-else class="text-xs text-gray-400 font-normal leading-relaxed max-w-[550px]">
-        <slot name="description"></slot>
-      </div>
     </div>
     <div class="flex items-center gap-3 shrink-0 self-end sm:self-center">
       <slot name="extra"></slot>
     </div>
   </div>
 </template>
-
-<style scoped></style>

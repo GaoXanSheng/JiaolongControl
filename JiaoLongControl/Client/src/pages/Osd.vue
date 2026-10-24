@@ -2,6 +2,7 @@
 import {computed, onMounted, ref} from 'vue'
 import {Message} from '@arco-design/web-vue'
 import SettingToggle from '@/components/common/SettingToggle.vue'
+import EditableValue from '@/components/common/EditableValue.vue'
 import {useConfigStore} from '@/stores/config'
 import {Osd} from '@/utils/bridge'
 import type {OsdPosition} from '@/types/config'
@@ -63,7 +64,8 @@ function onPillPointerDown(e: PointerEvent) {
   if (!osdData.value) return
   previewDragging = true
   if (currentPosition.value !== 'Custom') osdData.value.Position = 'Custom'
-  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  const target = e.currentTarget as HTMLElement
+  target.setPointerCapture(e.pointerId)
   configStore.debouncedSave()
 }
 
@@ -86,8 +88,8 @@ async function refreshVolume() {
       volume.value = res.Data.Volume
       muted.value = res.Data.Muted
     }
-  } catch {
-    /* 忽略 */
+  } catch (e) {
+    console.warn('读取系统音量失败', e)
   }
 }
 
@@ -146,7 +148,7 @@ onMounted(() => {
       <div>
         <h1 class="text-2xl font-bold tracking-wide">OSD 屏幕显示</h1>
         <p class="text-[13px] text-gray-500 mt-1">
-          OSD悬浮指示器：按键时在屏幕顶部即时显示状态，完成后悄然隐去
+          OSD悬浮指示器：按键时在屏幕指定位置即时显示状态，完成后悄然隐去
         </p>
       </div>
 
@@ -265,7 +267,15 @@ onMounted(() => {
             <div class="space-y-1.5">
               <div class="flex justify-between items-center text-[11px]">
                 <span class="text-gray-400">出入场时长</span>
-                <span class="text-ink font-mono">{{ osdData.AnimationMs }} ms</span>
+                <EditableValue
+                  v-model="osdData.AnimationMs"
+                  :max="3000"
+                  :min="200"
+                  :step="20"
+                  class="text-ink font-mono"
+                  unit="ms"
+                  @commit="saveDebounced"
+                />
               </div>
               <a-slider
                 v-model="osdData.AnimationMs"
@@ -280,7 +290,15 @@ onMounted(() => {
             <div class="space-y-1.5">
               <div class="flex justify-between items-center text-[11px]">
                 <span class="text-gray-400">显示时长</span>
-                <span class="text-ink font-mono">{{ osdData.DurationMs }} ms</span>
+                <EditableValue
+                  v-model="osdData.DurationMs"
+                  :max="5000"
+                  :min="500"
+                  :step="100"
+                  class="text-ink font-mono"
+                  unit="ms"
+                  @commit="saveDebounced"
+                />
               </div>
               <a-slider
                 v-model="osdData.DurationMs"
@@ -295,7 +313,14 @@ onMounted(() => {
             <div class="space-y-1.5">
               <div class="flex justify-between items-center text-[11px]">
                 <span class="text-gray-400">面板不透明度</span>
-                <span class="text-ink font-mono">{{ osdData.Opacity }}%</span>
+                <EditableValue
+                  v-model="osdData.Opacity"
+                  :max="100"
+                  :min="30"
+                  class="text-ink font-mono"
+                  unit="%"
+                  @commit="saveDebounced"
+                />
               </div>
               <a-slider
                 v-model="osdData.Opacity"
@@ -309,7 +334,15 @@ onMounted(() => {
             <div class="space-y-1.5">
               <div class="flex justify-between items-center text-[11px]">
                 <span class="text-gray-400">界面缩放</span>
-                <span class="text-ink font-mono">{{ osdData.Scale }}%</span>
+                <EditableValue
+                  v-model="osdData.Scale"
+                  :max="200"
+                  :min="100"
+                  :step="5"
+                  class="text-ink font-mono"
+                  unit="%"
+                  @commit="saveDebounced"
+                />
               </div>
               <a-slider
                 v-model="osdData.Scale"
@@ -324,7 +357,15 @@ onMounted(() => {
             <div class="space-y-1.5">
               <div class="flex justify-between items-center text-[11px]">
                 <span class="text-gray-400">EC 状态轮询间隔</span>
-                <span class="text-ink font-mono">{{ osdData.PollIntervalMs }} ms</span>
+                <EditableValue
+                  v-model="osdData.PollIntervalMs"
+                  :max="5000"
+                  :min="500"
+                  :step="100"
+                  class="text-ink font-mono"
+                  unit="ms"
+                  @commit="saveDebounced"
+                />
               </div>
               <a-slider
                 v-model="osdData.PollIntervalMs"

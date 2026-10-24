@@ -11,9 +11,6 @@ public static class Kernel32
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool FreeLibrary(IntPtr hModule);
 
-    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Ansi, ExactSpelling = true)]
-    public static extern IntPtr GetProcAddress(IntPtr hModule, string lpProcName);
-
     [DllImport("kernel32.dll")]
     public static extern IntPtr GetCurrentThread();
 

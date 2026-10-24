@@ -4,6 +4,8 @@ using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Services;
 using JiaoLongControl.Server.Core.Utils;
+using JiaoLongControl.Server.Interop;
+using LibreHardwareMonitor.Hardware;
 
 namespace JiaoLongControl.Server.Core.Controllers
 {
@@ -19,6 +21,8 @@ namespace JiaoLongControl.Server.Core.Controllers
     [ClassInterface(ClassInterfaceType.AutoDual)]
     public class CpuController : IDisposable
     {
+        private static Computer? _lhmComputer;
+        private static readonly object _lhmLock = new();
         private PerformanceCounter? _cpuCounter;
         private PerformanceCounter? _cpuFreqCounter;
 
@@ -38,6 +42,13 @@ namespace JiaoLongControl.Server.Core.Controllers
                 }
                 catch { }
             });
+        }
+
+        public void Dispose()
+        {
+            _cpuCounter?.Dispose();
+            _cpuFreqCounter?.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         public CommandResult SetCpuShortPower(byte sp)
@@ -73,6 +84,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             }
             return new CommandResult(res, res ? "设置成功" : "设置失败");
         }
+
         public CommandResult SetCPUTempWall(byte tw)
         {
             var res = MethodServices.SetValue(MethodName.CPUPower, new byte[2]
@@ -146,16 +158,9 @@ namespace JiaoLongControl.Server.Core.Controllers
                 var voltage = ReadCoreVoltage();
                 if (voltage.HasValue)
                     return new CommandResult(true, "获取成功", Math.Round(voltage.Value, 3));
-                using var searcher = new ManagementObjectSearcher("SELECT CurrentVoltage FROM Win32_Processor");
-                foreach (var obj in searcher.Get())
-                {
-                    ushort raw = Convert.ToUInt16(obj["CurrentVoltage"]);
-                    if (raw > 0)
-                    {
-                        double volts = (raw & 0xFF) / 10.0;
-                        return new CommandResult(true, "获取成功", Math.Round(volts, 3));
-                    }
-                }
+                var wmiVoltage = ReadWmiVoltage();
+                if (wmiVoltage.HasValue)
+                    return new CommandResult(true, "获取成功", Math.Round(wmiVoltage.Value, 3));
                 return new CommandResult(false, "CPU 电压不可用");
             }
             catch (Exception ex)
@@ -163,12 +168,12 @@ namespace JiaoLongControl.Server.Core.Controllers
                 return new CommandResult(false, ex.Message);
             }
         }
-        
+
         private static double? ReadCoreVoltage()
         {
             try
             {
-                var v = Interop.Bridge.Instance.RyzenSmu.GetCoreVoltage();
+                var v = Bridge.Instance.RyzenSmu.GetCoreVoltage();
                 if (v.HasValue)
                     return v.Value;
             }
@@ -180,9 +185,6 @@ namespace JiaoLongControl.Server.Core.Controllers
             return ReadCpuVoltageFromLhm();
         }
 
-        private static LibreHardwareMonitor.Hardware.Computer? _lhmComputer;
-        private static readonly object _lhmLock = new();
-
         private static double? ReadCpuVoltageFromLhm()
         {
             try
@@ -193,7 +195,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                     {
                         if (_lhmComputer == null)
                         {
-                            var computer = new LibreHardwareMonitor.Hardware.Computer
+                            var computer = new Computer
                             {
                                 IsCpuEnabled = true,
                             };
@@ -207,14 +209,14 @@ namespace JiaoLongControl.Server.Core.Controllers
 
                 foreach (var hardware in _lhmComputer.Hardware)
                 {
-                    if (hardware.HardwareType != LibreHardwareMonitor.Hardware.HardwareType.Cpu)
+                    if (hardware.HardwareType != HardwareType.Cpu)
                         continue;
 
                     hardware.Update();
 
                     foreach (var sensor in hardware.Sensors)
                     {
-                        if (sensor.SensorType == LibreHardwareMonitor.Hardware.SensorType.Voltage &&
+                        if (sensor.SensorType == SensorType.Voltage &&
                             sensor.Value.HasValue &&
                             (sensor.Name.Contains("Vcore") || sensor.Name.Contains("Core") && sensor.Name.Contains("VID")))
                         {
@@ -228,6 +230,31 @@ namespace JiaoLongControl.Server.Core.Controllers
             {
                 return null;
             }
+        }
+
+        private static double? ReadWmiVoltage()
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher("SELECT CurrentVoltage FROM Win32_Processor");
+                foreach (var obj in searcher.Get())
+                {
+                    ushort raw = Convert.ToUInt16(obj["CurrentVoltage"]);
+                    if (raw == 0)
+                        continue;
+                    if ((raw & 0x80) != 0)
+                        raw >>= 8;
+                    else
+                        raw &= 0x7F;
+                    if (raw > 0)
+                        return raw / 10.0;
+                }
+            }
+            catch
+            {
+            }
+
+            return null;
         }
 
         private uint GetBaseFrequency()
@@ -260,16 +287,9 @@ namespace JiaoLongControl.Server.Core.Controllers
                 }
                 else
                 {
-                    using var searcher2 = new ManagementObjectSearcher("SELECT CurrentVoltage FROM Win32_Processor");
-                    foreach (var obj2 in searcher2.Get())
-                    {
-                        ushort raw2 = Convert.ToUInt16(obj2["CurrentVoltage"]);
-                        if (raw2 > 0)
-                        {
-                            stats.Voltage = Math.Round((raw2 & 0xFF) / 10.0, 3);
-                            break;
-                        }
-                    }
+                    var wmiVoltage = ReadWmiVoltage();
+                    if (wmiVoltage.HasValue)
+                        stats.Voltage = Math.Round(wmiVoltage.Value, 3);
                 }
                 
                 return new CommandResult(true, "获取成功", stats);
@@ -296,13 +316,6 @@ namespace JiaoLongControl.Server.Core.Controllers
             {
                 return new CommandResult(false, ex.Message);
             }
-        }
-
-        public void Dispose()
-        {
-            _cpuCounter?.Dispose();
-            _cpuFreqCounter?.Dispose();
-            GC.SuppressFinalize(this);
         }
     }
 }

@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import {computed, onMounted, onUnmounted, ref} from 'vue'
 import VChart from 'vue-echarts'
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import { LineChart } from 'echarts/charts'
-import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-import { PerformanceMode, SystemInfo, SystemPerMode } from '@/utils/bridge'
-import { useSystemInfoStore } from '@/stores/systemInfo'
-import { chartTheme } from '@/theme/theme'
-import { storeToRefs } from 'pinia'
+import {use} from 'echarts/core'
+import {CanvasRenderer} from 'echarts/renderers'
+import {LineChart} from 'echarts/charts'
+import {GridComponent, LegendComponent, TooltipComponent} from 'echarts/components'
+import {PerformanceMode, SystemInfo, SystemPerMode} from '@/utils/bridge'
+import {useSystemInfoStore} from '@/stores/systemInfo'
+import {chartTheme} from '@/theme/theme'
+import {storeToRefs} from 'pinia'
+import {Message} from '@arco-design/web-vue'
 import imgCPU from '@/assets/icon/iconCPU.png'
 import imgGPU from '@/assets/icon/gpu2.png'
 import imgFan from '@/assets/icon/iconFan.png'
@@ -22,12 +23,12 @@ import WelcomeBannerComp from './Home/WelcomeBanner.vue'
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent])
 
 const systemInfoStore = useSystemInfoStore()
-const { cpuTemp, gpuTemp, fanSpeed, gpuStats } = storeToRefs(systemInfoStore)
+const { cpuTemp, gpuTemp, fanSpeed } = storeToRefs(systemInfoStore)
 
 const performanceModes = ref([
-  { id: SystemPerMode.QuietMode, name: '高性能', icon: iconPerformance, active: false },
-  { id: SystemPerMode.PerformanceMode, name: '平衡', icon: iconQuiet, active: false },
-  { id: SystemPerMode.BalanceMode, name: '静音', icon: iconBalanced, active: false },
+  { id: SystemPerMode.PerformanceMode, name: '高性能', icon: iconPerformance, active: false },
+  { id: SystemPerMode.BalanceMode, name: '平衡', icon: iconBalanced, active: false },
+  { id: SystemPerMode.QuietMode, name: '静音', icon: iconQuiet, active: false },
 ])
 
 const activeMode = computed(
@@ -47,17 +48,30 @@ async function fetchPerformanceMode() {
   }
 }
 
-function setMode(id: SystemPerMode) {
+async function setMode(id: SystemPerMode) {
+  const previous = performanceModes.value.map((m) => m.active)
   performanceModes.value.forEach((m) => {
     m.active = m.id === id
-    if (id !== SystemPerMode.CustomMode) {
-      PerformanceMode.Set(id)
-    }
   })
+  try {
+    const res = await PerformanceMode.Set(id)
+    if (!res.Success) {
+      performanceModes.value.forEach((m, i) => {
+        m.active = previous[i] ?? false
+      })
+      Message.error(res.Message || '性能模式切换失败')
+    }
+  } catch {
+    performanceModes.value.forEach((m, i) => {
+      m.active = previous[i] ?? false
+    })
+    Message.error('性能模式切换失败')
+  }
 }
 
 const cpuUsage = computed(() => systemInfoStore.cpuStats?.Usage ?? 0)
-const gpuUsage = computed(() => parseInt(gpuStats.value?.GpuUtilization || '0', 10))
+const gpuUsage = computed(() => systemInfoStore.gpuUtilization)
+const maxFanRpm = computed(() => Math.max(fanSpeed.value.CPUFanSpeed, fanSpeed.value.GPUFanSpeed))
 // 无噪音传感器: 以风扇转速查表估算 (标定: 3000 RPM≈25 dBA, 4800 RPM≈40 dBA)
 const NOISE_CALIBRATION: Array<[rpm: number, dba: number]> = [
   [1500, 19],
@@ -67,7 +81,7 @@ const NOISE_CALIBRATION: Array<[rpm: number, dba: number]> = [
   [6800, 48],
 ]
 const noiseLevel = computed(() => {
-  const rpm = Math.max(fanSpeed.value.CPUFanSpeed, fanSpeed.value.GPUFanSpeed)
+  const rpm = maxFanRpm.value
   const pts = NOISE_CALIBRATION
   if (rpm <= pts[0]![0]) return pts[0]![1]
   for (let i = 1; i < pts.length; i++) {
@@ -85,9 +99,10 @@ const sysGpuName = ref('Loading...')
 const sysMemory = ref('Loading...')
 const sysOs = ref('Loading...')
 
-// 模拟历史数据
+// 温度历史数据
+const TEMP_HISTORY_LEN = 10
 const tempHistory = ref<{ cpu: number | null; gpu: number | null }[]>(
-  Array(10).fill({ cpu: null, gpu: null }),
+  Array.from({ length: TEMP_HISTORY_LEN }, () => ({ cpu: null, gpu: null })),
 )
 
 // 心电图数据与生成逻辑
@@ -137,7 +152,7 @@ function startTimers() {
   ecgTimer = setInterval(tickEcg, 100)
   historyTimer = setInterval(() => {
     tempHistory.value.push({ cpu: cpuTemp.value, gpu: gpuTemp.value })
-    if (tempHistory.value.length > 10) tempHistory.value.shift()
+    if (tempHistory.value.length > TEMP_HISTORY_LEN) tempHistory.value.shift()
   }, 2000)
 }
 
@@ -185,7 +200,7 @@ const lineChartOption = computed(() => ({
   },
   xAxis: {
     type: 'category',
-    data: Array(10).fill(''),
+    data: Array(TEMP_HISTORY_LEN).fill(''),
     axisLine: { show: false },
     axisTick: { show: false },
     axisLabel: { color: chartTheme.value.axis, fontSize: 10, margin: 12 },
@@ -224,9 +239,11 @@ const lineChartOption = computed(() => ({
 </script>
 
 <template>
-  <div class="p-6 h-full overflow-y-auto space-y-6 text-ink no-scrollbar">
+  <!-- 三行按窗口高度等比分配 (flex + min-h), 最小窗口 (1300×820 DIP) 下不再把第三行截掉 -->
+  <div class="p-6 h-full overflow-y-auto flex flex-col gap-6 text-ink no-scrollbar">
     <!-- Row 1: 顶部 Banner -->
     <WelcomeBannerComp
+      class="flex-[1.15] min-h-[210px]"
       :cpu-temp="cpuTemp"
       :gpu-temp="gpuTemp"
       :active-mode-name="activeMode.name"
@@ -234,7 +251,7 @@ const lineChartOption = computed(() => ({
     />
 
     <!-- Row 2: 模式 & 监控 -->
-    <div class="grid grid-cols-12 gap-3 h-[250px]">
+    <div class="grid grid-cols-12 gap-3 flex-1 min-h-[215px]">
       <PerformanceModeComp :modes="performanceModes" @change-mode="setMode" />
       <CoreMonitoringComp
         :cpu-usage="cpuUsage"
@@ -245,14 +262,14 @@ const lineChartOption = computed(() => ({
     </div>
 
     <!-- Row 3: 系统概览 & 风扇 & 曲线 -->
-    <div class="grid grid-cols-12 gap-6 h-[280px]">
+    <div class="grid grid-cols-12 gap-6 flex-1 min-h-[230px]">
       <!-- 系统概览 -->
-      <div class="col-span-4 glass-card p-6 flex flex-col">
-        <h2 class="text-[15px] font-medium text-ink/90 mb-4">系统概览</h2>
-        <div class="flex-1 flex flex-col justify-between">
-          <div class="flex items-center gap-4">
+      <div class="col-span-4 glass-card p-6 flex flex-col min-h-0">
+        <h2 class="text-[15px] font-medium text-ink/90 mb-3">系统概览</h2>
+        <div class="flex-1 min-h-0 flex flex-col justify-between">
+          <div class="flex items-center gap-4 min-h-0">
             <div
-              class="badge-blue w-8 h-8 rounded-full flex items-center justify-center text-blue-500"
+              class="badge-blue w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-blue-500"
             >
               <span
                 class="icon-mask icon-tint-blue w-4 h-4"
@@ -266,7 +283,7 @@ const lineChartOption = computed(() => ({
           </div>
           <div class="flex items-center gap-4">
             <div
-              class="badge-green w-8 h-8 rounded-full flex items-center justify-center text-green-500"
+              class="badge-green w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-green-500"
             >
               <span
                 class="icon-mask icon-tint-green w-4 h-4"
@@ -280,7 +297,7 @@ const lineChartOption = computed(() => ({
           </div>
           <div class="flex items-center gap-4">
             <div
-              class="badge-yellow w-8 h-8 rounded-full flex items-center justify-center text-yellow-500"
+              class="badge-yellow w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-yellow-500"
             >
               <icon-storage />
             </div>
@@ -291,7 +308,7 @@ const lineChartOption = computed(() => ({
           </div>
           <div class="flex items-center gap-4">
             <div
-              class="badge-red w-8 h-8 rounded-full flex items-center justify-center text-red-500"
+              class="badge-red w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-red-500"
             >
               <icon-computer />
             </div>
@@ -304,12 +321,12 @@ const lineChartOption = computed(() => ({
       </div>
 
       <!-- 风扇与噪音 -->
-      <div class="col-span-4 glass-card p-6 flex flex-col">
-        <h2 class="text-[15px] font-medium text-ink/90 mb-4">风扇与噪音</h2>
+      <div class="col-span-4 glass-card p-6 flex flex-col min-h-0">
+        <h2 class="text-[15px] font-medium text-ink/90 mb-3">风扇与噪音</h2>
 
-        <div class="flex items-center gap-4 mb-6">
+        <div class="flex items-center gap-4 mb-3 shrink-0">
           <div
-            class="badge-neutral w-12 h-12 rounded-full flex items-center justify-center overflow-hidden"
+            class="badge-neutral w-11 h-11 shrink-0 rounded-full flex items-center justify-center overflow-hidden"
           >
             <span
               class="icon-mask icon-tint-blue-bright w-7 h-7 animate-spin"
@@ -319,17 +336,15 @@ const lineChartOption = computed(() => ({
           </div>
           <div>
             <div class="flex items-baseline gap-1">
-              <span class="text-3xl font-semibold">{{
-                Math.max(fanSpeed.CPUFanSpeed, fanSpeed.GPUFanSpeed)
-              }}</span>
+              <span class="text-3xl font-semibold">{{ maxFanRpm }}</span>
               <span class="text-xs text-gray-400">RPM</span>
             </div>
             <div class="text-xs text-gray-500">风扇转速</div>
           </div>
         </div>
 
-        <!-- 模拟心电图 (ECG) -->
-        <div class="h-16 flex items-center justify-center mb-6 overflow-hidden">
+        <!-- 模拟心电图 (ECG): 高度吃掉卡片剩余空间, 小窗口下不被固定高度顶出 -->
+        <div class="flex-1 min-h-[26px] flex items-center justify-center overflow-hidden">
           <svg class="w-full h-full" viewBox="0 0 300 60" preserveAspectRatio="none">
             <defs>
               <!-- 水平方向渐变色，从紫色过渡到蓝色，再到浅绿 -->
@@ -359,7 +374,7 @@ const lineChartOption = computed(() => ({
           </svg>
         </div>
 
-        <div class="mt-auto">
+        <div class="mt-auto shrink-0">
           <div class="flex items-baseline gap-1">
             <span class="text-2xl font-semibold">{{ noiseLevel }}</span>
             <span class="text-xs text-gray-400">dBA</span>
@@ -369,9 +384,9 @@ const lineChartOption = computed(() => ({
       </div>
 
       <!-- 温度曲线 -->
-      <div class="col-span-4 glass-card p-6 flex flex-col">
-        <h2 class="text-[15px] font-medium text-ink/90 mb-2">温度曲线</h2>
-        <div class="flex-1">
+      <div class="col-span-4 glass-card p-6 flex flex-col min-h-0">
+        <h2 class="text-[15px] font-medium text-ink/90 mb-2 shrink-0">温度曲线</h2>
+        <div class="flex-1 min-h-0">
           <VChart :option="lineChartOption" autoresize />
         </div>
       </div>

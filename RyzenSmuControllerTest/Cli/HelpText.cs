@@ -6,12 +6,12 @@ internal static class HelpText
     public static void Print()
     {
         Console.WriteLine(@"
-SMU 命令行测试工具 — 支持所有 RyzenSmuController 操作
+SMU 命令行测试工具 — 支持常用 RyzenSmuController 操作
 
 用法: RyzenSmuControllerTest [选项...]
 
 === 遥测 ===
-  -t, --telemetry          仅读取遥测 (默认行为)
+  -t, --telemetry          兼容选项；遥测在每次运行前后自动读取
   --dump-sensors           枚举 LibreHardwareMonitor 的 CPU 传感器
   --dump-svi               读取 SMN SVI 遥测寄存器并解码电压
   --smu-read <hex>         读取任意 SMU/SMN 寄存器 (例: --smu-read 3B10570)

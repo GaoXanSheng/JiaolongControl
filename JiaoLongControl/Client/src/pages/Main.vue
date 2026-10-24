@@ -10,7 +10,10 @@ function onClickMenuItem(key: number) {
 }
 
 // “设置”页固定渲染在侧边栏底部，主导航仅显示其余页面（按标题查找，避免依赖固定序号）
-const settingsNum = HomeCardType.find((item) => item.title === '设置')?.num ?? 8
+const settingsNum =
+  HomeCardType.find((item) => item.title === '设置')?.num ??
+  HomeCardType[HomeCardType.length - 1]?.num ??
+  10
 const mainNavItems = HomeCardType.filter((item) => item.num !== settingsNum)
 </script>
 
@@ -29,12 +32,12 @@ const mainNavItems = HomeCardType.filter((item) => item.num !== settingsNum)
               v-for="item in mainNavItems"
               :key="item.num"
               :class="[
-                'w-full flex items-center gap-4 px-5 py-3.5 rounded-[5px] transition-all duration-300',
+                'group w-full flex items-center gap-4 px-5 py-3.5 rounded-[5px] transition-all duration-300',
                 store.SwitchPages === item.num
                   ? 'nav-item-active'
                   : 'hover:bg-ink/[0.03] text-gray-400 hover:text-gray-1000',
               ]"
-              @click="onClickMenuItem(Number(item.num))"
+              @click="onClickMenuItem(item.num)"
             >
               <!-- 图标容器 (选中时在容器上做 drop-shadow: 滤镜先于遮罩执行, 放在遮罩元素自身会被裁掉) -->
               <div
@@ -64,7 +67,7 @@ const mainNavItems = HomeCardType.filter((item) => item.num !== settingsNum)
             </button>
           </nav>
 
-          <!-- 底部工具/设置：依然保持独立渲染，触发 num 为 8 的事件 -->
+          <!-- 底部工具/设置：独立渲染，触发设置页对应的事件 -->
           <div class="pb-6">
             <button
               :class="[

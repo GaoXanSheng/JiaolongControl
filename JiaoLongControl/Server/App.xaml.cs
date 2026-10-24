@@ -10,6 +10,7 @@ namespace JiaoLongControl.Server
     public partial class App : Application
     {
         private static Mutex? _mutex;
+        private static int _cleaned;
         private readonly ILog Logger = LogManager.GetLogger(typeof(App));
 
         protected override void OnStartup(StartupEventArgs e)
@@ -88,6 +89,8 @@ namespace JiaoLongControl.Server
 
         private void Cleanup()
         {
+            if (Interlocked.Exchange(ref _cleaned, 1) != 0)
+                return;
             try
             {
                 Bridge.Instance.Fan.RemoveFanSpeed();

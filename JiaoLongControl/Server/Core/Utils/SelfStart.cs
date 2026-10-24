@@ -1,16 +1,19 @@
 using JiaoLongControl.Server.Interop;
+using log4net;
 
 namespace JiaoLongControl.Server.Core.Utils;
 
 public class SelfStart
 {
+    private static readonly ILog Logger = LogManager.GetLogger(typeof(SelfStart));
+
     public SelfStart()
     {
         var bridge = Bridge.Instance;
         if (bridge.Config.App.BootAdvancedFanControlSystem) Fan();
         if (bridge.Config.App.BootAdvancedCPUSystem) CPU();
         if (bridge.Config.App.BootAdvancedGPUSystem) GPU();
-        if (bridge.Config.App.BootSetRyzenSumCurveOptimizerAll)
+        if (bridge.Config.App.BootSetRyzenSmuCurveOptimizerAll)
         {
             if (bridge.Config.App.BootSetRyzenSmuCurveOptimizerPerCore)
             {
@@ -24,7 +27,40 @@ public class SelfStart
                 bridge.RyzenSmu.SetCurveOptimizerAll(bridge.Config.Smu.CurveOptimizerAll);
             }
         }
+        Smu();
         if (bridge.Config.App.BootKeyboardGradient) bridge.KeyboardGradient.Start();
+    }
+
+    private void Smu()
+    {
+        var smu = Bridge.Instance.Config.Smu;
+        var controller = Bridge.Instance.RyzenSmu;
+        foreach (var key in smu.BootApplyItems)
+        {
+            CommandResult? res = key switch
+            {
+                "StapmLimit" when smu.StapmLimit > 0 => controller.SetStapmLimit(smu.StapmLimit),
+                "StapmTime" when smu.StapmTime > 0 => controller.SetStapmTime((uint)smu.StapmTime),
+                "FastLimit" when smu.FastLimit > 0 => controller.SetFastLimit(smu.FastLimit),
+                "SlowLimit" when smu.SlowLimit > 0 => controller.SetSlowLimit(smu.SlowLimit),
+                "SlowTime" when smu.SlowTime > 0 => controller.SetSlowTime((uint)smu.SlowTime),
+                "PptLimitRsmu" when smu.PptLimitRsmu > 0 => controller.SetPptLimitRsmu(smu.PptLimitRsmu),
+                "VrmCurrentMp1" when smu.VrmCurrentMp1 > 0 => controller.SetVrmCurrentMp1((uint)smu.VrmCurrentMp1),
+                "VrmCurrentRsmu" when smu.VrmCurrentRsmu > 0 => controller.SetVrmCurrentRsmu((uint)smu.VrmCurrentRsmu),
+                "EdcLimitMp1" when smu.EdcLimitMp1 > 0 => controller.SetEdcLimitMp1((uint)smu.EdcLimitMp1),
+                "EdcLimitRsmu" when smu.EdcLimitRsmu > 0 => controller.SetEdcLimitRsmu((uint)smu.EdcLimitRsmu),
+                "TempLimitMp1" when smu.TempLimitMp1 > 0 => controller.SetTempLimitMp1((uint)smu.TempLimitMp1),
+                "TempLimitRsmu" when smu.TempLimitRsmu > 0 => controller.SetTempLimitRsmu((uint)smu.TempLimitRsmu),
+                "PboScalar" when smu.PboScalar > 0 => controller.SetPboScalar((uint)smu.PboScalar),
+                "OcClk" when smu.OcClk != 0 => controller.SetOcClk(smu.OcClk),
+                "OcVolt" when smu.OcVolt > 0 => controller.SetOcVolt((uint)smu.OcVolt),
+                _ => null,
+            };
+            if (res == null)
+                Logger.Info($"开机应用 SMU {key}: 跳过 (值为 0 或字段不存在)");
+            else if (!res.Success)
+                Logger.Warn($"开机应用 SMU {key} 失败: {res.Message}");
+        }
     }
 
     private void Fan() { Bridge.Instance.AutoFan.Start(); }
@@ -58,7 +94,6 @@ public class SelfStart
         {
             bridge.NvidiaGpu.LockGpuClock(gpu.GpuClock);
             bridge.NvidiaGpu.LockMemoryClock(gpu.MemoryClock);
-            // bridge.NvidiaGpu.SetPowerLimit(gpu.PowerLimit);
         }
     }
 }
