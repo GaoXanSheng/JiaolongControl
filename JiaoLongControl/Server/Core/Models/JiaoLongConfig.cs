@@ -226,6 +226,9 @@ public class SmuSection
 
     [ConfigComment("Curve Optimizer 分核偏移 (负值为降压, 索引=核心号)")]
     public List<int> CurveOptimizerPerCore { get; set; } = new();
+
+    [ConfigComment("开机自动应用的 SMU 字段名列表 (在 Ryzen SMU 页勾选「开机」生成; 值为 0 的项跳过不写入)")]
+    public List<string> BootApplyItems { get; set; } = new();
 }
 
 public class OsdSection

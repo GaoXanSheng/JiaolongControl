@@ -5,6 +5,7 @@ import {type GpuCurveCapabilitiesInfo, type GpuCurveStatusInfo, NvidiaGpu,} from
 import {buildSparkline} from '@/utils/chart'
 import {useConfigStore} from '@/stores/config'
 import {useSystemInfoStore} from '@/stores/systemInfo'
+import EditableValue from '@/components/common/EditableValue.vue'
 import {storeToRefs} from 'pinia'
 
 const configStore = useConfigStore()
@@ -404,9 +405,13 @@ await fetchGpuCurve()
                     >ⓘ</span
                   >
                 </span>
-                <span class="text-purple-400 font-medium font-mono"
-                  >{{ GPUData.GpuClock }} MHz</span
-                >
+                <EditableValue
+                  v-model="GPUData.GpuClock"
+                  :max="coreClockRange.Max"
+                  :min="coreClockRange.Min"
+                  class="text-purple-400 font-medium font-mono"
+                  unit="MHz"
+                />
               </div>
               <a-slider
                 v-model="GPUData.GpuClock"
@@ -426,9 +431,13 @@ await fetchGpuCurve()
                     >ⓘ</span
                   ></span
                 >
-                <span class="text-purple-400 font-medium font-mono"
-                  >{{ GPUData.MemoryClock }} MHz</span
-                >
+                <EditableValue
+                  v-model="GPUData.MemoryClock"
+                  :max="memClockRange.Max"
+                  :min="memClockRange.Min"
+                  class="text-purple-400 font-medium font-mono"
+                  unit="MHz"
+                />
               </div>
               <a-slider
                 v-model="GPUData.MemoryClock"
@@ -505,7 +514,15 @@ await fetchGpuCurve()
                 ></span
               >
               <span class="text-purple-400 font-medium font-mono">
-                {{ coreOffset >= 0 ? '+' : '' }}{{ coreOffset }} MHz
+                <EditableValue
+                  v-model="coreOffset"
+                  :max="coreOffsetMax"
+                  :min="coreOffsetMin"
+                  :step="5"
+                  class="text-purple-400 font-medium font-mono"
+                  signed
+                  unit="MHz"
+                />
                 <span
                   v-if="coreOffset !== 0"
                   :class="coreOffset > 0 ? 'text-amber-400' : 'text-emerald-400'"
@@ -527,7 +544,16 @@ await fetchGpuCurve()
           <div class="space-y-2">
             <div class="flex justify-between items-center text-xs">
               <span class="text-gray-300 flex items-center gap-1">显存频率偏移</span>
-              <span class="text-purple-400 font-medium font-mono">+{{ memOffset }} MHz</span>
+              <span class="text-purple-400 font-medium font-mono"
+                ><EditableValue
+                  v-model="memOffset"
+                  :max="memOffsetMax"
+                  :min="0"
+                  :step="50"
+                  class="text-purple-400 font-medium font-mono"
+                  signed
+                  unit="MHz"
+                /></span>
             </div>
             <a-slider
               v-model="memOffset"

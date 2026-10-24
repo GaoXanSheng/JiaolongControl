@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CpuDie from '@/components/common/CpuDie.vue'
+import EditableValue from '@/components/common/EditableValue.vue'
 
 import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {Message} from '@arco-design/web-vue'
@@ -211,8 +212,20 @@ watch(
   { immediate: true },
 )
 
-const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: number[]) => {
-  loadingMap[methodName] = true
+function isBootItem(key: NumericSmuKey) {
+  return configStore.config?.Smu.BootApplyItems.includes(key) ?? false
+}
+
+function toggleBootItem(key: NumericSmuKey, checked: boolean | (string | number | boolean)[]) {
+  const smu = configStore.config?.Smu
+  if (!smu || typeof checked !== 'boolean') return
+  const idx = smu.BootApplyItems.indexOf(key)
+  if (checked && idx < 0) smu.BootApplyItems.push(key)
+  if (!checked && idx >= 0) smu.BootApplyItems.splice(idx, 1)
+  configStore.debouncedSave()
+}
+
+const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: number[]) => {  loadingMap[methodName] = true
   try {
     const fn = RyzenSmu[methodName] as unknown as (
       ...methodArgs: number[]
@@ -348,9 +361,14 @@ onUnmounted(() => {
                 <div v-for="item in group.items" :key="item.key" class="space-y-1.5">
                   <div class="flex justify-between items-center text-[11px]">
                     <span class="text-gray-400">{{ item.label }}</span>
-                    <span class="text-ink font-mono font-medium"
-                      >{{ smuData[item.key] }} {{ item.unit }}</span
-                    >
+                    <EditableValue
+                      v-model="smuData[item.key]"
+                      :max="item.max"
+                      :min="item.min"
+                      :step="item.step || 1"
+                      :unit="item.unit"
+                      class="text-ink font-mono font-medium"
+                    />
                   </div>
                   <div class="flex items-center gap-4">
                     <a-slider
@@ -361,6 +379,12 @@ onUnmounted(() => {
                       class="flex-1"
                       :class="item.sliderClass"
                     />
+                    <a-checkbox
+                      :model-value="isBootItem(item.key)"
+                      class="boot-check shrink-0 text-[10px] text-gray-400"
+                      @change="toggleBootItem(item.key, $event)"
+                      >开机</a-checkbox
+                    >
                     <a-button
                       type="primary"
                       size="small"
@@ -429,9 +453,12 @@ onUnmounted(() => {
               <div class="bg-ink/[0.02] border border-ink/[0.04] p-3.5 rounded-lg mb-4">
                 <div class="flex justify-between items-center mb-1 text-[11px]">
                   <span class="font-bold text-gray-300">All Core Offset (全核心偏移量)</span>
-                  <span class="font-mono text-orange-400 font-semibold">{{
-                    smuData.CurveOptimizerAll
-                  }}</span>
+                  <EditableValue
+                    v-model="smuData.CurveOptimizerAll"
+                    :max="100"
+                    :min="-100"
+                    class="font-mono text-orange-400 font-semibold"
+                  />
                 </div>
                 <div class="flex items-center gap-4">
                   <a-slider
@@ -794,6 +821,25 @@ onUnmounted(() => {
 :deep(.slider-orange .arco-slider-button) {
   border: 2px solid #ff7d00 !important;
   box-shadow: 0 0 8px rgba(255, 125, 0, 0.6) !important;
+}
+
+.boot-check {
+  --primary-6: 138, 43, 226;
+}
+.boot-check :deep(.arco-checkbox-label) {
+  color: inherit;
+  font-size: 10px;
+}
+.boot-check :deep(.arco-checkbox-icon) {
+  background-color: transparent;
+  border-color: var(--color-line);
+}
+.boot-check:hover :deep(.arco-checkbox-icon) {
+  border-color: var(--color-accent-purple);
+}
+.boot-check:hover :deep(.arco-checkbox-icon-hover::before),
+.boot-check:focus-within :deep(.arco-checkbox-icon-hover::before) {
+  background-color: var(--color-line-soft);
 }
 
 /* 深色模式下拉选择框 */

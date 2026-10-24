@@ -1,7 +1,7 @@
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { Message } from '@arco-design/web-vue'
-import { AutoFanControl, Fan } from '@/utils/bridge'
-import { useConfigStore } from '@/stores/config'
+import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
+import {Message} from '@arco-design/web-vue'
+import {AutoFanControl, Fan} from '@/utils/bridge'
+import {useConfigStore} from '@/stores/config'
 
 export interface FanCurvePoint {
   temp: number
@@ -262,13 +262,23 @@ export function useFanCurveEditor() {
     top: `${menuPos.y}px`,
   }))
 
+  const MENU_WIDTH = 150
+  const MENU_HEIGHT = 112
+
   function openContextMenu(index: number, e: MouseEvent) {
     selectedIndex.value = index
     menuVisible.value = true
 
-    const rect = containerRef.value!.getBoundingClientRect()
+    const host = (containerRef.value!.offsetParent as HTMLElement | null) ?? containerRef.value!
+    const rect = host.getBoundingClientRect()
     menuPos.x = e.clientX - rect.left + 10
     menuPos.y = e.clientY - rect.top
+    if (menuPos.x + MENU_WIDTH > rect.width) {
+      menuPos.x = Math.max(0, rect.width - MENU_WIDTH)
+    }
+    if (menuPos.y + MENU_HEIGHT > rect.height) {
+      menuPos.y = Math.max(0, rect.height - MENU_HEIGHT)
+    }
   }
 
   function closeMenu() {

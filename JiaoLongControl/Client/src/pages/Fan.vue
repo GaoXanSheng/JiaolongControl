@@ -4,6 +4,7 @@ import {Message} from '@arco-design/web-vue'
 import {AutoFanControl, Fan} from '@/utils/bridge'
 import {useConfigStore} from '@/stores/config'
 import FanSpeed from '@/components/common/FanSpeed.vue'
+import EditableValue from '@/components/common/EditableValue.vue'
 import {FAN_MAX_RPM, FAN_MIN_RPM} from '@/constants'
 
 const loading = ref(false)
@@ -84,9 +85,13 @@ async function handleRemoveFanClick() {
                 <h2 class="text-base font-semibold mt-1 text-gray-200">目标转速设定</h2>
               </div>
               <div class="text-right">
-                <span class="text-3xl font-black font-mono text-ink leading-none">{{
-                  FanPageStore.ManualFanSpeed
-                }}</span>
+                <EditableValue
+                  v-model="FanPageStore.ManualFanSpeed"
+                  :max="8000"
+                  :min="0"
+                  :step="100"
+                  class="text-3xl font-black font-mono text-ink leading-none"
+                />
                 <span class="text-gray-500 text-xs ml-1 font-bold font-mono">RPM</span>
               </div>
             </div>

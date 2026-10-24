@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CpuDie from '@/components/common/CpuDie.vue'
+import EditableValue from '@/components/common/EditableValue.vue'
 
 import {computed, ref} from 'vue'
 import {Message} from '@arco-design/web-vue'
@@ -228,9 +229,13 @@ async function handleCancel() {
                     >ⓘ</span
                   ></span
                 >
-                <span class="text-purple-400 font-medium font-mono"
-                  >{{ activeProfile.CpuLongPower }} W</span
-                >
+                <EditableValue
+                  v-model="activeProfile.CpuLongPower"
+                  :max="255"
+                  :min="30"
+                  class="text-purple-400 font-medium font-mono"
+                  unit="W"
+                />
               </div>
               <a-slider v-model="activeProfile.CpuLongPower" :min="30" :max="255" class="w-full" />
             </div>
@@ -244,9 +249,13 @@ async function handleCancel() {
                     >ⓘ</span
                   ></span
                 >
-                <span class="text-purple-400 font-medium font-mono"
-                  >{{ activeProfile.CpuShortPower }} W</span
-                >
+                <EditableValue
+                  v-model="activeProfile.CpuShortPower"
+                  :max="255"
+                  :min="30"
+                  class="text-purple-400 font-medium font-mono"
+                  unit="W"
+                />
               </div>
               <a-slider v-model="activeProfile.CpuShortPower" :min="30" :max="255" class="w-full" />
             </div>
@@ -260,9 +269,13 @@ async function handleCancel() {
                     >ⓘ</span
                   ></span
                 >
-                <span v-if="!perCoreMode" class="text-purple-400 font-medium font-mono">{{
-                  configStore.config?.Smu?.CurveOptimizerAll ?? 0
-                }}</span>
+                <EditableValue
+                  v-if="SmuData && !perCoreMode"
+                  v-model="SmuData.CurveOptimizerAll"
+                  :max="50"
+                  :min="-50"
+                  class="text-purple-400 font-medium font-mono"
+                />
               </div>
               <a-slider
                 v-if="SmuData && !perCoreMode"
@@ -289,9 +302,13 @@ async function handleCancel() {
                     >ⓘ</span
                   ></span
                 >
-                <span class="text-purple-400 font-medium font-mono"
-                  >{{ activeProfile.CpuTempWall }} °C</span
-                >
+                <EditableValue
+                  v-model="activeProfile.CpuTempWall"
+                  :max="105"
+                  :min="60"
+                  class="text-purple-400 font-medium font-mono"
+                  unit="°C"
+                />
               </div>
               <a-slider v-model="activeProfile.CpuTempWall" :min="60" :max="105" class="w-full" />
             </div>
@@ -305,9 +322,16 @@ async function handleCancel() {
                     >ⓘ</span
                   ></span
                 >
-                <span class="text-purple-400 font-medium font-mono"
-                  >{{ (activeProfile.CpuMaxFrequency / 1000).toFixed(1) }} GHz</span
-                >
+                <EditableValue
+                  v-model="activeProfile.CpuMaxFrequency"
+                  :max="5400"
+                  :min="1000"
+                  :precision="1"
+                  :scale="0.001"
+                  :step="100"
+                  class="text-purple-400 font-medium font-mono"
+                  unit="GHz"
+                />
               </div>
               <a-slider
                 v-model="activeProfile.CpuMaxFrequency"

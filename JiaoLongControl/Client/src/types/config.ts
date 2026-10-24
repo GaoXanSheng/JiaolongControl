@@ -80,6 +80,7 @@ export interface SmuSectionType {
   OcVolt: number
   CurveOptimizerAll: number
   CurveOptimizerPerCore: number[]
+  BootApplyItems: string[]
 }
 
 export type OsdPosition = 'TopCenter' | 'BottomCenter' | 'Custom'

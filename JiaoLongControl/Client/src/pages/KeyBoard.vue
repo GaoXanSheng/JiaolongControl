@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { Message } from '@arco-design/web-vue'
-import { Keyboard, KeyboardGradient } from '@/utils/bridge.ts'
+import {ref, watch} from 'vue'
+import {Message} from '@arco-design/web-vue'
+import {Keyboard, KeyboardGradient} from '@/utils/bridge.ts'
+import EditableValue from '@/components/common/EditableValue.vue'
 
 const loading = ref(false)
 const gradientRunning = ref(false)
@@ -273,7 +274,13 @@ function handleReset() {
                 <span class="text-gray-300 flex items-center gap-1 font-semibold text-red-400"
                   >红色通道 (R)</span
                 >
-                <span class="text-red-400 font-medium font-mono">{{ color.red }}</span>
+                <EditableValue
+                  v-model="color.red"
+                  :disabled="gradientRunning"
+                  :max="255"
+                  :min="0"
+                  class="text-red-400 font-medium font-mono"
+                />
               </div>
               <a-slider v-model="color.red" :min="0" :max="255" :disabled="gradientRunning" class="w-full red-slider" />
             </div>
@@ -284,7 +291,13 @@ function handleReset() {
                 <span class="text-gray-300 flex items-center gap-1 font-semibold text-green-400"
                   >绿色通道 (G)</span
                 >
-                <span class="text-green-400 font-medium font-mono">{{ color.green }}</span>
+                <EditableValue
+                  v-model="color.green"
+                  :disabled="gradientRunning"
+                  :max="255"
+                  :min="0"
+                  class="text-green-400 font-medium font-mono"
+                />
               </div>
               <a-slider v-model="color.green" :min="0" :max="255" :disabled="gradientRunning" class="w-full green-slider" />
             </div>
@@ -295,7 +308,13 @@ function handleReset() {
                 <span class="text-gray-300 flex items-center gap-1 font-semibold text-blue-400"
                   >蓝色通道 (B)</span
                 >
-                <span class="text-blue-400 font-medium font-mono">{{ color.blue }}</span>
+                <EditableValue
+                  v-model="color.blue"
+                  :disabled="gradientRunning"
+                  :max="255"
+                  :min="0"
+                  class="text-blue-400 font-medium font-mono"
+                />
               </div>
               <a-slider v-model="color.blue" :min="0" :max="255" :disabled="gradientRunning" class="w-full blue-slider" />
             </div>
@@ -305,8 +324,15 @@ function handleReset() {
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-300 flex items-center gap-1">背光亮度等级</span>
                 <span class="text-purple-400 font-medium font-mono"
-                  >Level {{ LightBrightness }}</span
-                >
+                  >Level
+                  <EditableValue
+                    v-model="LightBrightness"
+                    :disabled="gradientRunning"
+                    :max="3"
+                    :min="0"
+                    :step="1"
+                    class="text-purple-400 font-medium font-mono"
+                /></span>
               </div>
               <a-slider v-model="LightBrightness" :min="0" :max="3" :step="1" :disabled="gradientRunning" class="w-full" />
             </div>
