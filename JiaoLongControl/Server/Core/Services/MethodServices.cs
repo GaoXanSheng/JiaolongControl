@@ -55,18 +55,11 @@ namespace JiaoLongControl.Server.Core.Services
                 return new Tuple<bool, byte[]>(false, null);
             try
             {
-                try
-                {
-                    using var mo = new ManagementObject("root\\WMI", "MICommonInterface.InstanceName='ACPI\\PNP0C14\\MIFS_0'", null);
-                    var parameters = mo.GetMethodParameters("MiInterface");
-                    parameters["InData"] = inData;
-                    var output = mo.InvokeMethod("MiInterface", parameters, null)?["OutData"] as byte[];
-                    return new Tuple<bool, byte[]>(output != null, output);
-                }
-                catch
-                {
-                    return new Tuple<bool, byte[]>(false, null);
-                }
+                using var mo = new ManagementObject("root\\WMI", "MICommonInterface.InstanceName='ACPI\\PNP0C14\\MIFS_0'", null);
+                var parameters = mo.GetMethodParameters("MiInterface");
+                parameters["InData"] = inData;
+                var output = mo.InvokeMethod("MiInterface", parameters, null)?["OutData"] as byte[];
+                return new Tuple<bool, byte[]>(output != null, output);
             }
             catch
             {

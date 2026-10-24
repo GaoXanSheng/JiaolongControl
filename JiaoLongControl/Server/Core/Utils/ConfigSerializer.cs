@@ -54,7 +54,8 @@ public static class ConfigSerializer
         try
         {
             var yaml = File.ReadAllText(ConfigPath);
-            return Deserializer.Deserialize<JiaoLongConfig>(yaml);
+            yaml = MigrateLegacyKeys(yaml);
+            return Deserializer.Deserialize<JiaoLongConfig>(yaml) ?? new JiaoLongConfig();
         }
         catch (Exception)
         {
@@ -63,7 +64,8 @@ public static class ConfigSerializer
                 try
                 {
                     var yaml = File.ReadAllText(BackupPath);
-                    return Deserializer.Deserialize<JiaoLongConfig>(yaml);
+                    yaml = MigrateLegacyKeys(yaml);
+                    return Deserializer.Deserialize<JiaoLongConfig>(yaml) ?? new JiaoLongConfig();
                 }
                 catch
                 {
@@ -75,6 +77,13 @@ public static class ConfigSerializer
         }
     }
 
+    private static string MigrateLegacyKeys(string yaml)
+    {
+        return yaml.Replace(
+            "BootSetRyzenSumCurveOptimizerAll:",
+            "BootSetRyzenSmuCurveOptimizerAll:");
+    }
+
     public static void Save(JiaoLongConfig config)
     {
         Directory.CreateDirectory(ConfigDir);
@@ -83,8 +92,6 @@ public static class ConfigSerializer
             File.Copy(ConfigPath, BackupPath, overwrite: true);
         File.WriteAllText(TempPath, yaml);
         File.Move(TempPath, ConfigPath, overwrite: true);
-        if (File.Exists(TempPath))
-            File.Delete(TempPath);
     }
 
     public static void Initialize(string version)
@@ -96,17 +103,7 @@ public static class ConfigSerializer
         }
 
         var existing = Load();
-        // 如果配置文件版本字段不存在 删除重建
-        if (string.IsNullOrWhiteSpace(existing.Version))
-        {
-            if (File.Exists(ConfigPath))
-            {
-                File.Delete(ConfigPath);
-            }
-            Save(new JiaoLongConfig { Version = version });
-        }
-        // 如果配置文件存在但版本不一致
-        if (existing.Version != version )
+        if (existing.Version != version)
         {
             Update(existing, version);
         }

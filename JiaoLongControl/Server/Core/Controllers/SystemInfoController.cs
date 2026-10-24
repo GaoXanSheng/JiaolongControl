@@ -11,7 +11,12 @@ namespace JiaoLongControl.Server.Core.Controllers
         {
             try
             {
-                url = url.Trim() ?? "";
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    return new CommandResult(false, "无效的链接地址");
+                }
+
+                url = url.Trim();
                 if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
                     (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
                 {

@@ -225,7 +225,8 @@ function toggleBootItem(key: NumericSmuKey, checked: boolean | (string | number 
   configStore.debouncedSave()
 }
 
-const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: number[]) => {  loadingMap[methodName] = true
+const applySetting = async (methodName: keyof typeof RyzenSmu, ...args: number[]) => {
+  loadingMap[methodName] = true
   try {
     const fn = RyzenSmu[methodName] as unknown as (
       ...methodArgs: number[]
@@ -292,8 +293,8 @@ async function fetchTelemetry() {
       pushHistory(edcHistory.value, res.Data.Edc ?? 0)
       pushHistory(tempHistory.value, res.Data.Temp)
     }
-  } catch {
-    // silent fail — telemetry is best-effort
+  } catch (e) {
+    console.warn('读取 SMU 遥测失败', e)
   }
 }
 
@@ -317,8 +318,8 @@ onMounted(async () => {
       cpuName.value = infoRes.Data.Name || 'AMD Ryzen'
       cpuCoreInfo.value = `${infoRes.Data.Cores} 核心 / ${infoRes.Data.Threads} 线程`
     }
-  } catch {
-    /* ignore */
+  } catch (e) {
+    console.warn('读取 CPU 信息失败', e)
   }
 
   fetchTelemetry()
@@ -635,7 +636,7 @@ onUnmounted(() => {
               <div>
                 <span class="text-[10px] text-gray-500 block">TDC 供电电流</span>
                 <span class="text-base font-bold text-ink font-mono"
-                  >{{ (telemetry.Tdc ?? 0).toFixed(1) }}
+                  >{{ telemetry.Tdc === null ? 'N/A' : telemetry.Tdc.toFixed(1) }}
                   <span class="text-[10px] text-gray-500 font-bold">A</span></span
                 >
               </div>
@@ -668,7 +669,7 @@ onUnmounted(() => {
               <div>
                 <span class="text-[10px] text-gray-500 block">EDC 峰值电流</span>
                 <span class="text-base font-bold text-ink font-mono"
-                  >{{ (telemetry.Edc ?? 0).toFixed(1) }}
+                  >{{ telemetry.Edc === null ? 'N/A' : telemetry.Edc.toFixed(1) }}
                   <span class="text-[10px] text-gray-500 font-bold">A</span></span
                 >
               </div>

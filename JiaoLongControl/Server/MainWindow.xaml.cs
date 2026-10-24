@@ -225,17 +225,7 @@ namespace JiaoLongControl.Server
             // 当系统从休眠/睡眠中恢复时，在后台重新应用开机策略
             if (e.Mode == PowerModes.Resume)
             {
-                _ = Task.Run(() =>
-                {
-                    try
-                    {
-                        new SelfStart();
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error("恢复后 SelfStart 执行异常", ex);
-                    }
-                });
+                _ = RunSelfStartAsync();
             }
         }
 
@@ -368,7 +358,7 @@ namespace JiaoLongControl.Server
 
                     if (attempt < 3)
                     {
-                        await Task.Delay(1500 * attempt); // 1.5s / 3s / 5s
+                        await Task.Delay(1500 * attempt); // 1.5s / 3s
                         if (generation != _webViewGeneration || _webViewDestroyed)
                             return;
                     }
@@ -380,9 +370,6 @@ namespace JiaoLongControl.Server
                     }
                 }
             }
-
-            if (!envReady)
-                return;
 
             // 阶段二：页面导航 + 失败重试（最多 3 次）
             await RetryNavigationAsync(view, generation);
@@ -439,6 +426,9 @@ namespace JiaoLongControl.Server
         /// <summary>导航并等待 NavigationCompleted，返回是否成功</summary>
         private async Task<bool> NavigateWithTimeoutAsync(WebView2 view, int generation, TimeSpan timeout)
         {
+            if (generation != _webViewGeneration || _webViewDestroyed)
+                return false;
+
             var core = SafeCore(view);
             if (core == null)
                 return false;

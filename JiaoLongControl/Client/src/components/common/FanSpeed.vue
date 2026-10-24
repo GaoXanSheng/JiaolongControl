@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Fan, CPU, NvidiaGpu } from '@/utils/bridge.ts'
-import { POLL_INTERVAL_FAN_SPEED } from '@/constants'
+import {computed, onMounted, onUnmounted, ref} from 'vue'
+import {CPU, Fan, NvidiaGpu} from '@/utils/bridge.ts'
+import {POLL_INTERVAL_FAN_SPEED} from '@/constants'
 
 const MAX_POINTS = 10
 const INTERVAL = POLL_INTERVAL_FAN_SPEED
@@ -28,7 +28,6 @@ const gpuFan = ref<number[]>(Array(MAX_POINTS).fill(0))
 const cpuTemp = ref<number[]>(Array(MAX_POINTS).fill(0))
 const gpuTemp = ref<number[]>(Array(MAX_POINTS).fill(0))
 
-const hasPolled = ref(false)
 const hoverIndex = ref<number | null>(null)
 let timer: number | null = null
 let running = true
@@ -42,10 +41,7 @@ function push(arr: number[], v: number) {
 const chartW = computed(() => Math.max(0, width.value - PADDING_X * 2))
 const chartH = computed(() => Math.max(0, height.value - PADDING_Y * 2))
 
-const xStep = computed(() => {
-  if (MAX_POINTS <= 1) return 0
-  return chartW.value / (MAX_POINTS - 1)
-})
+const xStep = computed(() => chartW.value / (MAX_POINTS - 1))
 
 const xs = computed(() => {
   const currentLen = cpuFan.value.length
@@ -136,7 +132,7 @@ async function poll() {
   push(cpuTemp.value, tempCpuTemp)
   push(gpuTemp.value, tempGpuTemp)
 
-  hasPolled.value = true
+  if (!running) return
   timer = window.setTimeout(poll, INTERVAL)
 }
 
@@ -295,28 +291,24 @@ onUnmounted(() => {
         <!-- 6. 数据点拐点微圆点 -->
         <g v-for="(x, i) in xs" :key="'nodes-' + i">
           <circle
-            v-if="cpuFan[i] !== undefined"
             :cx="x"
             :cy="getY(cpuFan[i]!, MAX_FAN_RPM, 'cpu')"
             r="2"
             :fill="COLOR_CPU_FAN"
           />
           <circle
-            v-if="gpuFan[i] !== undefined"
             :cx="x"
             :cy="getY(gpuFan[i]!, MAX_FAN_RPM, 'gpu')"
             r="2"
             :fill="COLOR_GPU_FAN"
           />
           <circle
-            v-if="cpuTemp[i] !== undefined"
             :cx="x"
             :cy="getY(cpuTemp[i]!, MAX_TEMP_C, 'cpu')"
             r="2"
             :fill="COLOR_CPU_TEMP"
           />
           <circle
-            v-if="gpuTemp[i] !== undefined"
             :cx="x"
             :cy="getY(gpuTemp[i]!, MAX_TEMP_C, 'gpu')"
             r="2"
@@ -339,7 +331,6 @@ onUnmounted(() => {
           <!-- 悬浮高亮圆圈 -->
           <g>
             <circle
-              v-if="cpuFan[hoverIndex] !== undefined"
               :cx="xs[hoverIndex]"
               :cy="getY(cpuFan[hoverIndex]!, MAX_FAN_RPM, 'cpu')"
               r="3.5"
@@ -348,7 +339,6 @@ onUnmounted(() => {
               stroke-width="2"
             />
             <circle
-              v-if="gpuFan[hoverIndex] !== undefined"
               :cx="xs[hoverIndex]"
               :cy="getY(gpuFan[hoverIndex]!, MAX_FAN_RPM, 'gpu')"
               r="3.5"
@@ -357,7 +347,6 @@ onUnmounted(() => {
               stroke-width="2"
             />
             <circle
-              v-if="cpuTemp[hoverIndex] !== undefined"
               :cx="xs[hoverIndex]"
               :cy="getY(cpuTemp[hoverIndex]!, MAX_TEMP_C, 'cpu')"
               r="3.5"
@@ -366,7 +355,6 @@ onUnmounted(() => {
               stroke-width="2"
             />
             <circle
-              v-if="gpuTemp[hoverIndex] !== undefined"
               :cx="xs[hoverIndex]"
               :cy="getY(gpuTemp[hoverIndex]!, MAX_TEMP_C, 'gpu')"
               r="3.5"
@@ -391,7 +379,7 @@ onUnmounted(() => {
               stroke-width="1"
             />
             <text x="15" y="24" font-size="11" font-weight="bold" style="fill: var(--color-text-main)">
-              时间切片: {{ hoverIndex + 1 }} / 10
+              时间切片: {{ hoverIndex + 1 }} / {{ MAX_POINTS }}
             </text>
             <g transform="translate(15, 46)">
               <circle r="3.5" :fill="COLOR_CPU_FAN" cy="-3.5" />

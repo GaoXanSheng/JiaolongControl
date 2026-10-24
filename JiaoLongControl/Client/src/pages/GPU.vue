@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref, type Ref, watch} from 'vue'
 import {Message} from '@arco-design/web-vue'
-import {type GpuCurveCapabilitiesInfo, type GpuCurveStatusInfo, NvidiaGpu,} from '@/utils/bridge'
+import {type GpuCurveCapabilitiesInfo, type GpuCurveStatusInfo, NvidiaGpu} from '@/utils/bridge'
 import {buildSparkline} from '@/utils/chart'
 import {useConfigStore} from '@/stores/config'
 import {useSystemInfoStore} from '@/stores/systemInfo'
@@ -87,14 +87,12 @@ const fanChart = computed(() => generateSvgPath(fanSpeedHistory.value, 40)) // C
 const GPUData = computed(() => configStore.config?.Gpu)
 const coreClockRange = ref({ Min: 0, Max: 500 })
 const memClockRange = ref({ Min: 0, Max: 1500 })
-const powerLimitRange = ref({ Min: 50, Max: 140 })
 
 async function fetchGpuRanges() {
   try {
-    const [core, mem, power] = await Promise.all([
+    const [core, mem] = await Promise.all([
       NvidiaGpu.GetGpuCoreClockRange(),
       NvidiaGpu.GetGpuMemoryClockRange(),
-      NvidiaGpu.GetGpuPowerLimitRange(),
     ])
 
     if (core.Success && core.Data) {
@@ -112,15 +110,6 @@ async function fetchGpuRanges() {
       memClockRange.value = { Min: min, Max: max }
       if (GPUData.value && (GPUData.value.MemoryClock < min || GPUData.value.MemoryClock > max)) {
         GPUData.value.MemoryClock = max
-      }
-    }
-
-    if (power.Success && power.Data) {
-      const min = power.Data.Min ?? 50
-      const max = power.Data.Max ?? 140
-      powerLimitRange.value = { Min: min, Max: max }
-      if (GPUData.value && (GPUData.value.PowerLimit < min || GPUData.value.PowerLimit > max)) {
-        GPUData.value.PowerLimit = max
       }
     }
   } catch (err) {
@@ -141,20 +130,19 @@ const coreOffsetMin = computed(
 const coreOffsetMax = computed(
   () => curveStatus.value?.CoreOffsetMaxMhz ?? curveCaps.value?.CoreOffsetMaxMhz ?? 250,
 )
+const memOffsetMin = computed(() => curveStatus.value?.MemoryOffsetMinMhz ?? 0)
 
-/// 把已保存配置映射到界面控件 (页面初始化与取消修改共用)
+// 把已保存配置映射到界面控件 (页面初始化与取消修改共用)
 function initCurveUiFromConfig() {
   if (!GPUData.value) return
   coreOffset.value = Math.min(
     Math.max(GPUData.value.CoreClockOffsetMhz ?? 0, coreOffsetMin.value),
     coreOffsetMax.value,
   )
-  if (curveStatus.value) {
-    memOffset.value = Math.min(
-      Math.max(GPUData.value.MemoryClockOffsetMhz ?? 0, 0),
-      curveStatus.value.MemoryOffsetMaxMhz,
-    )
-  }
+  memOffset.value = Math.min(
+    Math.max(GPUData.value.MemoryClockOffsetMhz ?? 0, memOffsetMin.value),
+    memOffsetMax.value,
+  )
 }
 
 async function fetchGpuCurve() {
@@ -171,7 +159,7 @@ async function fetchGpuCurve() {
   }
 }
 
-/// 常规设置: 只应用 GPU/显存最低频率限制, 不动高级超频
+// 常规设置: 只应用 GPU/显存最低频率限制, 不动高级超频
 async function handleApplyNormal() {
   if (!GPUData.value) return
   loading.value = true
@@ -199,7 +187,7 @@ async function handleApplyNormal() {
   }
 }
 
-/// 常规设置: 只解除频率限制并重置滑条, 不动高级超频
+// 常规设置: 只解除频率限制并重置滑条, 不动高级超频
 async function handleResetNormal() {
   loading.value = true
   try {
@@ -216,7 +204,6 @@ async function handleResetNormal() {
     if (GPUData.value) {
       GPUData.value.GpuClock = coreClockRange.value.Max
       GPUData.value.MemoryClock = memClockRange.value.Max
-      GPUData.value.PowerLimit = powerLimitRange.value.Max
     }
     const saveRes = await configStore.saveConfig()
     if (saveRes?.Success) {
@@ -231,7 +218,7 @@ async function handleResetNormal() {
   }
 }
 
-/// 高级超频: 只应用核心/显存频率偏移, 不动常规锁频
+// 高级超频: 只应用核心/显存频率偏移, 不动常规锁频
 async function handleApplyCurve() {
   if (!GPUData.value) return
   curveApplying.value = true
@@ -258,7 +245,7 @@ async function handleApplyCurve() {
   }
 }
 
-/// 高级超频: 只清零核心/显存偏移, 不动常规锁频
+// 高级超频: 只清零核心/显存偏移, 不动常规锁频
 async function handleResetCurve() {
   curveApplying.value = true
   try {
@@ -311,7 +298,7 @@ const glossary = [
   },
   {
     term: '工作点',
-    desc: '负载下睿频实际停留的电压/频率位置，可在高级超频面板的提示中查看。',
+    desc: '驱动根据当前负载、温度与功耗上限自动选择的电压/频率点，会随负载动态变化。',
   },
 ]
 
@@ -363,7 +350,7 @@ await fetchGpuCurve()
             </div>
           </div>
         </div>
-        <!-- 3. 模式切换按钮 -->
+        <!-- 2. 模式切换按钮 -->
         <div class="flex gap-2">
           <button
             :class="[
@@ -448,14 +435,6 @@ await fetchGpuCurve()
             </div>
 
             <!-- 功耗限制：笔记本 TGP 由固件/EC 管理，驱动接口不可用，暂不提供 -->
-            <!-- <div class="space-y-2">
-              <div class="flex justify-between items-center text-xs">
-                <span class="text-gray-300 flex items-center gap-1">功耗限制 <span
-                    class="text-gray-500 cursor-pointer text-[10px]">ⓘ</span></span>
-                <span class="text-purple-400 font-medium font-mono">{{ GPUData.PowerLimit }} W</span>
-              </div>
-              <a-slider v-model="GPUData.PowerLimit" :min="powerLimitRange.Min" :max="powerLimitRange.Max" class="w-full"/>
-            </div> -->
           </div>
 
           <div class="flex justify-between items-center pt-2 border-t border-ink/[0.04]">
@@ -548,7 +527,7 @@ await fetchGpuCurve()
                 ><EditableValue
                   v-model="memOffset"
                   :max="memOffsetMax"
-                  :min="0"
+                  :min="memOffsetMin"
                   :step="50"
                   class="text-purple-400 font-medium font-mono"
                   signed
@@ -558,7 +537,7 @@ await fetchGpuCurve()
             <a-slider
               v-model="memOffset"
               :max="memOffsetMax"
-              :min="0"
+              :min="memOffsetMin"
               :step="50"
               class="w-full"
             />
@@ -584,7 +563,7 @@ await fetchGpuCurve()
 
       <!-- ==================== 右侧：显卡信息与实时监控栏 ==================== -->
       <div class="w-full lg:w-[360px] shrink-0 space-y-6 lg:pt-[115px]">
-        <!-- 2. 实时监控面板 -->
+        <!-- 3. 实时监控面板 -->
         <div
           class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-4"
         >
@@ -780,17 +759,5 @@ await fetchGpuCurve()
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-:deep(.select-dark .arco-select-view-single) {
-  background-color: var(--color-panel-elevated) !important;
-  border: 1px solid var(--color-line-soft) !important;
-  color: var(--color-text-main) !important;
-  border-radius: 8px !important;
-  height: 32px !important;
-}
-
-:deep(.arco-switch-checked) {
-  background-color: var(--color-accent-purple) !important;
 }
 </style>

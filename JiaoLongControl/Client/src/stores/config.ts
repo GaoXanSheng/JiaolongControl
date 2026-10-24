@@ -1,6 +1,6 @@
-import { defineStore } from 'pinia'
-import { Config } from '@/utils/bridge'
-import type { JiaoLongConfigType } from '@/types/config'
+import {defineStore} from 'pinia'
+import {Config} from '@/utils/bridge'
+import type {JiaoLongConfigType} from '@/types/config'
 
 function debounce(fn: (...args: unknown[]) => unknown, delay: number) {
   let timer: ReturnType<typeof setTimeout> | null = null
@@ -17,33 +17,25 @@ let fetchPromise: Promise<void> | null = null
 export const useConfigStore = defineStore('config', {
   state: () => ({
     config: null as JiaoLongConfigType | null,
-    loading: false,
-    error: null as string | null,
   }),
 
   actions: {
     async fetchConfig(force = false) {
       if (this.config && !force) return
 
-      if (fetchPromise) {
-        await fetchPromise.catch(() => {})
-        if (fetchPromise) return fetchPromise
-      }
+      if (fetchPromise) return fetchPromise
 
-      this.loading = true
       fetchPromise = (async () => {
         try {
           const result = await Config.GetConfig()
           if (result.Success && result.Data) {
             this.config = result.Data
-            this.error = null
           } else {
-            this.error = result.Message || '获取配置失败'
+            console.warn('获取配置失败:', result.Message)
           }
         } catch (err) {
-          this.error = err instanceof Error ? err.message : 'Failed to fetch config'
+          console.warn('获取配置失败:', err)
         } finally {
-          this.loading = false
           fetchPromise = null
         }
       })()

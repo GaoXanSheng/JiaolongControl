@@ -1,7 +1,7 @@
-namespace JiaoLongControl.Server.Core.Utils;
-
-using Microsoft.Win32;
 using System.Windows.Media;
+using Microsoft.Win32;
+
+namespace JiaoLongControl.Server.Core.Utils;
 
 /// <summary>
 /// WPF 侧界面主题取色。配置三态(light/dark/system)解析为是否浅色,
@@ -15,7 +15,7 @@ public static class UiTheme
     private static readonly Color DarkText = Color.FromRgb(0xFF, 0xFF, 0xFF);
     private static readonly Color LightText = Color.FromRgb(0x1A, 0x1B, 0x26);
 
-    /// <summary>解析配置主题为是否浅色; system 跟随 Windows 个人化深浅色(默认深色)</summary>
+    /// <summary>解析配置主题为是否浅色; system 跟随 Windows 个人化深浅色, 读取失败时按深色处理</summary>
     public static bool IsLight(string? theme)
     {
         return theme switch

@@ -1,6 +1,6 @@
-import { defineStore } from 'pinia'
-import { CPU, Fan, NvidiaGpu, type FanSpeedInfo, type GpuStats } from '@/utils/bridge'
-import { POLL_INTERVAL_SYSTEM_INFO } from '@/constants'
+import {defineStore} from 'pinia'
+import {CPU, Fan, type FanSpeedInfo, type GpuStats, NvidiaGpu} from '@/utils/bridge'
+import {POLL_INTERVAL_SYSTEM_INFO} from '@/constants'
 
 export interface CpuStatsInfo {
   FrequencyMhz: number
@@ -15,8 +15,6 @@ export interface SystemInfoState {
   gpuTemp: number
   fanSpeed: FanSpeedInfo
   gpuStats: GpuStats | null
-  error: string | null
-  loading: boolean
 }
 
 export const useSystemInfoStore = defineStore('systemInfo', {
@@ -29,8 +27,6 @@ export const useSystemInfoStore = defineStore('systemInfo', {
       GPUFanSpeed: 0,
     },
     gpuStats: null,
-    error: null,
-    loading: false,
   }),
 
   getters: {
@@ -48,7 +44,6 @@ export const useSystemInfoStore = defineStore('systemInfo', {
 
   actions: {
     async fetchSystemInfo() {
-      this.loading = true
       try {
         const [
           cpuTemp,
@@ -105,19 +100,14 @@ export const useSystemInfoStore = defineStore('systemInfo', {
           CoreClock: gpuCoreClock.Success ? String(gpuCoreClock.Data) : '0',
           MemoryClock: gpuMemClock.Success ? String(gpuMemClock.Data) : '0',
           FanSpeed: gpuFanSpeed.Success ? String(gpuFanSpeed.Data) : '0',
-          GpuTemperature: gTemp.Success ? String(gTemp.Data) : '0',
         }
         this.gpuTemp = gTemp.Success ? gTemp.Data : 0
 
         if (fSpeed.Success) {
           this.fanSpeed = fSpeed.Data
         }
-
-        this.error = null
       } catch (err) {
-        this.error = err instanceof Error ? err.message : 'Failed to fetch system info'
-      } finally {
-        this.loading = false
+        console.warn('刷新系统信息失败', err)
       }
     },
 

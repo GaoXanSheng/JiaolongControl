@@ -17,7 +17,7 @@ namespace JiaoLongControl.Server.Interop
             LogManager.GetLogger(typeof(Bridge));
 
         private readonly object _configLock = new();
-        private Timer _saveTimer;
+        private Timer? _saveTimer;
 
         private CoreWebView2? _webView;
 
@@ -52,7 +52,7 @@ namespace JiaoLongControl.Server.Interop
 
         public void Dispose()
         {
-            _saveTimer.Dispose();
+            _saveTimer?.Dispose();
             _saveTimer = null;
             FlushIfDirty();
             CPU.Dispose();
@@ -107,21 +107,21 @@ namespace JiaoLongControl.Server.Interop
         }
 
         public void InitWebView(CoreWebView2 webView)
-    {
-        _webView = webView;
-    }
+        {
+            _webView = webView;
+        }
 
-        /// <summary>向前端推送 JSON 消息 (需在 UI 线程调用); WebView 未就绪时静默忽略。</summary>
-    public void PostWebMessage(string json)
-    {
-        try
+        /// <summary>需在 UI 线程调用; WebView 未就绪时忽略。</summary>
+        public void PostWebMessage(string json)
         {
-            _webView?.PostWebMessageAsJson(json);
+            try
+            {
+                _webView?.PostWebMessageAsJson(json);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"web message 发送失败: {ex.Message}");
+            }
         }
-        catch (Exception ex)
-        {
-            Logger.Warn($"web message 发送失败: {ex.Message}");
-        }
-    }
     }
 }

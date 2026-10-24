@@ -1,7 +1,7 @@
 <script async setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { LogoLight, ResultState } from '@/utils/bridge.ts'
-import { Message } from '@arco-design/web-vue'
+import {onMounted, ref} from 'vue'
+import {LogoLight, ResultState} from '@/utils/bridge.ts'
+import {Message} from '@arco-design/web-vue'
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
 
 const loading = ref(false)
@@ -11,17 +11,22 @@ onMounted(async () => {
 })
 
 async function LogoLight_handleClick() {
+  const previous = logolight.value
   loading.value = true
-  const result = logolight.value
-    ? await LogoLight.Set(ResultState.ON)
-    : await LogoLight.Set(ResultState.OFF)
-  if (result) {
-    Message.success('应用成功')
-  } else {
-    Message.success('应用失败')
-    logolight.value = result
+  try {
+    const result = await LogoLight.Set(previous ? ResultState.ON : ResultState.OFF)
+    if (result.Success) {
+      Message.success('应用成功')
+    } else {
+      logolight.value = !previous
+      Message.error(result.Message || '应用失败')
+    }
+  } catch {
+    logolight.value = !previous
+    Message.error('应用失败')
+  } finally {
+    loading.value = false
   }
-  loading.value = false
 }
 </script>
 
@@ -42,5 +47,3 @@ async function LogoLight_handleClick() {
     </template>
   </setting-card-component>
 </template>
-
-<style scoped></style>

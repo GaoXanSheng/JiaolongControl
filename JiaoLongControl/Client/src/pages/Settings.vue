@@ -43,13 +43,13 @@ const toggleCards: ToggleCard[] = [
   {
     title: 'RyzenSMU 降压自动应用',
     description: '在软件启动时，自动应用【Ryzen SMU】页面中保存的 Curve Optimizer 降压设定（全核或分核，由下方选项决定）',
-    configPath: 'App.BootSetRyzenSumCurveOptimizerAll',
+    configPath: 'App.BootSetRyzenSmuCurveOptimizerAll',
   },
   {
     title: 'RyzenSMU 分核降压模式',
     description: '启用后，启动时逐核心应用【Ryzen SMU】页面中保存的分核心 Curve Optimizer 数值，代替全核偏移',
     configPath: 'App.BootSetRyzenSmuCurveOptimizerPerCore',
-    visibleWhen: (config) => config.App.BootSetRyzenSumCurveOptimizerAll,
+    visibleWhen: (config) => config.App.BootSetRyzenSmuCurveOptimizerAll,
   },
   {
     title: '自启动键盘渐变',
@@ -61,7 +61,7 @@ const toggleCards: ToggleCard[] = [
 // config 未加载完成时先隐藏带 visibleWhen 条件的卡片
 const visibleCards = computed(() => {
   const config = configStore.config
-  return toggleCards.filter((card) => !card.visibleWhen || !config || card.visibleWhen(config))
+  return toggleCards.filter((card) => !card.visibleWhen || (!!config && card.visibleWhen(config)))
 })
 </script>
 
@@ -98,7 +98,3 @@ const visibleCards = computed(() => {
     </TransitionGroup>
   </div>
 </template>
-
-<style scoped>
-/* Scoped styles can remain empty if all styling is handled by Tailwind classes */
-</style>

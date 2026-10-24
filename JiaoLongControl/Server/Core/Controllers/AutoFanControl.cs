@@ -71,7 +71,7 @@ public class AutoFanControl : IDisposable
     public CommandResult Stop()
     {
         if (!_isRunning)
-            return new CommandResult(!_isRunning, "自动风扇控制没有在运行中");
+            return new CommandResult(true, "自动风扇控制没有在运行中");
         Logger.Info("Auto Fan Control stopping...");
         _cts?.Cancel();
         try
@@ -87,7 +87,7 @@ public class AutoFanControl : IDisposable
         {
             _isRunning = false;
         }
-        return new CommandResult(_isRunning, "自动风扇控制已停止");
+        return new CommandResult(true, "自动风扇控制已停止");
     }
 
     private void ControlLoop(CancellationToken token)
@@ -107,27 +107,55 @@ public class AutoFanControl : IDisposable
             {
                 try
                 {
-                    float rawCpuTemp = Convert.ToSingle(Bridge.Instance.CPU.GetCPUThermometer().Data);
+                    var cpuTempResult = Bridge.Instance.CPU.GetCPUThermometer();
+                    if (!cpuTempResult.Success || cpuTempResult.Data == null)
+                    {
+                        Task.Delay(IntervalMs, token).Wait(token);
+                        continue;
+                    }
+
+                    float rawCpuTemp = Convert.ToSingle(cpuTempResult.Data);
+                    if (rawCpuTemp <= 0 || rawCpuTemp >= 150)
+                    {
+                        Task.Delay(IntervalMs, token).Wait(token);
+                        continue;
+                    }
+
                     float smoothedCpuTemp = UpdateSmoothedTemp(FanType.CPU, rawCpuTemp);
 
+                    float? smoothedGpuTemp = null;
                     var gpuTempResult = Bridge.Instance.NvidiaGpu.GetGpuTemperature();
-                    float rawGpuTemp = gpuTempResult.Success ? Convert.ToSingle(gpuTempResult.Data) : smoothedCpuTemp; 
-                    float smoothedGpuTemp = UpdateSmoothedTemp(FanType.GPU, rawGpuTemp);
+                    if (gpuTempResult.Success && gpuTempResult.Data != null)
+                    {
+                        float rawGpuTemp = Convert.ToSingle(gpuTempResult.Data);
+                        if (rawGpuTemp > 0 && rawGpuTemp < 150)
+                            smoothedGpuTemp = UpdateSmoothedTemp(FanType.GPU, rawGpuTemp);
+                    }
+
                     int targetCpuByte = CalculateFanSpeed(smoothedCpuTemp, FanType.CPU);
-                    int targetGpuByte = CalculateFanSpeed(smoothedGpuTemp, FanType.GPU);
                   
                     if (Bridge.Instance.Config.Fan.FanCurveMerge)
                     {
-                        int targetByte = Math.Max(targetCpuByte, targetGpuByte);
+                        int targetByte = smoothedGpuTemp.HasValue
+                            ? Math.Max(targetCpuByte, CalculateFanSpeed(smoothedGpuTemp.Value, FanType.GPU))
+                            : targetCpuByte;
                         ProcessAndApplyFanSpeed(FanType.CPU, targetByte);
                         ProcessAndApplyFanSpeed(FanType.GPU, targetByte);
                     }
                     else
                     {
-                        int syncedCpuTarget = Math.Max(targetCpuByte, (int)(targetGpuByte * SharedHeatPipeSyncRatio));
-                        int syncedGpuTarget = Math.Max(targetGpuByte, (int)(targetCpuByte * SharedHeatPipeSyncRatio));
+                        int syncedCpuTarget = targetCpuByte;
+                        int? syncedGpuTarget = null;
+                        if (smoothedGpuTemp.HasValue)
+                        {
+                            int targetGpuByte = CalculateFanSpeed(smoothedGpuTemp.Value, FanType.GPU);
+                            syncedCpuTarget = Math.Max(targetCpuByte, (int)(targetGpuByte * SharedHeatPipeSyncRatio));
+                            syncedGpuTarget = Math.Max(targetGpuByte, (int)(targetCpuByte * SharedHeatPipeSyncRatio));
+                        }
+
                         ProcessAndApplyFanSpeed(FanType.CPU, syncedCpuTarget);
-                        ProcessAndApplyFanSpeed(FanType.GPU, syncedGpuTarget);
+                        if (syncedGpuTarget.HasValue)
+                            ProcessAndApplyFanSpeed(FanType.GPU, syncedGpuTarget.Value);
                     }
 
                     Task.Delay(IntervalMs, token).Wait(token);
@@ -247,7 +275,7 @@ public class AutoFanControl : IDisposable
     private class FanState
     {
         public float SmoothedTemp { get; set; } = -1f;
-        public double CurrentSpeedByte { get; set; } = -1f;
+        public double CurrentSpeedByte { get; set; } = -1.0;
         public int LastAppliedByte { get; set; } = -1;
     }
 }

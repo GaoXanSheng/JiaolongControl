@@ -31,7 +31,7 @@ namespace JiaoLongControl.Server
 
         private const double OffsetX = (WinW - PillW) / 2, OffsetY = (WinH - PillH) / 2;
 
-        // 退场基准编排总时长: 实际时长 = 显示时长, 各关键帧按 显示时长/620 等比缩放
+        // 退场基准编排总时长: 实际时长 = 动画时长(_animMs), 各关键帧按 动画时长/620 等比缩放
         private const int ExitMs = 620;
 
         private static readonly ILog Logger = LogManager.GetLogger(typeof(OsdWindow));
@@ -53,8 +53,8 @@ namespace JiaoLongControl.Server
 
         // 驻留时长 (= 配置的显示时长): 悬停离开后按此时长重新计时, 到点才播离场动画
         private double _dwellMs = 2000;
-        private bool _exiting;
         private DispatcherTimer? _exitTimer;
+        private bool _exiting;
         private SolidColorBrush _faintBrush = new(Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF));
         private bool _hoverInside;
         private int _lastCustomX;
@@ -369,7 +369,7 @@ namespace JiaoLongControl.Server
         {
             ResetVisual();
             var easeOut = new CubicEase { EasingMode = EasingMode.EaseOut };
-            // 基准编排总时长 480ms, 整体等比拉伸到显示时长
+            // 基准编排总时长 480ms, 整体等比拉伸到动画时长
             int D(int baseMs) => Math.Max(1, (int)Math.Round(baseMs * _animMs / 480.0));
 
             // 1. 光晕浮现
@@ -435,7 +435,7 @@ namespace JiaoLongControl.Server
             _exiting = true;
             StopAnimations();
             var easeIn = new CubicEase { EasingMode = EasingMode.EaseIn };
-            // 基准编排总时长 620ms (ExitMs), 整体等比拉伸到显示时长, 与入场对等
+            // 基准编排总时长 620ms (ExitMs), 整体等比拉伸到动画时长, 与入场对等
             int D(int baseMs) => Math.Max(1, (int)Math.Round(baseMs * _animMs / 620.0));
 
             // 1. 收起内容 (整个图标容器含 IconGlow 光晕一并隐藏; holdEnd 保持隐藏直到

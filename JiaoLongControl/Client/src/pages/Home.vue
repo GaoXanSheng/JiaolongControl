@@ -9,6 +9,7 @@ import {PerformanceMode, SystemInfo, SystemPerMode} from '@/utils/bridge'
 import {useSystemInfoStore} from '@/stores/systemInfo'
 import {chartTheme} from '@/theme/theme'
 import {storeToRefs} from 'pinia'
+import {Message} from '@arco-design/web-vue'
 import imgCPU from '@/assets/icon/iconCPU.png'
 import imgGPU from '@/assets/icon/gpu2.png'
 import imgFan from '@/assets/icon/iconFan.png'
@@ -22,12 +23,12 @@ import WelcomeBannerComp from './Home/WelcomeBanner.vue'
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent])
 
 const systemInfoStore = useSystemInfoStore()
-const { cpuTemp, gpuTemp, fanSpeed, gpuStats } = storeToRefs(systemInfoStore)
+const { cpuTemp, gpuTemp, fanSpeed } = storeToRefs(systemInfoStore)
 
 const performanceModes = ref([
-  { id: SystemPerMode.QuietMode, name: '高性能', icon: iconPerformance, active: false },
-  { id: SystemPerMode.PerformanceMode, name: '平衡', icon: iconQuiet, active: false },
-  { id: SystemPerMode.BalanceMode, name: '静音', icon: iconBalanced, active: false },
+  { id: SystemPerMode.PerformanceMode, name: '高性能', icon: iconPerformance, active: false },
+  { id: SystemPerMode.BalanceMode, name: '平衡', icon: iconBalanced, active: false },
+  { id: SystemPerMode.QuietMode, name: '静音', icon: iconQuiet, active: false },
 ])
 
 const activeMode = computed(
@@ -47,17 +48,30 @@ async function fetchPerformanceMode() {
   }
 }
 
-function setMode(id: SystemPerMode) {
+async function setMode(id: SystemPerMode) {
+  const previous = performanceModes.value.map((m) => m.active)
   performanceModes.value.forEach((m) => {
     m.active = m.id === id
-    if (id !== SystemPerMode.CustomMode) {
-      PerformanceMode.Set(id)
-    }
   })
+  try {
+    const res = await PerformanceMode.Set(id)
+    if (!res.Success) {
+      performanceModes.value.forEach((m, i) => {
+        m.active = previous[i] ?? false
+      })
+      Message.error(res.Message || '性能模式切换失败')
+    }
+  } catch {
+    performanceModes.value.forEach((m, i) => {
+      m.active = previous[i] ?? false
+    })
+    Message.error('性能模式切换失败')
+  }
 }
 
 const cpuUsage = computed(() => systemInfoStore.cpuStats?.Usage ?? 0)
-const gpuUsage = computed(() => parseInt(gpuStats.value?.GpuUtilization || '0', 10))
+const gpuUsage = computed(() => systemInfoStore.gpuUtilization)
+const maxFanRpm = computed(() => Math.max(fanSpeed.value.CPUFanSpeed, fanSpeed.value.GPUFanSpeed))
 // 无噪音传感器: 以风扇转速查表估算 (标定: 3000 RPM≈25 dBA, 4800 RPM≈40 dBA)
 const NOISE_CALIBRATION: Array<[rpm: number, dba: number]> = [
   [1500, 19],
@@ -67,7 +81,7 @@ const NOISE_CALIBRATION: Array<[rpm: number, dba: number]> = [
   [6800, 48],
 ]
 const noiseLevel = computed(() => {
-  const rpm = Math.max(fanSpeed.value.CPUFanSpeed, fanSpeed.value.GPUFanSpeed)
+  const rpm = maxFanRpm.value
   const pts = NOISE_CALIBRATION
   if (rpm <= pts[0]![0]) return pts[0]![1]
   for (let i = 1; i < pts.length; i++) {
@@ -85,9 +99,10 @@ const sysGpuName = ref('Loading...')
 const sysMemory = ref('Loading...')
 const sysOs = ref('Loading...')
 
-// 模拟历史数据
+// 温度历史数据
+const TEMP_HISTORY_LEN = 10
 const tempHistory = ref<{ cpu: number | null; gpu: number | null }[]>(
-  Array(10).fill({ cpu: null, gpu: null }),
+  Array.from({ length: TEMP_HISTORY_LEN }, () => ({ cpu: null, gpu: null })),
 )
 
 // 心电图数据与生成逻辑
@@ -137,7 +152,7 @@ function startTimers() {
   ecgTimer = setInterval(tickEcg, 100)
   historyTimer = setInterval(() => {
     tempHistory.value.push({ cpu: cpuTemp.value, gpu: gpuTemp.value })
-    if (tempHistory.value.length > 10) tempHistory.value.shift()
+    if (tempHistory.value.length > TEMP_HISTORY_LEN) tempHistory.value.shift()
   }, 2000)
 }
 
@@ -185,7 +200,7 @@ const lineChartOption = computed(() => ({
   },
   xAxis: {
     type: 'category',
-    data: Array(10).fill(''),
+    data: Array(TEMP_HISTORY_LEN).fill(''),
     axisLine: { show: false },
     axisTick: { show: false },
     axisLabel: { color: chartTheme.value.axis, fontSize: 10, margin: 12 },
@@ -321,9 +336,7 @@ const lineChartOption = computed(() => ({
           </div>
           <div>
             <div class="flex items-baseline gap-1">
-              <span class="text-3xl font-semibold">{{
-                Math.max(fanSpeed.CPUFanSpeed, fanSpeed.GPUFanSpeed)
-              }}</span>
+              <span class="text-3xl font-semibold">{{ maxFanRpm }}</span>
               <span class="text-xs text-gray-400">RPM</span>
             </div>
             <div class="text-xs text-gray-500">风扇转速</div>

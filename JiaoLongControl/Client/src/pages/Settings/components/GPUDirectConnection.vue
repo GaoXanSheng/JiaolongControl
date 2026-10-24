@@ -1,7 +1,7 @@
 <script async setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { GPU, GPUMode } from '@/utils/bridge.ts'
-import { Message } from '@arco-design/web-vue'
+import {onMounted, ref} from 'vue'
+import {GPU, GPUMode} from '@/utils/bridge.ts'
+import {Message} from '@arco-design/web-vue'
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
 
 const loading = ref(false)
@@ -58,5 +58,3 @@ async function GPUDirectConnection_handleClick() {
     </template>
   </setting-card-component>
 </template>
-
-<style scoped></style>

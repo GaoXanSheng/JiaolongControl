@@ -25,8 +25,8 @@ async function refreshLocks() {
     if (res.Success && res.Data) {
       locksStore.apply(res.Data)
     }
-  } catch {
-    /* 忽略 */
+  } catch (e) {
+    console.warn('读取锁定状态失败', e)
   }
 }
 
@@ -36,20 +36,21 @@ function lockStateText(key: LockKey) {
   return v ? '已开启' : '已关闭'
 }
 
+const lockSetters: Record<LockKey, (v: boolean) => Promise<CommandResult<void>>> = {
+  CapsLock: Osd.SetCapsLock,
+  NumLock: Osd.SetNumLock,
+  FnLock: Osd.SetFnLock,
+  TouchpadLock: Osd.SetTouchpadLock,
+}
+
 async function toggleLock(key: LockKey) {
   const cur = locks.value?.[key]
   if (cur === null || cur === undefined) {
     Message.warning('该锁定状态读取失败, 无法切换')
     return
   }
-  const setters: Record<LockKey, (v: boolean) => Promise<CommandResult<void>>> = {
-    CapsLock: Osd.SetCapsLock,
-    NumLock: Osd.SetNumLock,
-    FnLock: Osd.SetFnLock,
-    TouchpadLock: Osd.SetTouchpadLock,
-  }
   try {
-    const res = await setters[key](!cur)
+    const res = await lockSetters[key](!cur)
     if (!res.Success) Message.error(res.Message)
   } catch {
     Message.error('设置失败')

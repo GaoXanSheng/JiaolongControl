@@ -76,34 +76,32 @@ public class RyzenSmuController : PawnIO
         return (brand, identifier);
     }
 
+    private (uint Msg, uint Rsp, uint Arg) GetMailboxAddrs(bool isMp1)
+    {
+        return CurrentFamily switch
+        {
+            RyzenSmuFamily.FP6 => (
+                isMp1 ? 0x3B10528u : 0x03B10A20u,
+                isMp1 ? 0x3B10564u : 0x03B10A80u,
+                isMp1 ? 0x3B10998u : 0x03B10A88u),
+            RyzenSmuFamily.FP7_FP8 => (
+                isMp1 ? 0x3B10528u : 0x03B10A20u,
+                isMp1 ? 0x3B10578u : 0x03B10A80u,
+                isMp1 ? 0x3B10998u : 0x03B10A88u),
+            RyzenSmuFamily.FP7_FP8_Strix => (
+                isMp1 ? 0x3B10928u : 0x03B10A20u,
+                isMp1 ? 0x3B10978u : 0x03B10A80u,
+                isMp1 ? 0x3B10998u : 0x03B10A88u),
+            _ => (
+                isMp1 ? 0x3B10530u : 0x03B10524u,
+                isMp1 ? 0x3B1057Cu : 0x03B10570u,
+                isMp1 ? 0x3B109C4u : 0x03B10A40u),
+        };
+    }
+
     private CommandResult Send(uint cmd, uint arg, bool isMp1, string name)
     {
-        uint addrMsg, addrRsp, addrArg;
-
-        switch (CurrentFamily)
-        {
-            case RyzenSmuFamily.FP6:
-                addrMsg = isMp1 ? 0x3B10528u : 0x03B10A20u;
-                addrRsp = isMp1 ? 0x3B10564u : 0x03B10A80u;
-                addrArg = isMp1 ? 0x3B10998u : 0x03B10A88u;
-                break;
-            case RyzenSmuFamily.FP7_FP8:
-                addrMsg = isMp1 ? 0x3B10528u : 0x03B10A20u;
-                addrRsp = isMp1 ? 0x3B10578u : 0x03B10A80u;
-                addrArg = isMp1 ? 0x3B10998u : 0x03B10A88u;
-                break;
-            case RyzenSmuFamily.FP7_FP8_Strix:
-                addrMsg = isMp1 ? 0x3B10928u : 0x03B10A20u;
-                addrRsp = isMp1 ? 0x3B10978u : 0x03B10A80u;
-                addrArg = isMp1 ? 0x3B10998u : 0x03B10A88u;
-                break;
-            case RyzenSmuFamily.AM5_V1:
-            default:
-                addrMsg = isMp1 ? 0x3B10530u : 0x03B10524u;
-                addrRsp = isMp1 ? 0x3B1057Cu : 0x03B10570u;
-                addrArg = isMp1 ? 0x3B109C4u : 0x03B10A40u;
-                break;
-        }
+        var (addrMsg, addrRsp, addrArg) = GetMailboxAddrs(isMp1);
 
         try
         {
@@ -153,9 +151,7 @@ public class RyzenSmuController : PawnIO
         CommandResult? lastResult = null;
         foreach (var (cmd, isMp1) in commands)
         {
-            // 消息中注明实际使用的邮箱与命令号，便于区分 MP1/RSMU 哪条路径被接受
-            // lastResult = Send(cmd, arg, isMp1, $"{name} [{(isMp1 ? "MP1" : "RSMU")} 0x{cmd:X2}]");
-            lastResult = Send(cmd, arg, isMp1, name);
+            lastResult = Send(cmd, arg, isMp1, $"{name} [{(isMp1 ? "MP1" : "RSMU")} 0x{cmd:X2}]");
             if (lastResult.Success)
             {
                 return lastResult;
@@ -175,13 +171,7 @@ public class RyzenSmuController : PawnIO
     /// </summary>
     public ulong[] ReadMailboxArgs(bool isMp1)
     {
-        uint addrArg = CurrentFamily switch
-        {
-            RyzenSmuFamily.FP6 => isMp1 ? 0x3B10998u : 0x03B10A88u,
-            RyzenSmuFamily.FP7_FP8 => isMp1 ? 0x3B10998u : 0x03B10A88u,
-            RyzenSmuFamily.FP7_FP8_Strix => isMp1 ? 0x3B10998u : 0x03B10A88u,
-            _ => isMp1 ? 0x3B109C4u : 0x03B10A40u
-        };
+        uint addrArg = GetMailboxAddrs(isMp1).Arg;
         var args = new ulong[6];
         for (uint i = 0; i < 6; i++)
         {
@@ -196,9 +186,8 @@ public class RyzenSmuController : PawnIO
     {
         uint arg = (uint)(watts * 1000);
         return CurrentFamily switch {
-            RyzenSmuFamily.FP6 => TrySend(arg, "STAPM Limit", (0x14, true), (0x31, false)),
-            RyzenSmuFamily.FP7_FP8 => TrySend(arg, "STAPM Limit", (0x14, true), (0x31, false)),
-            RyzenSmuFamily.FP7_FP8_Strix => TrySend(arg, "STAPM Limit", (0x14, true), (0x31, false)),
+            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix
+                => TrySend(arg, "STAPM Limit", (0x14, true), (0x31, false)),
             _ => TrySend(arg, "STAPM Limit", (0x4F, true))
         };
     }
@@ -206,9 +195,8 @@ public class RyzenSmuController : PawnIO
     public CommandResult SetStapmTime(uint seconds)
     {
         return CurrentFamily switch {
-            RyzenSmuFamily.FP6 => TrySend(seconds, "STAPM Time", (0x18, true), (0x36, false)),
-            RyzenSmuFamily.FP7_FP8 => TrySend(seconds, "STAPM Time", (0x18, true), (0x36, false)),
-            RyzenSmuFamily.FP7_FP8_Strix => TrySend(seconds, "STAPM Time", (0x18, true), (0x36, false)),
+            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix
+                => TrySend(seconds, "STAPM Time", (0x18, true), (0x36, false)),
             _ => TrySend(seconds, "STAPM Time", (0x53, true))
         };
     }
@@ -217,9 +205,8 @@ public class RyzenSmuController : PawnIO
     {
         uint arg = (uint)(watts * 1000);
         return CurrentFamily switch {
-            RyzenSmuFamily.FP6 => TrySend(arg, "Fast Limit", (0x15, true), (0x32, false)),
-            RyzenSmuFamily.FP7_FP8 => TrySend(arg, "Fast Limit", (0x15, true), (0x32, false)),
-            RyzenSmuFamily.FP7_FP8_Strix => TrySend(arg, "Fast Limit", (0x15, true), (0x32, false)),
+            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix
+                => TrySend(arg, "Fast Limit", (0x15, true), (0x32, false)),
             _ => TrySend(arg, "Fast Limit", (0x3E, true))
         };
     }
@@ -228,9 +215,8 @@ public class RyzenSmuController : PawnIO
     {
         uint arg = (uint)(watts * 1000);
         return CurrentFamily switch {
-            RyzenSmuFamily.FP6 => TrySend(arg, "Slow Limit", (0x16, true), (0x33, false)),
-            RyzenSmuFamily.FP7_FP8 => TrySend(arg, "Slow Limit", (0x16, true), (0x33, false)),
-            RyzenSmuFamily.FP7_FP8_Strix => TrySend(arg, "Slow Limit", (0x16, true), (0x33, false)),
+            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix
+                => TrySend(arg, "Slow Limit", (0x16, true), (0x33, false)),
             _ => TrySend(arg, "Slow Limit", (0x5F, true), (0xCB, false))
         };
     }
@@ -238,9 +224,8 @@ public class RyzenSmuController : PawnIO
     public CommandResult SetSlowTime(uint seconds)
     {
         return CurrentFamily switch {
-            RyzenSmuFamily.FP6 => TrySend(seconds, "Slow Time", (0x17, true), (0x35, false)),
-            RyzenSmuFamily.FP7_FP8 => TrySend(seconds, "Slow Time", (0x17, true), (0x35, false)),
-            RyzenSmuFamily.FP7_FP8_Strix => TrySend(seconds, "Slow Time", (0x17, true), (0x35, false)),
+            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix
+                => TrySend(seconds, "Slow Time", (0x17, true), (0x35, false)),
             _ => TrySend(seconds, "Slow Time", (0x60, true))
         };
     }
@@ -249,8 +234,7 @@ public class RyzenSmuController : PawnIO
     {
         uint cmd = CurrentFamily switch { 
             RyzenSmuFamily.FP6 => 0x33u, 
-            RyzenSmuFamily.FP7_FP8 => 0x31u, 
-            RyzenSmuFamily.FP7_FP8_Strix => 0x31u, 
+            RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x31u,
             _ => 0x56u 
         };
         return Send(cmd, (uint)(watts * 1000), false, "PPT Limit (RSMU)");
@@ -263,9 +247,7 @@ public class RyzenSmuController : PawnIO
     public CommandResult SetVrmCurrentMp1(uint milliamps)
     {
         uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 => 0x1Au, 
-            RyzenSmuFamily.FP7_FP8 => 0x1Au, 
-            RyzenSmuFamily.FP7_FP8_Strix => 0x1Au, 
+            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x1Au,
             _ => 0x3Cu 
         };
         return Send(cmd, milliamps, true, "VRM Current (MP1)");
@@ -274,9 +256,7 @@ public class RyzenSmuController : PawnIO
     public CommandResult SetVrmCurrentRsmu(uint milliamps)
     {
         uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 => 0x38u, 
-            RyzenSmuFamily.FP7_FP8 => 0x38u, 
-            RyzenSmuFamily.FP7_FP8_Strix => 0x38u, 
+            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x38u,
             _ => 0x57u 
         };
         return Send(cmd, milliamps, false, "VRM Current (RSMU)");
@@ -285,9 +265,7 @@ public class RyzenSmuController : PawnIO
     public CommandResult SetEdcLimitMp1(uint milliamps)
     {
         uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 => 0x1Cu, 
-            RyzenSmuFamily.FP7_FP8 => 0x1Cu, 
-            RyzenSmuFamily.FP7_FP8_Strix => 0x1Cu, 
+            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x1Cu,
             _ => 0x3Du 
         };
         return Send(cmd, milliamps, true, "EDC Limit (MP1)");
@@ -296,9 +274,7 @@ public class RyzenSmuController : PawnIO
     public CommandResult SetEdcLimitRsmu(uint milliamps)
     {
         uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 => 0x3Au, 
-            RyzenSmuFamily.FP7_FP8 => 0x3Au, 
-            RyzenSmuFamily.FP7_FP8_Strix => 0x3Au, 
+            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x3Au,
             _ => 0x58u 
         };
         return Send(cmd, milliamps, false, "EDC Limit (RSMU)");
@@ -307,9 +283,7 @@ public class RyzenSmuController : PawnIO
     public CommandResult SetTempLimitMp1(uint celsius)
     {
         uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 => 0x19u, 
-            RyzenSmuFamily.FP7_FP8 => 0x19u, 
-            RyzenSmuFamily.FP7_FP8_Strix => 0x19u, 
+            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x19u,
             _ => 0x3Fu 
         };
         return Send(cmd, celsius, true, "Temp Limit (MP1)");
@@ -318,9 +292,7 @@ public class RyzenSmuController : PawnIO
     public CommandResult SetTempLimitRsmu(uint celsius)
     {
         uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 => 0x37u, 
-            RyzenSmuFamily.FP7_FP8 => 0x37u, 
-            RyzenSmuFamily.FP7_FP8_Strix => 0x37u, 
+            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x37u,
             _ => 0x59u 
         };
         return Send(cmd, celsius, false, "Temp Limit (RSMU)");
@@ -334,8 +306,7 @@ public class RyzenSmuController : PawnIO
     {
         uint cmd = CurrentFamily switch { 
             RyzenSmuFamily.FP6 => 0x3Fu, 
-            RyzenSmuFamily.FP7_FP8 => 0x3Eu, 
-            RyzenSmuFamily.FP7_FP8_Strix => 0x3Eu, 
+            RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x3Eu,
             _ => 0x5Bu 
         };
         return Send(cmd, value, false, "PBO Scalar");
@@ -344,9 +315,7 @@ public class RyzenSmuController : PawnIO
     public CommandResult SetOcClk(int mhz)
     {
         uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 => 0x19u, 
-            RyzenSmuFamily.FP7_FP8 => 0x19u, 
-            RyzenSmuFamily.FP7_FP8_Strix => 0x19u, 
+            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x19u,
             _ => 0x5Fu 
         };
         return Send(cmd, (uint)mhz, false, "OC Clock");
@@ -355,9 +324,7 @@ public class RyzenSmuController : PawnIO
     public CommandResult SetPerCoreOcClk(uint coreIdx, uint mhz)
     {
         uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 => 0x1Au, 
-            RyzenSmuFamily.FP7_FP8 => 0x1Au, 
-            RyzenSmuFamily.FP7_FP8_Strix => 0x1Au, 
+            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x1Au,
             _ => 0x60u 
         };
         return Send(cmd, (coreIdx << 8) | (mhz & 0xFF), false, "Per Core OC Clock");
@@ -366,9 +333,7 @@ public class RyzenSmuController : PawnIO
     public CommandResult SetOcVolt(uint millivolts)
     {
         uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 => 0x1Bu, 
-            RyzenSmuFamily.FP7_FP8 => 0x1Bu, 
-            RyzenSmuFamily.FP7_FP8_Strix => 0x1Bu, 
+            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x1Bu,
             _ => 0x61u 
         };
         return Send(cmd, millivolts, false, "OC Voltage");
@@ -377,9 +342,7 @@ public class RyzenSmuController : PawnIO
     public CommandResult EnableOc()
     {
         uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 => 0x17u, 
-            RyzenSmuFamily.FP7_FP8 => 0x17u, 
-            RyzenSmuFamily.FP7_FP8_Strix => 0x17u, 
+            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x17u,
             _ => 0x5Du 
         };
         return Send(cmd, 0, false, "Enable OC Mode");
@@ -388,9 +351,7 @@ public class RyzenSmuController : PawnIO
     public CommandResult DisableOc()
     {
         uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 => 0x18u, 
-            RyzenSmuFamily.FP7_FP8 => 0x18u, 
-            RyzenSmuFamily.FP7_FP8_Strix => 0x18u, 
+            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x18u,
             _ => 0x5Eu 
         };
         return Send(cmd, 0, false, "Disable OC Mode");
@@ -405,8 +366,8 @@ public class RyzenSmuController : PawnIO
         uint arg = (uint)value & 0xFFFFFu;
         return CurrentFamily switch {
             RyzenSmuFamily.FP6 => TrySend(arg, "Curve Optimizer All", (0x55, true), (0xB1, false)),
-            RyzenSmuFamily.FP7_FP8 => TrySend(arg, "Curve Optimizer All", (0x4C, true), (0x5D, false)),
-            RyzenSmuFamily.FP7_FP8_Strix => TrySend(arg, "Curve Optimizer All", (0x4C, true), (0x5D, false)),
+            RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix
+                => TrySend(arg, "Curve Optimizer All", (0x4C, true), (0x5D, false)),
             _ => TrySend(arg, "Curve Optimizer All", (0x36, true), (0x07, false))
         };
     }
@@ -416,8 +377,8 @@ public class RyzenSmuController : PawnIO
         uint marginArg = (uint)((value < 0 ? 0x100000 : 0) + value) & 0xFFFFu;
         return CurrentFamily switch {
             RyzenSmuFamily.FP6 => TrySend((coreIdx << 20) | ((uint)value & 0xFFFFFu), $"Curve Optimizer Core {coreIdx}", (0x54, true), (0x52, false)),
-            RyzenSmuFamily.FP7_FP8 => TrySend((coreIdx << 20) | ((uint)value & 0xFFFFFu), $"Curve Optimizer Core {coreIdx}", (0x4B, true), (0x53, false)),
-            RyzenSmuFamily.FP7_FP8_Strix => TrySend((coreIdx << 20) | ((uint)value & 0xFFFFFu), $"Curve Optimizer Core {coreIdx}", (0x4B, true), (0x53, false)),
+            RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix
+                => TrySend((coreIdx << 20) | ((uint)value & 0xFFFFFu), $"Curve Optimizer Core {coreIdx}", (0x4B, true), (0x53, false)),
             _ => TrySend((((coreIdx / 8) << 28) | ((coreIdx % 8) << 20)) | marginArg, $"Curve Optimizer Core {coreIdx}", (0x35, true), (0x06, false))
         };
     }
@@ -430,6 +391,7 @@ public class RyzenSmuController : PawnIO
     private static readonly object _lhmLock = new();
 
     private const uint MsrFidvidStatus = 0xC0010293;
+    private const int MaxAffinityCores = 64;
 
     public double? GetCoreVoltage()
     {
@@ -443,7 +405,7 @@ public class RyzenSmuController : PawnIO
             try
             {
                 double? minVolts = null;
-                int coreCount = Environment.ProcessorCount;
+                int coreCount = Math.Min(Environment.ProcessorCount, MaxAffinityCores);
                 for (int i = 0; i < coreCount; i++)
                 {
                     IntPtr prev = Kernel32.SetThreadAffinityMask(thread, new IntPtr(1L << i));
@@ -504,10 +466,12 @@ public class RyzenSmuController : PawnIO
         try
         {
             double ppt = 0;
-            double tdc = 0;
-            double edc = 0;
+            double? tdc = null;
+            double? edc = null;
             double temp = 0;
             double freq = 0;
+            double coreFreq = 0;
+            double busFreq = 0;
             int usage = 0;
             try
             {
@@ -530,8 +494,13 @@ public class RyzenSmuController : PawnIO
                             case SensorType.Power:
                                 if (sensor.Name.Contains("Package") && ppt == 0)
                                     ppt = Math.Round(val, 1);
-                                if (sensor.Name.Contains("Core") && tdc == 0)
+                                break;
+
+                            case SensorType.Current:
+                                if (tdc == null && sensor.Name.Contains("TDC"))
                                     tdc = Math.Round(val, 1);
+                                else if (edc == null && sensor.Name.Contains("EDC"))
+                                    edc = Math.Round(val, 1);
                                 break;
 
                             case SensorType.Temperature:
@@ -543,8 +512,10 @@ public class RyzenSmuController : PawnIO
                                 break;
 
                             case SensorType.Frequency:
-                                if (sensor.Name.Contains("Core #1") || sensor.Name.Contains("Bus Speed"))
-                                    freq = Math.Round(val, 0);
+                                if (sensor.Name.Contains("Core #1"))
+                                    coreFreq = Math.Round(val, 0);
+                                else if (sensor.Name.Contains("Bus Speed"))
+                                    busFreq = Math.Round(val, 0);
                                 break;
 
                             case SensorType.Load:
@@ -554,13 +525,11 @@ public class RyzenSmuController : PawnIO
                         }
                     }
 
-                    if (tdc > 0)
-                        edc = Math.Round(tdc * 1.3, 1);
-
+                    freq = coreFreq > 0 ? coreFreq : busFreq;
                     break;
                 }
             }
-            catch (Exception lhmEx)
+            catch (Exception)
             {
                 try
                 {

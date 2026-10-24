@@ -23,7 +23,7 @@ const emit = defineEmits<{
         v-for="mode in modes"
         :key="mode.id"
         :class="[
-          'py-3 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all duration-300',
+          'group py-3 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all duration-300',
           mode.active
             ? 'mode-btn-active bg-purple-900/20 border'
             : 'bg-panel-raised border border-ink/[0.06] hover:bg-ink/5',

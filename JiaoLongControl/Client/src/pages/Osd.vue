@@ -64,7 +64,8 @@ function onPillPointerDown(e: PointerEvent) {
   if (!osdData.value) return
   previewDragging = true
   if (currentPosition.value !== 'Custom') osdData.value.Position = 'Custom'
-  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  const target = e.currentTarget as HTMLElement
+  target.setPointerCapture(e.pointerId)
   configStore.debouncedSave()
 }
 
@@ -87,8 +88,8 @@ async function refreshVolume() {
       volume.value = res.Data.Volume
       muted.value = res.Data.Muted
     }
-  } catch {
-    /* 忽略 */
+  } catch (e) {
+    console.warn('读取系统音量失败', e)
   }
 }
 
@@ -147,7 +148,7 @@ onMounted(() => {
       <div>
         <h1 class="text-2xl font-bold tracking-wide">OSD 屏幕显示</h1>
         <p class="text-[13px] text-gray-500 mt-1">
-          OSD悬浮指示器：按键时在屏幕顶部即时显示状态，完成后悄然隐去
+          OSD悬浮指示器：按键时在屏幕指定位置即时显示状态，完成后悄然隐去
         </p>
       </div>
 

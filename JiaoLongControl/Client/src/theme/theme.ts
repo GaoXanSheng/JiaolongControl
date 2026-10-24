@@ -1,10 +1,10 @@
-// 三态主题(ligh/dark/system)解析与应用。
+// 三态主题(light/dark/system)解析与应用。
 // 解析结果写入 <html data-theme="light|dark"> 驱动 CSS 变量切换, 并缓存到
 // localStorage 供 index.html 内联脚本在 Vue 启动前抢先设置, 避免浅色用户
 // 启动时闪深色屏。配置文件(config.App.Theme)是唯一事实来源, localStorage
 // 只是启动期的缓存。
-import { computed, ref } from 'vue'
-import type { ThemeMode } from '@/types/config'
+import {computed, ref} from 'vue'
+import type {ThemeMode} from '@/types/config'
 
 const THEME_STORAGE_KEY = 'jl-theme'
 

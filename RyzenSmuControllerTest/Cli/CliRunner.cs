@@ -21,7 +21,7 @@ internal static class CliRunner
 
             controller = new RyzenSmuController();
             ConsoleLog.Log($"    检测到 CPU 架构: {controller.CurrentFamily}");
-            ConsoleLog.Log("    (PawnIO 驱动将在首次执行 SMU 写操作时连接)");
+            ConsoleLog.Log("    (PawnIO 驱动将在首次执行 SMU 操作时连接)");
             ConsoleLog.Log("");
 
             // 先展示当前遥测
@@ -46,9 +46,12 @@ internal static class CliRunner
         }
         finally
         {
-            controller?.Dispose();
-            ConsoleLog.Log("");
-            ConsoleLog.Log("客户端资源已释放。");
+            if (controller != null)
+            {
+                controller.Dispose();
+                ConsoleLog.Log("");
+                ConsoleLog.Log("控制器资源已释放。");
+            }
         }
 
         ConsoleLog.Log("========================================");
@@ -79,10 +82,10 @@ internal static class CliRunner
                 continue;
             }
 
+            cursor.OptionName = token;
             CommandOutcome outcome = command.Handler(new CliContext(controller, cursor));
-            if (outcome == CommandOutcome.Failed)
+            if (outcome != CommandOutcome.Succeeded)
                 exitCode |= 1;
-            // BadArguments 与 Succeeded 均不影响退出码（旧版行为：解析失败只打印错误）
         }
 
         return exitCode;

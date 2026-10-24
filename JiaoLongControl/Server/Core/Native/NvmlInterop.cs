@@ -11,9 +11,6 @@ namespace JiaoLongControl.Server.Core.Native;
 /// </summary>
 internal static class NvmlInterop
 {
-    /// <summary>nvmlClockType_t: 图形域。锁核频使用 SM 域。</summary>
-    private const int NvmlClockGraphics = 0;
-
     private const int NvmlClockSm = 1;
     private const int NvmlClockMem = 2;
 
@@ -55,9 +52,6 @@ internal static class NvmlInterop
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     private static extern int nvmlDeviceGetMaxClockInfo(IntPtr device, int type, out uint clock);
-
-    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-    private static extern int nvmlDeviceGetMinClockInfo(IntPtr device, int type, out uint clock);
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr nvmlErrorString(int result);

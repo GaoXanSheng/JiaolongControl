@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import useStore, { HomeCardType } from '@/stores'
-import { computed } from 'vue'
+import useStore, {HomeCardType} from '@/stores'
+import {computed} from 'vue'
 
 const store = useStore()
-const currentComponent = computed(() => {
-  for (let i of HomeCardType) {
-    if (i.num === store.$state.SwitchPages) {
-      return i.page
-    }
-  }
-  return HomeCardType[0]!.page
-})
+const currentComponent = computed(
+  () =>
+    HomeCardType.find((item) => item.num === store.$state.SwitchPages)?.page ??
+    HomeCardType[0]!.page,
+)
 
 function enter(el: Element, done: () => void) {
   el.classList.add('swap')
@@ -18,15 +15,11 @@ function enter(el: Element, done: () => void) {
     done()
   })
 }
-
-function leave(_el: Element, done: () => void) {
-  done()
-}
 </script>
 
 <template>
   <div class="rightSide relative">
-    <transition mode="out-in" @enter="enter" @leave="leave">
+    <transition mode="out-in" @enter="enter">
       <Suspense>
         <template #default>
           <component :is="currentComponent" :key="store.$state.SwitchPages" />

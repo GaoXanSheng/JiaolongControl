@@ -50,7 +50,6 @@ public class FanController : Blding64
         return new CommandResult(false, "设置失败");
     }
 
-    [Obsolete("不推荐使用SetMaxFanSpeedSwitch")]
     public bool SetMaxFanSpeedSwitch(bool maxFanSpeedSwitch)
     {
         return MethodServices.SetValue(MethodName.MaxFanSpeedSwitch, (byte)(maxFanSpeedSwitch ? 1 : 0));

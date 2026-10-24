@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import {computed, onMounted} from 'vue'
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
-import { useConfigStore } from '@/stores/config'
-import { applyTheme } from '@/theme/theme'
-import type { ThemeMode } from '@/types/config'
+import {useConfigStore} from '@/stores/config'
+import {applyTheme} from '@/theme/theme'
+import type {ThemeMode} from '@/types/config'
 
 const configStore = useConfigStore()
 onMounted(() => configStore.fetchConfig())
@@ -50,5 +50,3 @@ function select(mode: ThemeMode) {
     </template>
   </setting-card-component>
 </template>
-
-<style scoped></style>

@@ -93,11 +93,13 @@ async function handleGradientToggle(newValue: string | number | boolean) {
       }
     } else {
       const res = await KeyboardGradient.Stop()
-      gradientRunning.value = false
       if (res.Success) {
+        gradientRunning.value = false
         Message.info(res.Message || '键盘渐变已停止')
       } else {
         Message.error(res.Message || '渐变停止失败')
+        const runningRes = await KeyboardGradient.IsRunning().catch(() => null)
+        gradientRunning.value = !!runningRes?.Success
       }
     }
   } catch {

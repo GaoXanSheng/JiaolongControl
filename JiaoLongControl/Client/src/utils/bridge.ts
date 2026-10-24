@@ -14,15 +14,9 @@ export type CommandResult<T = void> = {
 } & (T extends void ? Record<never, never> : { Data: T })
 
 export enum SystemPerMode {
-  PerformanceMode = 0,
-  QuietMode = 1,
-  BalanceMode = 2,
-  CustomMode = 3,
-}
-
-export enum RGBKeyboardMode {
-  Mode_Off = 0,
-  Mode_RGBFixedMode = 2,
+  BalanceMode = 0,
+  PerformanceMode = 1,
+  QuietMode = 2,
 }
 
 export enum RGBKeyboardBrightnessLevel {
@@ -59,17 +53,8 @@ export interface GpuStats {
   MemoryUtilization: string
   CoreClock: string
   MemoryClock: string
-  GpuTemperature: string
   FanSpeed: string
   DriverDate: string
-}
-
-export interface CpuStatsInfo {
-  Temperature: number
-  Usage: number
-  FrequencyMhz: number
-  Voltage: number
-  PowerWatts: number
 }
 
 export interface CpuInfo {
@@ -140,7 +125,7 @@ export interface OsdLockStates {
   TouchpadLock: boolean | null
 }
 
-/** 后端 Bridge 端点全量类型映射: 与 C# Server/Bridge 及 Linux Server/bridge.py 保持一致 */
+/** 常用 Bridge 端点类型映射: 与 C# Server 的控制器方法保持一致 */
 export interface BridgeApi {
   CPU: {
     SetCpuShortPower(sp: number): HostBridgePromise<void>
@@ -173,8 +158,6 @@ export interface BridgeApi {
   Keyboard: {
     GetColor(): HostBridgePromise<ColorInfo>
     SetColor(r: number, g: number, b: number): HostBridgePromise<void>
-    GetMode(): HostBridgePromise<RGBKeyboardMode>
-    SetMode(mode: RGBKeyboardMode): HostBridgePromise<void>
     GetLightBrightness(): HostBridgePromise<RGBKeyboardBrightnessLevel>
     SetLightBrightness(br: RGBKeyboardBrightnessLevel): HostBridgePromise<void>
   }
@@ -215,14 +198,11 @@ export interface BridgeApi {
     GetGpuFanSpeed(gpuIndex?: number): HostBridgePromise<number>
     GetGpuCoreClockRange(gpuIndex?: number): HostBridgePromise<RangeInfo>
     GetGpuMemoryClockRange(gpuIndex?: number): HostBridgePromise<RangeInfo>
-    GetGpuPowerLimitRange(gpuIndex?: number): HostBridgePromise<RangeInfo>
     LockGpuClock(freq: number, gpuIndex?: number): HostBridgePromise<void>
     LockGpuClock(minFreq: number, maxFreq: number, gpuIndex?: number): HostBridgePromise<void>
-    LockGpuClockRange(minFreq: number, maxFreq: number, gpuIndex?: number): HostBridgePromise<void>
     ResetGpuClock(gpuIndex?: number): HostBridgePromise<void>
     LockMemoryClock(freq: number, gpuIndex?: number): HostBridgePromise<void>
     ResetMemoryClock(gpuIndex?: number): HostBridgePromise<void>
-    SetPowerLimit(watts: number, gpuIndex?: number): HostBridgePromise<void>
     GetGpuCurveCapabilities(gpuIndex?: number): HostBridgePromise<GpuCurveCapabilitiesInfo>
     GetGpuCurveStatus(gpuIndex?: number): HostBridgePromise<GpuCurveStatusInfo>
     SetGpuOffsets(coreOffsetMhz: number, memoryOffsetMhz: number, gpuIndex?: number): HostBridgePromise<void>
@@ -231,11 +211,9 @@ export interface BridgeApi {
   Power: {
     SetCPUMaxFrequency(mhz: number): HostBridgePromise<void>
     ResetCPUMaxFrequency(): HostBridgePromise<void>
-    SetCPUMaxState(percent: number): HostBridgePromise<void>
     DisableTurbo(): HostBridgePromise<void>
     EnableTurbo(): HostBridgePromise<void>
     GetCPUMaxFrequency(): HostBridgePromise<{ ac: number; dc: number }>
-    GetCPUMaxState(): HostBridgePromise<number>
     GetTurboEnabled(): HostBridgePromise<{ ac: boolean; dc: boolean }>
   }
   SystemInfo: {
@@ -251,8 +229,6 @@ export interface BridgeApi {
     SetPptLimitRsmu(watts: number): HostBridgePromise<void>
     SetVrmCurrentMp1(milliamps: number): HostBridgePromise<void>
     SetVrmCurrentRsmu(milliamps: number): HostBridgePromise<void>
-    SetTdcLimitMp1(milliamps: number): HostBridgePromise<void>
-    SetTdcLimitRsmu(milliamps: number): HostBridgePromise<void>
     SetEdcLimitMp1(milliamps: number): HostBridgePromise<void>
     SetEdcLimitRsmu(milliamps: number): HostBridgePromise<void>
     SetTempLimitMp1(celsius: number): HostBridgePromise<void>
@@ -312,7 +288,7 @@ function getBridge(): BridgeApi {
   return bridge
 }
 
-export const raw: BridgeApi = new Proxy({} as BridgeApi, {
+const raw: BridgeApi = new Proxy({} as BridgeApi, {
   get: (_target, prop: string | symbol) => {
     const bridge = getBridge()
     const member = (bridge as unknown as Record<string | symbol, unknown>)[prop]
@@ -341,12 +317,12 @@ function cached<T>(
     return Promise.resolve(hit.result as CommandResult<T>)
   }
   return exec().then((result) => {
-    readCache.set(key, { result, ts: now })
+    readCache.set(key, { result, ts: Date.now() })
     return result
   })
 }
 
-export function toByte(value: number): number {
+function toByte(value: number): number {
   if (!Number.isInteger(value)) {
     throw new Error('必须是整数')
   }
@@ -373,7 +349,8 @@ export const CPU = {
 
 export const Fan = {
   GetFanSpeed: () => cached(CACHE_TTL_MS, 'Fan.GetFanSpeed', () => call(raw.Fan.GetFanSpeed())),
-  SetFanSpeed: (fanSpeed: number) => call(raw.Fan.SetFanSpeed(toByte(fanSpeed / 100))),
+  SetFanSpeed: (fanSpeed: number) =>
+    call(raw.Fan.SetFanSpeed(Math.max(0, Math.min(255, Math.round(fanSpeed / 100))))),
   RemoveFanSpeed: () => call(raw.Fan.RemoveFanSpeed()),
 }
 
@@ -391,8 +368,6 @@ export const Keyboard = {
   GetColor: () => call(raw.Keyboard.GetColor()),
   SetColor: (r: number, g: number, b: number) =>
     call(raw.Keyboard.SetColor(toByte(r), toByte(g), toByte(b))),
-  GetMode: () => call(raw.Keyboard.GetMode()),
-  SetMode: (mode: RGBKeyboardMode) => call(raw.Keyboard.SetMode(mode)),
   GetLightBrightness: () => call(raw.Keyboard.GetLightBrightness()),
   SetLightBrightness: (br: RGBKeyboardBrightnessLevel) => call(raw.Keyboard.SetLightBrightness(br)),
 }
@@ -473,20 +448,12 @@ export const NvidiaGpu = {
     cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuMemoryClockRange(${gpuIndex ?? ''})`, () =>
       call(raw.NvidiaGpu.GetGpuMemoryClockRange(gpuIndex)),
     ),
-  GetGpuPowerLimitRange: (gpuIndex?: number) =>
-    cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuPowerLimitRange(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetGpuPowerLimitRange(gpuIndex)),
-    ),
   LockGpuClock: (freq: number, gpuIndex?: number) =>
     call(raw.NvidiaGpu.LockGpuClock(freq, gpuIndex)),
-  LockGpuClockRange: (minFreq: number, maxFreq: number, gpuIndex?: number) =>
-    call(raw.NvidiaGpu.LockGpuClock(minFreq, maxFreq, gpuIndex ?? -1)),
   ResetGpuClock: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetGpuClock(gpuIndex)),
   LockMemoryClock: (freq: number, gpuIndex?: number) =>
     call(raw.NvidiaGpu.LockMemoryClock(freq, gpuIndex)),
   ResetMemoryClock: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetMemoryClock(gpuIndex)),
-  SetPowerLimit: (watts: number, gpuIndex?: number) =>
-    call(raw.NvidiaGpu.SetPowerLimit(watts, gpuIndex)),
   GetGpuCurveCapabilities: (gpuIndex?: number) =>
     cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuCurveCapabilities(${gpuIndex ?? ''})`, () =>
       call(raw.NvidiaGpu.GetGpuCurveCapabilities(gpuIndex)),
