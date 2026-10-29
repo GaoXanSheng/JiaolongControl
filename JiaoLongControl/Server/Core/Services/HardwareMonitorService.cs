@@ -1,7 +1,16 @@
 using LibreHardwareMonitor.Hardware;
+using Microsoft.Win32;
 
 namespace JiaoLongControl.Server.Core.Services
 {
+    public sealed class CpuHardwareInfo
+    {
+        public string Name { get; set; } = "";
+        public int Cores { get; set; }
+        public int Threads { get; set; }
+        public int BaseFrequencyMhz { get; set; }
+    }
+
     public sealed class CpuSensors
     {
         public int Usage { get; set; }
@@ -21,6 +30,66 @@ namespace JiaoLongControl.Server.Core.Services
         private static Computer? _computer;
         private static CpuSensors? _cached;
         private static long _cachedAt;
+        private static CpuHardwareInfo? _info;
+
+        public static CpuHardwareInfo ReadCpuInfo()
+        {
+            lock (Gate)
+            {
+                if (_info != null)
+                    return _info;
+
+                var info = ReadCpuInfoCore();
+                if (!string.IsNullOrEmpty(info.Name))
+                    _info = info;
+                return info;
+            }
+        }
+
+        private static CpuHardwareInfo ReadCpuInfoCore()
+        {
+            var info = new CpuHardwareInfo
+            {
+                Threads = Environment.ProcessorCount,
+                BaseFrequencyMhz = ReadBaseFrequency(),
+            };
+
+            try
+            {
+                _computer ??= Open();
+                foreach (var hardware in _computer.Hardware)
+                {
+                    if (hardware.HardwareType != HardwareType.Cpu)
+                        continue;
+
+                    info.Name = hardware.Name;
+                    info.Cores = hardware.Sensors.Count(s =>
+                        s.SensorType == SensorType.Clock &&
+                        !s.Name.Contains("Effective") &&
+                        (s.Name.StartsWith("Core #") || s.Name.StartsWith("CPU Core #")));
+                    break;
+                }
+            }
+            catch
+            {
+            }
+
+            return info;
+        }
+
+        private static int ReadBaseFrequency()
+        {
+            try
+            {
+                using var key = Registry.LocalMachine.OpenSubKey(
+                    @"HARDWARE\DESCRIPTION\System\CentralProcessor\0");
+                return Convert.ToInt32(key?.GetValue("~MHz") ?? 0);
+            }
+            catch
+            {
+                return 0;
+            }
+        }
 
         public static CpuSensors ReadCpu()
         {

@@ -1,4 +1,3 @@
-using System.Management;
 using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Services;
@@ -68,25 +67,14 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         public CommandResult GetCpuInfo()
         {
-            try
+            var cpu = HardwareMonitorService.ReadCpuInfo();
+            return new CommandResult(true, "获取成功", new
             {
-                using var searcher = new ManagementObjectSearcher("SELECT Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed FROM Win32_Processor");
-                foreach (var obj in searcher.Get())
-                {
-                    return new CommandResult(true, "获取成功", new
-                    {
-                        Name = obj["Name"]?.ToString()?.Trim() ?? "Unknown",
-                        Cores = Convert.ToInt32(obj["NumberOfCores"]),
-                        Threads = Convert.ToInt32(obj["NumberOfLogicalProcessors"]),
-                        BaseFreqMhz = Convert.ToInt32(obj["MaxClockSpeed"])
-                    });
-                }
-                return new CommandResult(false, "无法获取 CPU 信息");
-            }
-            catch (Exception ex)
-            {
-                return new CommandResult(false, ex.Message);
-            }
+                Name = string.IsNullOrEmpty(cpu.Name) ? "Unknown" : cpu.Name,
+                Cores = cpu.Cores,
+                Threads = cpu.Threads,
+                BaseFreqMhz = cpu.BaseFrequencyMhz
+            });
         }
 
         public CommandResult GetCpuFrequency()
@@ -111,19 +99,8 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         public CommandResult GetPhysicalCoreCount()
         {
-            try
-            {
-                using var searcher = new ManagementObjectSearcher(
-                    "SELECT NumberOfCores FROM Win32_Processor");
-                int total = 0;
-                foreach (var obj in searcher.Get())
-                    total += Convert.ToInt32(obj["NumberOfCores"]);
-                return new CommandResult(true, "获取成功", total);
-            }
-            catch (Exception ex)
-            {
-                return new CommandResult(false, ex.Message);
-            }
+            var cpu = HardwareMonitorService.ReadCpuInfo();
+            return new CommandResult(true, "获取成功", cpu.Cores);
         }
     }
 }
