@@ -18,8 +18,6 @@ namespace JiaoLongControl.Server.Core.Services
         public double Voltage { get; set; }
         public int Temperature { get; set; }
         public double PackagePower { get; set; }
-        public double? Tdc { get; set; }
-        public double? Edc { get; set; }
     }
 
     public static class HardwareMonitorService
@@ -184,13 +182,6 @@ namespace JiaoLongControl.Server.Core.Services
                     case SensorType.Power:
                         if (sensor.Name == "Package")
                             sensors.PackagePower = value;
-                        break;
-
-                    case SensorType.Current:
-                        if (sensor.Name.Contains("TDC"))
-                            sensors.Tdc ??= Math.Round(value, 1);
-                        else if (sensor.Name.Contains("EDC"))
-                            sensors.Edc ??= Math.Round(value, 1);
                         break;
                 }
             }

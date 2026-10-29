@@ -182,8 +182,6 @@ public class RyzenSmuController : PawnIO
         return new CommandResult(true, "获取成功", new
         {
             Ppt = Math.Round(cpu.PackagePower, 1),
-            Tdc = cpu.Tdc,
-            Edc = cpu.Edc,
             Temp = (double)cpu.Temperature,
             FreqMhz = cpu.FrequencyMhz,
             Usage = cpu.Usage,

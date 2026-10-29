@@ -261,10 +261,8 @@ const applyPerCoreCurve = (index: number) => {
 
 // ====== Real-time SMU Telemetry ======
 const HISTORY_LEN = 24
-const telemetry = ref<SmuTelemetry>({ Ppt: 0, Tdc: null, Edc: null, Temp: 0, FreqMhz: 0, Usage: 0 })
+const telemetry = ref<SmuTelemetry>({ Ppt: 0, Temp: 0, FreqMhz: 0, Usage: 0 })
 const pptHistory = ref<number[]>(Array(HISTORY_LEN).fill(0))
-const tdcHistory = ref<number[]>(Array(HISTORY_LEN).fill(0))
-const edcHistory = ref<number[]>(Array(HISTORY_LEN).fill(0))
 const tempHistory = ref<number[]>(Array(HISTORY_LEN).fill(0))
 
 function pushHistory(arr: number[], value: number) {
@@ -277,8 +275,6 @@ function sparkline(history: number[], yMax: number): SparklineResult {
 }
 
 const pptChart = computed(() => sparkline(pptHistory.value, 150))
-const tdcChart = computed(() => sparkline(tdcHistory.value, 300))
-const edcChart = computed(() => sparkline(edcHistory.value, 400))
 const tempChart = computed(() => sparkline(tempHistory.value, 110))
 
 let pollingTimer: ReturnType<typeof setInterval> | null = null
@@ -289,8 +285,6 @@ async function fetchTelemetry() {
     if (res.Success && res.Data) {
       telemetry.value = res.Data
       pushHistory(pptHistory.value, res.Data.Ppt)
-      pushHistory(tdcHistory.value, res.Data.Tdc ?? 0)
-      pushHistory(edcHistory.value, res.Data.Edc ?? 0)
       pushHistory(tempHistory.value, res.Data.Temp)
     }
   } catch (e) {
@@ -583,7 +577,7 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- 2. 电源实时监视器（遥测 PPT / TDC / EDC 波形图） -->
+        <!-- 2. 电源实时监视器（遥测 PPT / 温度波形图） -->
         <div
           class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-4"
         >
@@ -626,72 +620,6 @@ onUnmounted(() => {
                   stroke-linecap="round"
                 />
                 <path :d="pptChart.area" fill="url(#smu-g-purple)" />
-              </svg>
-            </div>
-
-            <!-- TDC 长期电流 -->
-            <div
-              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
-            >
-              <div>
-                <span class="text-[10px] text-gray-500 block">TDC 供电电流</span>
-                <span class="text-base font-bold text-ink font-mono"
-                  >{{ telemetry.Tdc === null ? 'N/A' : telemetry.Tdc.toFixed(1) }}
-                  <span class="text-[10px] text-gray-500 font-bold">A</span></span
-                >
-              </div>
-              <svg
-                class="w-full h-8 opacity-80 mt-1"
-                viewBox="0 0 160 40"
-                preserveAspectRatio="none"
-              >
-                <defs>
-                  <linearGradient id="smu-g-blue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.35" />
-                    <stop offset="100%" stop-color="#3B82F6" stop-opacity="0" />
-                  </linearGradient>
-                </defs>
-                <path
-                  :d="tdcChart.line"
-                  fill="none"
-                  stroke="#3B82F6"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                />
-                <path :d="tdcChart.area" fill="url(#smu-g-blue)" />
-              </svg>
-            </div>
-
-            <!-- EDC 瞬间电流 -->
-            <div
-              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
-            >
-              <div>
-                <span class="text-[10px] text-gray-500 block">EDC 峰值电流</span>
-                <span class="text-base font-bold text-ink font-mono"
-                  >{{ telemetry.Edc === null ? 'N/A' : telemetry.Edc.toFixed(1) }}
-                  <span class="text-[10px] text-gray-500 font-bold">A</span></span
-                >
-              </div>
-              <svg
-                class="w-full h-8 opacity-80 mt-1"
-                viewBox="0 0 160 40"
-                preserveAspectRatio="none"
-              >
-                <defs>
-                  <linearGradient id="smu-g-orange" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#FF7D00" stop-opacity="0.35" />
-                    <stop offset="100%" stop-color="#FF7D00" stop-opacity="0" />
-                  </linearGradient>
-                </defs>
-                <path
-                  :d="edcChart.line"
-                  fill="none"
-                  stroke="#FF7D00"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                />
-                <path :d="edcChart.area" fill="url(#smu-g-orange)" />
               </svg>
             </div>
 
