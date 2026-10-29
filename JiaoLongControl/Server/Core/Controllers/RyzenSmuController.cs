@@ -29,7 +29,6 @@ public class RyzenSmuController : PawnIO
             (string brand, string identifier) = GetCpuIdentityFast();
             CpuIdentity cpu = SmuFamilyResolver.FromBrandAndIdentifier(brand, identifier);
             CurrentFamily = SmuFamilyResolver.Resolve(cpu, out string evidence);
-            // 判定证据必须留痕: 品牌串误判类问题（如 7940HX 曾被 7940 子串误吞）只能靠这条日志定位
             Logger.Info($"SMU 平台判定: {CurrentFamily} [{evidence}] 品牌: \"{cpu.BrandName}\"");
         }
         catch (Exception ex)
@@ -112,10 +111,7 @@ public class RyzenSmuController : PawnIO
             if (rsp == 0) return new CommandResult(false, $"{name} 设置失败: SMU 忙碌超时");
             
             Execute("ioctl_write_smu_register", new ulong[] { addrRsp, 0 }, 0);
-            
-            // 写入主要参数
             Execute("ioctl_write_smu_register", new ulong[] { addrArg, arg }, 0);
-            // 清空其余 5 个参数槽，确保无脏数据
             for (uint i = 1; i < 6; i++)
             {
                 Execute("ioctl_write_smu_register", new ulong[] { addrArg + (i * 4), 0 }, 0);
@@ -186,11 +182,11 @@ public class RyzenSmuController : PawnIO
         return new CommandResult(true, "获取成功", new
         {
             Ppt = Math.Round(cpu.PackagePower, 1),
-            cpu.Tdc,
-            cpu.Edc,
+            Tdc = cpu.Tdc,
+            Edc = cpu.Edc,
             Temp = (double)cpu.Temperature,
-            cpu.FrequencyMhz,
-            cpu.Usage,
+            FreqMhz = cpu.FrequencyMhz,
+            Usage = cpu.Usage,
         });
     }
 
