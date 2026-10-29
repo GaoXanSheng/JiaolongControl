@@ -55,7 +55,6 @@ namespace JiaoLongControl.Server.Interop
             _saveTimer?.Dispose();
             _saveTimer = null;
             FlushIfDirty();
-            CPU.Dispose();
             Fan.Dispose();
             AutoFan.Dispose();
             KeyboardGradient.Dispose();

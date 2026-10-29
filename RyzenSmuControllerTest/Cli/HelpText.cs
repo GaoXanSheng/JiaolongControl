@@ -16,7 +16,7 @@ SMU 命令行测试工具 — 支持常用 RyzenSmuController 操作
   --dump-svi               读取 SMN SVI 遥测寄存器并解码电压
   --smu-read <hex>         读取任意 SMU/SMN 寄存器 (例: --smu-read 3B10570)
   --cpu-vid                通过 MSR 读取当前 VID 电压 (CPU-Z 机制)
-  --core-voltage           通过主项目 GetCoreVoltage() 读取核心电压
+  --core-voltage           通过主项目读取核心电压 (LibreHardwareMonitor)
   --vid-per-core           遍历各逻辑核心读取 VID 电压 (验证核心差异)
 
 === Curve Optimizer ===

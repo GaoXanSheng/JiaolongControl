@@ -1,10 +1,8 @@
-using System.Diagnostics;
 using System.Management;
 using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Drivers;
-using JiaoLongControl.Server.Core.Native;
+using JiaoLongControl.Server.Core.Services;
 using JiaoLongControl.Server.Core.Utils;
-using LibreHardwareMonitor.Hardware;
 using log4net;
 using Microsoft.Win32;
 
@@ -179,6 +177,24 @@ public class RyzenSmuController : PawnIO
         }
         return args;
     }
+
+    #region (Power Telemetry)
+
+    public CommandResult GetSmuTelemetry()
+    {
+        var cpu = HardwareMonitorService.ReadCpu();
+        return new CommandResult(true, "获取成功", new
+        {
+            Ppt = Math.Round(cpu.PackagePower, 1),
+            cpu.Tdc,
+            cpu.Edc,
+            Temp = (double)cpu.Temperature,
+            cpu.FrequencyMhz,
+            cpu.Usage,
+        });
+    }
+
+    #endregion
 
     #region (Power Limits - PPT)
 
@@ -381,213 +397,6 @@ public class RyzenSmuController : PawnIO
                 => TrySend((coreIdx << 20) | ((uint)value & 0xFFFFFu), $"Curve Optimizer Core {coreIdx}", (0x4B, true), (0x53, false)),
             _ => TrySend((((coreIdx / 8) << 28) | ((coreIdx % 8) << 20)) | marginArg, $"Curve Optimizer Core {coreIdx}", (0x35, true), (0x06, false))
         };
-    }
-
-    #endregion
-
-    #region (Power Telemetry)
-
-    private static Computer? _lhmComputer;
-    private static readonly object _lhmLock = new();
-
-    private const uint MsrFidvidStatus = 0xC0010293;
-    private const int MaxAffinityCores = 64;
-
-    public double? GetCoreVoltage()
-    {
-        try
-        {
-            IntPtr thread = Kernel32.GetCurrentThread();
-            IntPtr originalMask = Kernel32.SetThreadAffinityMask(thread, new IntPtr(unchecked((long)-1)));
-            if (originalMask == IntPtr.Zero)
-                return ReadVidVoltage();
-
-            try
-            {
-                double? minVolts = null;
-                int coreCount = Math.Min(Environment.ProcessorCount, MaxAffinityCores);
-                for (int i = 0; i < coreCount; i++)
-                {
-                    IntPtr prev = Kernel32.SetThreadAffinityMask(thread, new IntPtr(1L << i));
-                    if (prev == IntPtr.Zero)
-                        continue; // 进程亲和性不允许该核心
-
-                    double? volts = ReadVidVoltage();
-                    if (volts.HasValue && (minVolts == null || volts.Value < minVolts.Value))
-                        minVolts = volts.Value;
-                }
-
-                return minVolts;
-            }
-            finally
-            {
-                Kernel32.SetThreadAffinityMask(thread, originalMask);
-            }
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private double? ReadVidVoltage()
-    {
-        try
-        {
-            ulong raw = ReadMsr(MsrFidvidStatus);
-            uint vid = (uint)((raw >> 6) & 0xFF);
-            double volts = 1.550 - vid * 0.00625;
-            return volts is >= 0.4 and <= 1.8 ? volts : null;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static Computer GetOrCreateLhm()
-    {
-        if (_lhmComputer != null) return _lhmComputer;
-        lock (_lhmLock)
-        {
-            if (_lhmComputer != null) return _lhmComputer;
-            var computer = new Computer
-            {
-                IsCpuEnabled = true,
-            };
-            computer.Open();
-            _lhmComputer = computer;
-            return computer;
-        }
-    }
-
-    public CommandResult GetSmuTelemetry()
-    {
-        try
-        {
-            double ppt = 0;
-            double? tdc = null;
-            double? edc = null;
-            double temp = 0;
-            double freq = 0;
-            double coreFreq = 0;
-            double busFreq = 0;
-            int usage = 0;
-            try
-            {
-                var computer = GetOrCreateLhm();
-
-                foreach (var hardware in computer.Hardware)
-                {
-                    if (hardware.HardwareType != HardwareType.Cpu)
-                        continue;
-
-                    hardware.Update();
-
-                    foreach (var sensor in hardware.Sensors)
-                    {
-                        if (sensor.Value == null) continue;
-                        float val = sensor.Value.Value;
-
-                        switch (sensor.SensorType)
-                        {
-                            case SensorType.Power:
-                                if (sensor.Name.Contains("Package") && ppt == 0)
-                                    ppt = Math.Round(val, 1);
-                                break;
-
-                            case SensorType.Current:
-                                if (tdc == null && sensor.Name.Contains("TDC"))
-                                    tdc = Math.Round(val, 1);
-                                else if (edc == null && sensor.Name.Contains("EDC"))
-                                    edc = Math.Round(val, 1);
-                                break;
-
-                            case SensorType.Temperature:
-                                if ((sensor.Name.Contains("Core") && sensor.Name.Contains("Max")) ||
-                                     sensor.Name.Contains("Tctl") || sensor.Name.Contains("Tdie"))
-                                {
-                                    if (val > temp) temp = Math.Round(val, 1);
-                                }
-                                break;
-
-                            case SensorType.Frequency:
-                                if (sensor.Name.Contains("Core #1"))
-                                    coreFreq = Math.Round(val, 0);
-                                else if (sensor.Name.Contains("Bus Speed"))
-                                    busFreq = Math.Round(val, 0);
-                                break;
-
-                            case SensorType.Load:
-                                if (sensor.Name.Contains("Total"))
-                                    usage = (int)Math.Round(val);
-                                break;
-                        }
-                    }
-
-                    freq = coreFreq > 0 ? coreFreq : busFreq;
-                    break;
-                }
-            }
-            catch (Exception)
-            {
-                try
-                {
-                    using var searcher = new ManagementObjectSearcher(
-                        @"root\WMI", "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
-                    double maxTemp = 0;
-                    foreach (ManagementObject obj in searcher.Get())
-                    {
-                        uint raw = Convert.ToUInt32(obj["CurrentTemperature"]);
-                        double t = (raw - 2732) / 10.0;
-                        if (t > maxTemp) maxTemp = t;
-                    }
-                    temp = Math.Round(maxTemp, 1);
-                }
-                catch { }
-
-                try
-                {
-                    using var freqCounter = new PerformanceCounter(
-                        "Processor Information", "% Processor Performance", "_Total");
-                    freqCounter.NextValue();
-                    Thread.Sleep(100);
-                    float perfPct = freqCounter.NextValue();
-                    using var wmi = new ManagementObjectSearcher(
-                        "SELECT MaxClockSpeed FROM Win32_Processor");
-                    foreach (ManagementObject obj in wmi.Get())
-                    {
-                        freq = Math.Round(perfPct / 100.0 * Convert.ToUInt32(obj["MaxClockSpeed"]), 0);
-                        break;
-                    }
-                }
-                catch { }
-
-                try
-                {
-                    using var usageCounter = new PerformanceCounter(
-                        "Processor", "% Processor Time", "_Total");
-                    usageCounter.NextValue();
-                    Thread.Sleep(100);
-                    usage = (int)Math.Round(usageCounter.NextValue());
-                }
-                catch { }
-            }
-
-            return new CommandResult(true, "获取成功", new
-            {
-                Ppt = ppt,
-                Tdc = tdc,
-                Edc = edc,
-                Temp = temp,
-                FreqMhz = (int)freq,
-                Usage = usage,
-            });
-        }
-        catch (Exception ex)
-        {
-            return new CommandResult(false, $"遥测读取失败: {ex.Message}");
-        }
     }
 
     #endregion
