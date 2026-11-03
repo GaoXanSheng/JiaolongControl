@@ -239,11 +239,9 @@ const lineChartOption = computed(() => ({
 </script>
 
 <template>
-  <!-- 三行按窗口高度等比分配 (flex + min-h), 最小窗口 (1300×820 DIP) 下不再把第三行截掉 -->
-  <div class="p-6 h-full overflow-y-auto flex flex-col gap-6 text-ink no-scrollbar">
+  <div class="p-6 h-full overflow-y-auto space-y-6 text-ink no-scrollbar">
     <!-- Row 1: 顶部 Banner -->
     <WelcomeBannerComp
-      class="flex-[1.15] min-h-[210px]"
       :cpu-temp="cpuTemp"
       :gpu-temp="gpuTemp"
       :active-mode-name="activeMode.name"
@@ -251,7 +249,7 @@ const lineChartOption = computed(() => ({
     />
 
     <!-- Row 2: 模式 & 监控 -->
-    <div class="grid grid-cols-12 gap-3 flex-1 min-h-[215px]">
+    <div class="grid grid-cols-12 gap-3 h-[250px]">
       <PerformanceModeComp :modes="performanceModes" @change-mode="setMode" />
       <CoreMonitoringComp
         :cpu-usage="cpuUsage"
@@ -262,14 +260,14 @@ const lineChartOption = computed(() => ({
     </div>
 
     <!-- Row 3: 系统概览 & 风扇 & 曲线 -->
-    <div class="grid grid-cols-12 gap-6 flex-1 min-h-[230px]">
+    <div class="grid grid-cols-12 gap-6 h-[280px]">
       <!-- 系统概览 -->
-      <div class="col-span-4 glass-card p-6 flex flex-col min-h-0">
-        <h2 class="text-[15px] font-medium text-ink/90 mb-3">系统概览</h2>
-        <div class="flex-1 min-h-0 flex flex-col justify-between">
-          <div class="flex items-center gap-4 min-h-0">
+      <div class="col-span-4 glass-card p-6 flex flex-col">
+        <h2 class="text-[15px] font-medium text-ink/90 mb-4">系统概览</h2>
+        <div class="flex-1 flex flex-col justify-between">
+          <div class="flex items-center gap-4">
             <div
-              class="badge-blue w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-blue-500"
+              class="badge-blue w-8 h-8 rounded-full flex items-center justify-center text-blue-500"
             >
               <span
                 class="icon-mask icon-tint-blue w-4 h-4"
@@ -283,7 +281,7 @@ const lineChartOption = computed(() => ({
           </div>
           <div class="flex items-center gap-4">
             <div
-              class="badge-green w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-green-500"
+              class="badge-green w-8 h-8 rounded-full flex items-center justify-center text-green-500"
             >
               <span
                 class="icon-mask icon-tint-green w-4 h-4"
@@ -297,7 +295,7 @@ const lineChartOption = computed(() => ({
           </div>
           <div class="flex items-center gap-4">
             <div
-              class="badge-yellow w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-yellow-500"
+              class="badge-yellow w-8 h-8 rounded-full flex items-center justify-center text-yellow-500"
             >
               <icon-storage />
             </div>
@@ -308,7 +306,7 @@ const lineChartOption = computed(() => ({
           </div>
           <div class="flex items-center gap-4">
             <div
-              class="badge-red w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-red-500"
+              class="badge-red w-8 h-8 rounded-full flex items-center justify-center text-red-500"
             >
               <icon-computer />
             </div>
@@ -321,12 +319,12 @@ const lineChartOption = computed(() => ({
       </div>
 
       <!-- 风扇与噪音 -->
-      <div class="col-span-4 glass-card p-6 flex flex-col min-h-0">
-        <h2 class="text-[15px] font-medium text-ink/90 mb-3">风扇与噪音</h2>
+      <div class="col-span-4 glass-card p-6 flex flex-col">
+        <h2 class="text-[15px] font-medium text-ink/90 mb-4">风扇与噪音</h2>
 
-        <div class="flex items-center gap-4 mb-3 shrink-0">
+        <div class="flex items-center gap-4 mb-6">
           <div
-            class="badge-neutral w-11 h-11 shrink-0 rounded-full flex items-center justify-center overflow-hidden"
+            class="badge-neutral w-12 h-12 rounded-full flex items-center justify-center overflow-hidden"
           >
             <span
               class="icon-mask icon-tint-blue-bright w-7 h-7 animate-spin"
@@ -343,8 +341,8 @@ const lineChartOption = computed(() => ({
           </div>
         </div>
 
-        <!-- 模拟心电图 (ECG): 高度吃掉卡片剩余空间, 小窗口下不被固定高度顶出 -->
-        <div class="flex-1 min-h-[26px] flex items-center justify-center overflow-hidden">
+        <!-- 模拟心电图 (ECG) -->
+        <div class="h-16 flex items-center justify-center mb-6 overflow-hidden">
           <svg class="w-full h-full" viewBox="0 0 300 60" preserveAspectRatio="none">
             <defs>
               <!-- 水平方向渐变色，从紫色过渡到蓝色，再到浅绿 -->
@@ -374,7 +372,7 @@ const lineChartOption = computed(() => ({
           </svg>
         </div>
 
-        <div class="mt-auto shrink-0">
+        <div class="mt-auto">
           <div class="flex items-baseline gap-1">
             <span class="text-2xl font-semibold">{{ noiseLevel }}</span>
             <span class="text-xs text-gray-400">dBA</span>
@@ -384,9 +382,9 @@ const lineChartOption = computed(() => ({
       </div>
 
       <!-- 温度曲线 -->
-      <div class="col-span-4 glass-card p-6 flex flex-col min-h-0">
-        <h2 class="text-[15px] font-medium text-ink/90 mb-2 shrink-0">温度曲线</h2>
-        <div class="flex-1 min-h-0">
+      <div class="col-span-4 glass-card p-6 flex flex-col">
+        <h2 class="text-[15px] font-medium text-ink/90 mb-2">温度曲线</h2>
+        <div class="flex-1">
           <VChart :option="lineChartOption" autoresize />
         </div>
       </div>

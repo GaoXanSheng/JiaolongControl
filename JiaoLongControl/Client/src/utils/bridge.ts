@@ -98,8 +98,6 @@ export interface GpuCurveStatusInfo {
 
 export interface SmuTelemetry {
   Ppt: number
-  Tdc: number | null
-  Edc: number | null
   Temp: number
   FreqMhz: number
   Usage: number

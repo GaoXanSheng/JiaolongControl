@@ -32,8 +32,8 @@ internal static class CommandRegistry
         });
         yield return new CliCommand(["--cpu-vid"], _ =>
             CpuVidDumper.DumpCurrentVidFromMsr() ? CommandOutcome.Succeeded : CommandOutcome.Failed);
-        yield return new CliCommand(["--core-voltage"], ctx =>
-            CoreVoltageDumper.Dump(ctx.Controller) ? CommandOutcome.Succeeded : CommandOutcome.Failed);
+        yield return new CliCommand(["--core-voltage"], _ =>
+            CoreVoltageDumper.Dump() ? CommandOutcome.Succeeded : CommandOutcome.Failed);
         yield return new CliCommand(["--vid-per-core"], _ =>
             CpuVidDumper.DumpVidPerCore() ? CommandOutcome.Succeeded : CommandOutcome.Failed);
 
