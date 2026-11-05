@@ -3,7 +3,6 @@ using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Drivers;
 using JiaoLongControl.Server.Core.Services;
 using JiaoLongControl.Server.Core.Utils;
-using log4net;
 using Microsoft.Win32;
 
 namespace JiaoLongControl.Server.Core.Controllers;
@@ -20,7 +19,7 @@ public enum RyzenSmuFamily
 [ClassInterface(ClassInterfaceType.AutoDual)]
 public class RyzenSmuController : PawnIO
 {
-    private static readonly ILog Logger = LogManager.GetLogger(typeof(RyzenSmuController));
+    private static readonly Log Logger = Log.For<RyzenSmuController>();
 
     public RyzenSmuController()
     {

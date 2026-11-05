@@ -1,11 +1,10 @@
 using JiaoLongControl.Server.Interop;
-using log4net;
 
 namespace JiaoLongControl.Server.Core.Utils;
 
 public class SelfStart
 {
-    private static readonly ILog Logger = LogManager.GetLogger(typeof(SelfStart));
+    private static readonly Log Logger = Log.For<SelfStart>();
 
     public SelfStart()
     {

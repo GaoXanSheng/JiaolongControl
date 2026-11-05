@@ -9,7 +9,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Native;
-using log4net;
+using JiaoLongControl.Server.Core.Utils;
 
 namespace JiaoLongControl.Server
 {
@@ -34,7 +34,7 @@ namespace JiaoLongControl.Server
         // 退场基准编排总时长: 实际时长 = 动画时长(_animMs), 各关键帧按 动画时长/620 等比缩放
         private const int ExitMs = 620;
 
-        private static readonly ILog Logger = LogManager.GetLogger(typeof(OsdWindow));
+        private static readonly Log Logger = Log.For<OsdWindow>();
         private readonly DispatcherTimer _cursorTimer;
 
         private readonly DispatcherTimer _hideTimer;

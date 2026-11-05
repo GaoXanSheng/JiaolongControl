@@ -2,8 +2,6 @@ using System.Reflection;
 using System.Windows;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
-using log4net;
-using log4net.Config;
 
 namespace JiaoLongControl.Server
 {
@@ -11,11 +9,11 @@ namespace JiaoLongControl.Server
     {
         private static Mutex? _mutex;
         private static int _cleaned;
-        private readonly ILog Logger = LogManager.GetLogger(typeof(App));
+        private readonly Log Logger = Log.For<App>();
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            XmlConfigurator.Configure();
+            LogSetup.Initialize();
             const string appName = "JiaoLongControl_Main_Instance";
             bool createdNew;
             _mutex = new Mutex(true, appName, out createdNew);
@@ -84,6 +82,7 @@ namespace JiaoLongControl.Server
         protected override void OnExit(ExitEventArgs e)
         {
             Cleanup();
+            LogSetup.Shutdown();
             base.OnExit(e);
         }
 

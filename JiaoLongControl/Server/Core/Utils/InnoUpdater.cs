@@ -2,15 +2,14 @@
 using System.Net.Http;
 using System.Text.Json;
 using System.Windows;
-using log4net;
 
 namespace JiaoLongControl.Server.Core.Utils
 {
     public class InnoUpdater
     {
-        private readonly ILog Logger= LogManager.GetLogger(typeof(InnoUpdater));
-        private readonly string _currentVersion;
         private const string RepoApiUrl = "https://api.github.com/repos/GaoXanSheng/JiaolongControl/releases/latest";
+        private readonly Log Logger= Log.For<InnoUpdater>();
+        private readonly string _currentVersion;
 
         public InnoUpdater(string currentVersion)
         {
@@ -113,6 +112,7 @@ namespace JiaoLongControl.Server.Core.Utils
                 MessageBox.Show($"安装程序执行失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
         private bool IsNewerVersion(string latest, string current)
         {
             try
@@ -133,9 +133,6 @@ namespace JiaoLongControl.Server.Core.Utils
         /// </summary>
         private class AppVersion : IComparable<AppVersion>
         {
-            public Version BaseVersion { get; }
-            public int SuffixPriority { get; } // 1: Alpha(.A), 2: Beta(.B), 3: Stable
-
             public AppVersion(string versionStr)
             {
                 versionStr = versionStr.Trim();
@@ -164,6 +161,10 @@ namespace JiaoLongControl.Server.Core.Utils
                     _ => 3
                 };
             }
+
+            public Version BaseVersion { get; }
+            public int SuffixPriority { get; } // 1: Alpha(.A), 2: Beta(.B), 3: Stable
+
             public int CompareTo(AppVersion? other)
             {
                 if (other == null) return 1;

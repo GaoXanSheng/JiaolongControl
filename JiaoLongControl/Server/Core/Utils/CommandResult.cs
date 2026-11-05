@@ -1,8 +1,7 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using JiaoLongControl.Server.Core.Controllers;
-using log4net;
 
 namespace JiaoLongControl.Server.Core.Utils;
 
@@ -10,24 +9,48 @@ namespace JiaoLongControl.Server.Core.Utils;
 [ClassInterface(ClassInterfaceType.AutoDual)]
 public class CommandResult
 {
-    private readonly ILog Logger= LogManager.GetLogger(typeof(CommandResult));
+    private static readonly Log Logger = Log.For<CommandResult>();
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         WriteIndented = false
     };
 
-    public bool Success { get; set; }
-    public string Message { get; set; }
-    public object Data { get; set; }
-
-    public CommandResult(bool success, string message, object data = null)
+    public CommandResult(bool success, string message, object data = null,
+        [CallerFilePath] string file = "",
+        [CallerLineNumber] int line = 0,
+        [CallerMemberName] string member = "")
     {
         Success = success;
         Message = message;
         Data = data;
-        Logger.Debug($"{success} {message} {data}");
+        Logger.Debug($"{success} {message} {Describe(data)}", file, line, member);
     }
 
+    public bool Success { get; set; }
+    public string Message { get; set; }
+    public object Data { get; set; }
+
     public string toJson() => JsonSerializer.Serialize(this, JsonOptions);
+
+    private static string Describe(object data)
+    {
+        switch (data)
+        {
+            case null:
+                return "";
+            case string text:
+                return text;
+        }
+
+        try
+        {
+            return JsonSerializer.Serialize(data, JsonOptions);
+        }
+        catch
+        {
+            return data.ToString() ?? "";
+        }
+    }
 }

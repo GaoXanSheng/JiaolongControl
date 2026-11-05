@@ -12,7 +12,7 @@
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
-        <PackageReference Include="log4net" Version="3.4.0" />
+        <PackageReference Include="Serilog" Version="4.4.0" />
     </ItemGroup>
     <ItemGroup>
         <!-- 独立 SMU 控制工具：直接编译所需源文件，不引用整个主项目 -->
@@ -22,6 +22,7 @@
         <Compile Include="..\JiaoLongControl\Server\Core\Services\HardwareMonitorService.cs" Link="Core\HardwareMonitorService.cs" />
         <Compile Include="..\JiaoLongControl\Server\Core\Native\Kernel32.cs" Link="Core\Kernel32.cs" />
         <Compile Include="..\JiaoLongControl\Server\Core\Utils\CommandResult.cs" Link="Core\CommandResult.cs" />
+        <Compile Include="..\JiaoLongControl\Server\Core\Utils\Log.cs" Link="Core\Log.cs" />
     </ItemGroup>
     <ItemGroup>
         <None Include="..\JiaoLongControl\Drivers\PawnIO\RyzenSMU.bin;..\JiaoLongControl\Drivers\PawnIO\AMDFamily17.bin" Link="Drivers\PawnIO\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
