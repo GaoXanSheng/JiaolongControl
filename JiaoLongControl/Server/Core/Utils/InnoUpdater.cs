@@ -53,6 +53,7 @@ namespace JiaoLongControl.Server.Core.Utils
                 if (string.IsNullOrEmpty(downloadUrl)) return;
                 bool shouldUpdate = false;
                 bool shouldSkip = false;
+                bool manualInstall = false;
                 string downloadPath = "";
 
                 Application.Current.Dispatcher.Invoke(() =>
@@ -64,6 +65,7 @@ namespace JiaoLongControl.Server.Core.Utils
                         {
                             shouldUpdate = true;
                             downloadPath = dialog.DownloadedFilePath;
+                            manualInstall = dialog.ManualInstall;
                         }
                         else if (dialog.Result == UpdateDialog.UpdateChoice.SkipVersion)
                         {
@@ -80,7 +82,7 @@ namespace JiaoLongControl.Server.Core.Utils
 
                 if (shouldUpdate)
                 {
-                    ExecuteInstaller(downloadPath);
+                    ExecuteInstaller(downloadPath, !manualInstall);
                 }
             }
             catch (Exception ex)
@@ -89,14 +91,14 @@ namespace JiaoLongControl.Server.Core.Utils
             }
         }
 
-        private void ExecuteInstaller(string filePath)
+        private void ExecuteInstaller(string filePath, bool silent)
         {
             try
             {
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = filePath,
-                    Arguments = "/SILENT /SUPPRESSMSGBOXES /NORESTART",
+                    Arguments = silent ? "/SILENT /SUPPRESSMSGBOXES /NORESTART" : "",
                     UseShellExecute = true,
                     Verb = "runas"
                 };

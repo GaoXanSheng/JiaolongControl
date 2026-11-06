@@ -35,6 +35,7 @@ namespace JiaoLongControl.Server
 
         public UpdateChoice Result { get; private set; } = UpdateChoice.Later;
         public string DownloadedFilePath { get; private set; } = "";
+        public bool ManualInstall { get; private set; }
 
         private async void BtnUpdate_Click(object sender, RoutedEventArgs e)
         {
@@ -84,6 +85,7 @@ namespace JiaoLongControl.Server
             }
 
             Result = UpdateChoice.UpdateNow;
+            ManualInstall = ChkManualInstall.IsChecked == true;
             DialogResult = true;
             Close();
         }
