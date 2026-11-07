@@ -2,7 +2,6 @@ using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Services;
 using JiaoLongControl.Server.Core.Utils;
-using log4net;
 
 namespace JiaoLongControl.Server.Core.Controllers;
 
@@ -14,24 +13,30 @@ namespace JiaoLongControl.Server.Core.Controllers;
 [ClassInterface(ClassInterfaceType.AutoDual)]
 public class KeyboardGradientController : IDisposable
 {
-    private readonly ILog Logger = LogManager.GetLogger(typeof(KeyboardGradientController));
-    private volatile bool _isRunning;
-    private CancellationTokenSource? _cts;
-    private Task? _task;
-
     private const int StepsPerCycle = 60;
     private const int FrameDelayMs = 100;
     private const int MaxConsecutiveFail = 5;
     private const float MinGradientValue = 0.35f; // 锚点颜色过暗时抬到可见亮度
+    private readonly Log Logger = Log.For<KeyboardGradientController>();
 
     // 锚点色与启动前快照（Stop 时恢复）
     private byte _anchorR = 138, _anchorG = 43, _anchorB = 226;
-    private byte _restoreR, _restoreG, _restoreB;
-    private byte? _restoreMode;
-    private byte? _restoreBrightness;
+    private CancellationTokenSource? _cts;
+    private volatile bool _isRunning;
 
     // 上次写入颜色（值未变化时跳过 WMI 往返）
     private byte _lastWriteR = 255, _lastWriteG = 255, _lastWriteB = 255;
+    private byte? _restoreBrightness;
+    private byte? _restoreMode;
+    private byte _restoreR, _restoreG, _restoreB;
+    private Task? _task;
+
+    public void Dispose()
+    {
+        Stop();
+        _cts?.Dispose();
+        _cts = null;
+    }
 
     public CommandResult IsRunning()
     {
@@ -105,13 +110,6 @@ public class KeyboardGradientController : IDisposable
         }
         RestoreSnapshot();
         return new CommandResult(true, "键盘渐变灯已停止");
-    }
-
-    public void Dispose()
-    {
-        Stop();
-        _cts?.Dispose();
-        _cts = null;
     }
 
     private byte ReadByte(MethodName methodName)

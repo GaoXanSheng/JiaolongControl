@@ -8,7 +8,6 @@ using JiaoLongControl.Server.Core.Native;
 using JiaoLongControl.Server.Core.Services;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
-using log4net;
 
 namespace JiaoLongControl.Server.Core.Controllers
 {
@@ -44,7 +43,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         // OSD PNG 图标 (经 csproj Resource 链接编译进程序集, 源文件在客户端图标库)
         private const string IconPackBase = "pack://application:,,,/Assets/OSD/";
 
-        private static readonly ILog Logger = LogManager.GetLogger(typeof(OsdController));
+        private static readonly Log Logger = Log.For<OsdController>();
         private readonly WMIEventService _eventService = new();
 
         // 系统媒体会话 (SMTC): 仅挂接"当前会话", 切歌/播放状态变化时提示曲名与歌手
@@ -1117,7 +1116,7 @@ namespace JiaoLongControl.Server.Core.Controllers
     /// <summary>TryGetMediaPropertiesAsync 包装: 会话失效等异常统一记录并返回 null。</summary>
     internal static class SmtcExtensions
     {
-        private static readonly ILog Logger = LogManager.GetLogger(typeof(SmtcExtensions));
+        private static readonly Log Logger = Log.For(nameof(SmtcExtensions));
 
         public static async Task<GlobalSystemMediaTransportControlsSessionMediaProperties?>
             GetMediaPropertiesOrNullAsync(this GlobalSystemMediaTransportControlsSession session)

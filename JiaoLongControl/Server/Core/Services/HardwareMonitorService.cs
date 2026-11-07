@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LibreHardwareMonitor.Hardware;
 using Microsoft.Win32;
 
@@ -25,6 +26,9 @@ namespace JiaoLongControl.Server.Core.Services
         private const int CacheMilliseconds = 300;
 
         private static readonly object Gate = new();
+        private static readonly int BaseFrequencyMhz = ReadBaseFrequency();
+        private static PerformanceCounter? _perfCounter;
+        private static bool _perfCounterUnavailable;
         private static Computer? _computer;
         private static CpuSensors? _cached;
         private static long _cachedAt;
@@ -186,10 +190,43 @@ namespace JiaoLongControl.Server.Core.Services
                 }
             }
 
-            sensors.FrequencyMhz = (int)Math.Round(
-                averageClock > 0 ? averageClock : coreClockCount > 0 ? coreClockSum / coreClockCount : 0);
+            double lhmClock = averageClock > 0
+                ? averageClock
+                : coreClockCount > 0 ? coreClockSum / coreClockCount : 0;
+            int perfClock = ReadFrequencyMhz();
+            sensors.FrequencyMhz = perfClock > 0 ? perfClock : (int)Math.Round(lhmClock);
             sensors.Voltage = vcore ?? (coreVid.Count > 0 ? coreVid.Average() : 0);
             sensors.Temperature = (int)Math.Round(tctlDie ?? tdie ?? maxTemperature);
+        }
+
+        private static int ReadFrequencyMhz()
+        {
+            if (_perfCounter == null && !_perfCounterUnavailable)
+            {
+                try
+                {
+                    var counter = new PerformanceCounter(
+                        "Processor Information", "% Processor Performance", "_Total");
+                    counter.NextValue();
+                    _perfCounter = counter;
+                }
+                catch
+                {
+                    _perfCounterUnavailable = true;
+                }
+            }
+
+            if (_perfCounter == null || BaseFrequencyMhz <= 0)
+                return 0;
+
+            try
+            {
+                return (int)Math.Round(_perfCounter.NextValue() / 100.0 * BaseFrequencyMhz);
+            }
+            catch
+            {
+                return 0;
+            }
         }
     }
 }

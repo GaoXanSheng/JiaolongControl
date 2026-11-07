@@ -2,7 +2,6 @@ using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Controllers;
 using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Utils;
-using log4net;
 using Microsoft.Web.WebView2.Core;
 
 namespace JiaoLongControl.Server.Interop
@@ -13,8 +12,8 @@ namespace JiaoLongControl.Server.Interop
     {
         private const int SaveIntervalMs = 5000;
 
-        private static readonly ILog Logger =
-            LogManager.GetLogger(typeof(Bridge));
+        private static readonly Log Logger =
+            Log.For<Bridge>();
 
         private readonly object _configLock = new();
         private Timer? _saveTimer;

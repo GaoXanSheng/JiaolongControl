@@ -1,6 +1,6 @@
 using System.Management;
 using JiaoLongControl.Server.Core.Models;
-using log4net;
+using JiaoLongControl.Server.Core.Utils;
 
 namespace JiaoLongControl.Server.Core.Services
 {
@@ -22,7 +22,7 @@ namespace JiaoLongControl.Server.Core.Services
     {
         private const string Wql = "SELECT * FROM HID_EVENT20";
 
-        private static readonly ILog Logger = LogManager.GetLogger(typeof(WMIEventService));
+        private static readonly Log Logger = Log.For<WMIEventService>();
 
         private ManagementEventWatcher? _watcher;
 

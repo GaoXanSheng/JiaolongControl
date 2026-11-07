@@ -9,7 +9,6 @@ using Hardcodet.Wpf.TaskbarNotification;
 using JiaoLongControl.Server.Core.Native;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
-using log4net;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Microsoft.Win32;
@@ -25,8 +24,8 @@ namespace JiaoLongControl.Server
         private const double DefaultPixelWidth = 1300;
         private const double DefaultPixelHeight = 820;
 
-        private static readonly ILog Logger =
-            LogManager.GetLogger(typeof(MainWindow));
+        private static readonly Log Logger =
+            Log.For<MainWindow>();
 
         private bool _allowClose;
 

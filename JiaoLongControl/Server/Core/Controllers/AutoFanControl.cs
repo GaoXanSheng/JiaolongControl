@@ -2,7 +2,6 @@ using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Models;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
-using log4net;
 
 namespace JiaoLongControl.Server.Core.Controllers;
 
@@ -29,7 +28,7 @@ public class AutoFanControl : IDisposable
     private const double MaxRampUpBytePerSec = MaxRampUpRpmPerSec / RPM_UNIT_DIVISOR;
     private const double MaxRampDownBytePerSec = MaxRampDownRpmPerSec / RPM_UNIT_DIVISOR;
     private const double SharedHeatPipeSyncRatio = 0.85;
-    private readonly ILog Logger = LogManager.GetLogger(typeof(AutoFanControl));
+    private readonly Log Logger = Log.For<AutoFanControl>();
 
     private readonly Dictionary<FanType, FanState> _states = new()
     {
