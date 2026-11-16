@@ -13,30 +13,6 @@ public class Blding64 : IDisposable
     private const string ServiceName = "JiaoLongDriver64";
     private readonly object _ioLock = new();
     private IntPtr _dllHandle = IntPtr.Zero;
-    public bool IsInitialized { get; set; }
-
-    [DllImport(DllName, EntryPoint = "InitializeBldring", CallingConvention = CallingConvention.StdCall)]
-    private static extern bool InitializeBldring();
-
-    [DllImport(DllName, EntryPoint = "ShutdownBldring", CallingConvention = CallingConvention.StdCall)]
-    private static extern void ShutdownBldring();
-
-    [DllImport(DllName, EntryPoint = "GetBLDPortVal", CallingConvention = CallingConvention.StdCall)]
-    private static extern bool GetBLDPortVal(ushort wPortAddr, ref byte pdwPortVal, byte bSize);
-
-    [DllImport(DllName, EntryPoint = "SetBLDPortVal", CallingConvention = CallingConvention.StdCall)]
-    private static extern bool SetBLDPortVal(ushort wPortAddr, byte dwPortVal, byte bSize);
-
-    private bool ReadPort(ushort portAddr, out byte value)
-    {
-        value = 0;
-        return GetBLDPortVal(portAddr, ref value, 1);
-    }
-
-    private bool WritePort(ushort portAddr, byte value)
-    {
-        return SetBLDPortVal(portAddr, value, 1);
-    }
 
     public Blding64()
     {
@@ -68,6 +44,63 @@ public class Blding64 : IDisposable
         }
     }
 
+    public bool IsInitialized { get; set; }
+
+    public void Dispose()
+    {
+        if (IsInitialized)
+        {
+            try
+            {
+                ShutdownBldring();
+            }
+            catch
+            {
+            }
+
+            IsInitialized = false;
+        }
+
+        if (_dllHandle != IntPtr.Zero)
+        {
+            Kernel32.FreeLibrary(_dllHandle);
+            _dllHandle = IntPtr.Zero;
+        }
+
+        try
+        {
+            DriverLoader.UnloadDriver(ServiceName);
+        }
+        catch
+        {
+        }
+
+        GC.SuppressFinalize(this);
+    }
+
+    [DllImport(DllName, EntryPoint = "InitializeBldring", CallingConvention = CallingConvention.StdCall)]
+    private static extern bool InitializeBldring();
+
+    [DllImport(DllName, EntryPoint = "ShutdownBldring", CallingConvention = CallingConvention.StdCall)]
+    private static extern void ShutdownBldring();
+
+    [DllImport(DllName, EntryPoint = "GetBLDPortVal", CallingConvention = CallingConvention.StdCall)]
+    private static extern bool GetBLDPortVal(ushort wPortAddr, ref byte pdwPortVal, byte bSize);
+
+    [DllImport(DllName, EntryPoint = "SetBLDPortVal", CallingConvention = CallingConvention.StdCall)]
+    private static extern bool SetBLDPortVal(ushort wPortAddr, byte dwPortVal, byte bSize);
+
+    private bool ReadPort(ushort portAddr, out byte value)
+    {
+        value = 0;
+        return GetBLDPortVal(portAddr, ref value, 1);
+    }
+
+    private bool WritePort(ushort portAddr, byte value)
+    {
+        return SetBLDPortVal(portAddr, value, 1);
+    }
+
     private void EC_init()
     {
         byte EC_CHIP_ID1 = EC_RAM_READ(0x2000);
@@ -93,7 +126,7 @@ public class Blding64 : IDisposable
         EC_RAM_WRITE(0xB20, (byte)mask);
     }
 
-    public void RemoveFanSpeed()
+    protected void RemoveFanSpeed()
     {
         GpuFanSetSpeed(0);
         CpuFanSetSpeed(0);
@@ -149,38 +182,6 @@ public class Blding64 : IDisposable
             ReadPort(ECMemoryTable.EC_DATA_PORT, out byte data);
             return data;
         }
-    }
-
-    public void Dispose()
-    {
-        if (IsInitialized)
-        {
-            try
-            {
-                ShutdownBldring();
-            }
-            catch
-            {
-            }
-
-            IsInitialized = false;
-        }
-
-        if (_dllHandle != IntPtr.Zero)
-        {
-            Kernel32.FreeLibrary(_dllHandle);
-            _dllHandle = IntPtr.Zero;
-        }
-
-        try
-        {
-            DriverLoader.UnloadDriver(ServiceName);
-        }
-        catch
-        {
-        }
-
-        GC.SuppressFinalize(this);
     }
 
     ~Blding64() => Dispose();
