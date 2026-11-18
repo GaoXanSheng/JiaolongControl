@@ -6,6 +6,9 @@ namespace JiaoLongControl.Server.Core.Controllers
 {
     public class SystemInfoController
     {
+        // 系统概览整会话不变: 只查一次, 失败时清空缓存允许下次轮询重试
+        private static Task<CommandResult>? _overviewTask;
+
         /// <summary>使用系统默认浏览器打开外部链接（仅允许 http/https）</summary>
         public CommandResult OpenUrl(string url)
         {
@@ -36,7 +39,23 @@ namespace JiaoLongControl.Server.Core.Controllers
             }
         }
 
-        public CommandResult GetSystemOverview()
+        public Task<CommandResult> GetSystemOverview()
+        {
+            var task = _overviewTask;
+            if (task != null)
+                return task;
+
+            task = Task.Run(QuerySystemOverview);
+            _overviewTask = task;
+            _ = task.ContinueWith(t =>
+            {
+                if (!t.Result.Success)
+                    _overviewTask = null;
+            });
+            return task;
+        }
+
+        private static CommandResult QuerySystemOverview()
         {
             var overview = new SystemOverview();
 

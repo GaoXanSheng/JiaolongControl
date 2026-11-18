@@ -154,13 +154,18 @@ namespace JiaoLongControl.Server.Core.Controllers
                 Logger.Warn($"OSD 键盘钩子安装异常: {ex.Message}");
             }
 
-            // 优先走官方 HID_EVENT20 事件通道 (即时、零轮询开销); 订阅失败退回轮询兜底
-            _eventService.EventArrived += OnHotKeyEvent;
-            if (!_eventService.Start())
+            Task.Run(() =>
             {
-                Logger.Info("EC 事件通道不可用, OSD 状态检测退回轮询模式");
-                StartStatePolling();
-            }
+                if (_disposed) return;
+
+                // 优先走官方 HID_EVENT20 事件通道 (即时、零轮询开销); 订阅失败退回轮询兜底
+                _eventService.EventArrived += OnHotKeyEvent;
+                if (!_eventService.Start())
+                {
+                    Logger.Info("EC 事件通道不可用, OSD 状态检测退回轮询模式");
+                    StartStatePolling();
+                }
+            });
 
             // 系统媒体会话监视 (音乐开始播放/切歌时提示); 初始化失败仅记录, 不影响其它链路
             StartMediaWatcher();

@@ -44,13 +44,11 @@ watch(
 )
 
 onMounted(() => {
-  stopPolling = systemInfoStore.startPolling()
-  window.chrome?.webview?.addEventListener('message', onWebViewMessage)
   // 主动拉取一次配置以尽早应用主题(fetchPromise 去重, 不会与页面内请求重复)
   void configStore.fetchConfig()
-  setTimeout(() => {
-    hideAppLoader()
-  }, 300)
+  stopPolling = systemInfoStore.startPolling()
+  window.chrome?.webview?.addEventListener('message', onWebViewMessage)
+  hideAppLoader()
 })
 
 onUnmounted(() => {
@@ -62,14 +60,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <Suspense>
-    <template #default>
-      <router-view class="app-view"></router-view>
-    </template>
-    <template #fallback>
-      <div class="loading-state">Loading Hardware Info...</div>
-    </template>
-  </Suspense>
+  <router-view class="app-view"></router-view>
 </template>
 
 <style>
@@ -83,14 +74,5 @@ body {
   user-select: none;
   width: 100vw;
   height: 100vh;
-}
-
-.loading-state {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  color: var(--color-text-main);
-  background-color: var(--color-bg-primary);
 }
 </style>
