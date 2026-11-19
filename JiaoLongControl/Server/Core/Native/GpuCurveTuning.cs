@@ -324,7 +324,7 @@ internal static class GpuCurveTuning
         var entry = P0Clock(NvGpuCurveInterop.GetPstates20(gpu), NvGpuCurveInterop.ClockDomainMemory);
         return entry is { } e && e.FreqDeltaKhz.ValueMax > e.FreqDeltaKhz.ValueMin
             ? (e.FreqDeltaKhz.ValueMin, e.FreqDeltaKhz.ValueMax)
-            : (-1_000_000, 1_000_000);
+            : (-NvGpuCurveInterop.DefaultOffsetRangeKhz, NvGpuCurveInterop.DefaultOffsetRangeKhz);
     }
 
     /// <summary>出厂基准显存频率 (MHz) — 显存偏移的参照, 静态出厂值, 任何电源状态下都可读。</summary>

@@ -1,4 +1,2 @@
 node_modules
 package-lock.json
-# 第三方压缩文件保持原样
-src/assets/magic.min.css

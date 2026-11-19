@@ -19,13 +19,9 @@ export interface AppSectionType {
   CpuCurveOptimizerPerCore: boolean
   BootGpuUseAdvancedOffsets: boolean
   Theme: ThemeMode
-  /** 主窗口记忆宽度 (物理像素), 0 = 未记忆, 与显示器 DPI/缩放无关 */
-  WindowPixelWidth: number
-  /** 主窗口记忆高度 (物理像素), 0 = 未记忆, 与显示器 DPI/缩放无关 */
-  WindowPixelHeight: number
-  /** 旧版主窗口宽度 (DIP), 仅用于老配置迁移, 不再写入 */
+  /** 主窗口记忆宽度 (DIP), 0 = 未记忆, 关闭时写入当前窗口大小 */
   WindowWidth: number
-  /** 旧版主窗口高度 (DIP), 仅用于老配置迁移, 不再写入 */
+  /** 主窗口记忆高度 (DIP), 0 = 未记忆, 关闭时写入当前窗口大小 */
   WindowHeight: number
 }
 
@@ -48,7 +44,6 @@ export interface CpuSectionType {
 export interface GpuSectionType {
   GpuClock: number
   MemoryClock: number
-  PowerLimit: number
   CoreClockOffsetMhz: number
   MemoryClockOffsetMhz: number
 }

@@ -2,7 +2,7 @@
 import CpuDie from '@/components/common/CpuDie.vue'
 import EditableValue from '@/components/common/EditableValue.vue'
 
-import {computed, ref} from 'vue'
+import {computed, onMounted, ref} from 'vue'
 import {Message} from '@arco-design/web-vue'
 import {CPU, type CpuInfo, Power, RyzenSmu} from '@/utils/bridge.ts'
 import {useConfigStore} from '@/stores/config'
@@ -14,20 +14,58 @@ const loading = ref(false)
 const configStore = useConfigStore()
 const systemInfoStore = useSystemInfoStore()
 
-if (!configStore.config) {
-  await configStore.fetchConfig()
-}
 
 const cpuInfo = ref<CpuInfo | null>(null)
-const infoResult = await CPU.GetCpuInfo()
-if (infoResult.Success) {
-  cpuInfo.value = infoResult.Data
-}
+
+onMounted(async () => {
+  try {
+    const res = await CPU.GetCpuInfo()
+    if (res.Success) cpuInfo.value = res.Data
+  } catch {
+    // 桥接不可用时保持默认展示
+  }
+})
 
 // 使用 computed 来简化对配置项的访问，并确保响应性
 const CPUData = computed(() => configStore.config?.Cpu)
 const SmuData = computed(() => configStore.config?.Smu)
 const cpuStats = computed(() => systemInfoStore.cpuStats)
+
+/** 实时状态进度条: 标签/取值文本/占比宽度/配色 */
+const cpuMetrics = computed(() => {
+  const s = cpuStats.value
+  const pct = (v: number, max: number) => `${Math.min((v / max) * 100, 100)}%`
+  return [
+    {
+      label: '频率',
+      text: s?.FrequencyMhz ? (s.FrequencyMhz / 1000).toFixed(2) : '0.00',
+      unit: 'GHz',
+      width: s?.FrequencyMhz ? pct(s.FrequencyMhz, activeProfile.value.CpuMaxFrequency || 5000) : '0%',
+      barClass: 'bg-cyber-purple',
+    },
+    {
+      label: '电压',
+      text: s?.Voltage ? s.Voltage.toFixed(3) : '0.000',
+      unit: 'V',
+      width: s?.Voltage ? pct(s.Voltage, 1.5) : '0%',
+      barClass: 'bg-cyber-purple',
+    },
+    {
+      label: '使用率',
+      text: String(s?.Usage || 0),
+      unit: '%',
+      width: `${s?.Usage || 0}%`,
+      barClass: 'bg-[#3B82F6]',
+    },
+    {
+      label: '温度',
+      text: String(s?.Temperature || 0),
+      unit: '°C',
+      width: `${Math.min(s?.Temperature || 0, 100)}%`,
+      barClass: 'bg-cyber-purple',
+    },
+  ]
+})
 
 // 分核心降压模式: 常规设置启用后, CO 滑条替换为提示, 应用时逐核心写入分核数值
 const perCoreMode = computed(() => configStore.config?.App.CpuCurveOptimizerPerCore ?? false)
@@ -194,7 +232,7 @@ async function handleCancel() {
 
         <!-- 1. CPU 配置文件 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg"
+          class="panel-card"
         >
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-[13px] font-semibold text-gray-300">CPU 配置文件</h2>
@@ -224,7 +262,7 @@ async function handleCancel() {
 
         <!-- 2. 核心设置 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-6"
+          class="panel-card space-y-6"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">核心设置</h2>
 
@@ -392,7 +430,7 @@ async function handleCancel() {
       <div class="w-full lg:w-[360px] shrink-0 space-y-6 lg:pt-[115px]">
         <!-- 1. CPU 信息卡片 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg"
+          class="panel-card"
         >
           <h2 class="text-[13px] font-semibold text-gray-300 mb-4">CPU 信息</h2>
           <div class="flex items-center gap-4 h-[96px]">
@@ -418,75 +456,18 @@ async function handleCancel() {
 
         <!-- 2. 实时状态卡片 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-4"
+          class="panel-card space-y-4"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">实时状态</h2>
 
           <div class="space-y-3.5">
-            <!-- 频率 -->
-            <div class="space-y-1.5">
+            <div v-for="m in cpuMetrics" :key="m.label" class="space-y-1.5">
               <div class="flex justify-between text-[11px]">
-                <span class="text-gray-400">频率</span>
-                <span class="text-ink font-mono font-medium"
-                  >{{
-                    cpuStats?.FrequencyMhz ? (cpuStats.FrequencyMhz / 1000).toFixed(2) : '0.00'
-                  }}
-                  GHz</span
-                >
+                <span class="text-gray-400">{{ m.label }}</span>
+                <span class="text-ink font-mono font-medium">{{ m.text }} {{ m.unit }}</span>
               </div>
               <div class="h-1.5 bg-ink/[0.03] rounded-full overflow-hidden">
-                <div
-                  class="h-full bg-cyber-purple"
-                  :style="{
-                    width: `${Math.min(((cpuStats?.FrequencyMhz || 0) / (activeProfile.CpuMaxFrequency || 5000)) * 100, 100)}%`,
-                  }"
-                ></div>
-              </div>
-            </div>
-
-            <!-- 电压 -->
-            <div class="space-y-1.5">
-              <div class="flex justify-between text-[11px]">
-                <span class="text-gray-400">电压</span>
-                <span class="text-ink font-mono font-medium"
-                  >{{ cpuStats?.Voltage ? cpuStats.Voltage.toFixed(3) : '0.000' }} V</span
-                >
-              </div>
-              <div class="h-1.5 bg-ink/[0.03] rounded-full overflow-hidden">
-                <div
-                  class="h-full bg-cyber-purple"
-                  :style="{ width: `${Math.min(((cpuStats?.Voltage || 0) / 1.5) * 100, 100)}%` }"
-                ></div>
-              </div>
-            </div>
-
-            <!-- 使用率 -->
-            <div class="space-y-1.5">
-              <div class="flex justify-between text-[11px]">
-                <span class="text-gray-400">使用率</span>
-                <span class="text-ink font-mono font-medium">{{ cpuStats?.Usage || 0 }} %</span>
-              </div>
-              <div class="h-1.5 bg-ink/[0.03] rounded-full overflow-hidden">
-                <div
-                  class="h-full bg-[#3B82F6]"
-                  :style="{ width: `${cpuStats?.Usage || 0}%` }"
-                ></div>
-              </div>
-            </div>
-
-            <!-- 温度 -->
-            <div class="space-y-1.5">
-              <div class="flex justify-between text-[11px]">
-                <span class="text-gray-400">温度</span>
-                <span class="text-ink font-mono font-medium"
-                  >{{ cpuStats?.Temperature || 0 }} °C</span
-                >
-              </div>
-              <div class="h-1.5 bg-ink/[0.03] rounded-full overflow-hidden">
-                <div
-                  class="h-full bg-cyber-purple"
-                  :style="{ width: `${Math.min(cpuStats?.Temperature || 0, 100)}%` }"
-                ></div>
+                <div :class="m.barClass" :style="{ width: m.width }" class="h-full"></div>
               </div>
             </div>
           </div>
@@ -494,7 +475,7 @@ async function handleCancel() {
 
         <!-- 3. 核心分布卡片 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-3.5"
+          class="panel-card space-y-3.5"
         >
           <div class="flex justify-between items-center">
             <h2 class="text-[13px] font-semibold text-gray-300">核心分布</h2>
@@ -519,18 +500,13 @@ async function handleCancel() {
 
         <!-- 4. 说明卡片 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-2.5"
+          class="panel-card space-y-2.5"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">说明</h2>
           <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">
             <p>功耗限制决定了 CPU 可持续运行的最大功耗。</p>
             <p>电压偏移可在保证稳定性的前提下降低功耗和温度。</p>
             <p>修改设置后请点击“应用”以生效。</p>
-          </div>
-          <div
-            class="text-[11px] text-blue-400 hover:text-blue-300 cursor-pointer pt-1 flex items-center gap-0.5 font-medium transition-colors"
-          >
-            了解更多 <span>&gt;</span>
           </div>
         </div>
       </div>
@@ -542,14 +518,6 @@ async function handleCancel() {
 </template>
 
 <style lang="scss" scoped>
-/* 隐藏默认滚动条 */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
 
 /* 浅色下选中配置卡片: 淡灰底 + 灰边框, 不发光(深色保持紫调, 见模板类) */
 [data-theme='light'] .profile-active {

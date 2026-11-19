@@ -2,10 +2,11 @@
 import {computed, onMounted, onUnmounted, ref, type Ref, watch} from 'vue'
 import {Message} from '@arco-design/web-vue'
 import {type GpuCurveCapabilitiesInfo, type GpuCurveStatusInfo, NvidiaGpu} from '@/utils/bridge'
-import {buildSparkline} from '@/utils/chart'
 import {useConfigStore} from '@/stores/config'
 import {useSystemInfoStore} from '@/stores/systemInfo'
 import EditableValue from '@/components/common/EditableValue.vue'
+import SparklineCard from '@/components/common/SparklineCard.vue'
+import {useRingBuffer} from '@/composables/useRingBuffer'
 import {storeToRefs} from 'pinia'
 
 const configStore = useConfigStore()
@@ -26,62 +27,36 @@ const {
 const loading = ref(false)
 const showAdvanced = ref(false)
 
-if (!configStore.config) {
-  await configStore.fetchConfig()
-}
 
-// --- Sparkline Chart History ---
+// --- Sparkline 实时监控卡片: 定义即渲染, 曲线由 SparklineCard 绘制 ---
 const historyLength = 20
-const utilHistory = ref<number[]>(Array(historyLength).fill(0))
-const memUtilHistory = ref<number[]>(Array(historyLength).fill(0))
-const coreClockHistory = ref<number[]>(Array(historyLength).fill(0))
-const memClockHistory = ref<number[]>(Array(historyLength).fill(0))
-const tempHistory = ref<number[]>(Array(historyLength).fill(0))
-const fanSpeedHistory = ref<number[]>(Array(historyLength).fill(0))
 
-const updateHistory = (history: Ref<number[]>, value: number, divisor = 1) => {
-  history.value.push(value / divisor)
-  if (history.value.length > historyLength) {
-    history.value.shift()
-  }
-}
+const metricCards = [
+  { key: 'util', label: 'GPU 使用率', source: gpuUtilization, max: 100, color: '#8A2BE2', unit: '%' },
+  { key: 'memUtil', label: '显存使用率', source: gpuMemoryUtilization, max: 100, color: '#3B82F6', unit: '%' },
+  { key: 'coreClock', label: '核心频率', source: gpuCoreClock, divisor: 100, max: 30, color: '#8A2BE2', unit: 'MHz', unitClass: 'text-[9px]' },
+  { key: 'memClock', label: '显存频率', source: gpuMemoryClock, divisor: 100, max: 100, color: '#3B82F6', unit: 'MHz', unitClass: 'text-[9px]' },
+  { key: 'temp', label: 'GPU 温度', source: gpuTemp, max: 100, color: '#10B981', unit: '°C' },
+  { key: 'fan', label: '风扇转速', source: gpuFanSpeed, divisor: 100, max: 40, color: '#3B82F6', unit: 'RPM', unitClass: 'text-[9px]' },
+].map((card) => ({ ...card, ...useRingBuffer(historyLength) }))
 
 let unwatch: (() => void) | null = null
 
 onMounted(() => {
-  updateHistory(utilHistory, gpuUtilization.value)
-  updateHistory(memUtilHistory, gpuMemoryUtilization.value)
-  updateHistory(coreClockHistory, gpuCoreClock.value, 100)
-  updateHistory(memClockHistory, gpuMemoryClock.value, 100)
-  updateHistory(tempHistory, gpuTemp.value)
-  updateHistory(fanSpeedHistory, gpuFanSpeed.value, 100)
+  metricCards.forEach((card) => card.push(card.source.value / (card.divisor ?? 1)))
 
-  const stopWatchers = [
-    watch(gpuUtilization, (v) => updateHistory(utilHistory, v)),
-    watch(gpuMemoryUtilization, (v) => updateHistory(memUtilHistory, v)),
-    watch(gpuCoreClock, (v) => updateHistory(coreClockHistory, v, 100)),
-    watch(gpuMemoryClock, (v) => updateHistory(memClockHistory, v, 100)),
-    watch(gpuTemp, (v) => updateHistory(tempHistory, v)),
-    watch(gpuFanSpeed, (v) => updateHistory(fanSpeedHistory, v, 100)),
-  ]
+  const stopWatchers = metricCards.map((card) =>
+    watch(card.source, (v) => card.push(v / (card.divisor ?? 1))),
+  )
   unwatch = () => stopWatchers.forEach((fn) => fn())
+
+  void fetchGpuRanges()
+  void fetchGpuCurve()
 })
 
 onUnmounted(() => {
   if (unwatch) unwatch()
 })
-
-// --- Chart Generation ---
-function generateSvgPath(history: number[], yMax: number, smooth = true) {
-  return buildSparkline(history, { width: 160, height: 40, max: yMax, smooth, area: true })
-}
-
-const utilChart = computed(() => generateSvgPath(utilHistory.value, 100))
-const memUtilChart = computed(() => generateSvgPath(memUtilHistory.value, 100))
-const coreClockChart = computed(() => generateSvgPath(coreClockHistory.value, 30)) // Corresponds to 3000 MHz
-const memClockChart = computed(() => generateSvgPath(memClockHistory.value, 100)) // Corresponds to 10000 MHz
-const tempChart = computed(() => generateSvgPath(tempHistory.value, 100))
-const fanChart = computed(() => generateSvgPath(fanSpeedHistory.value, 40)) // Corresponds to 4000 RPM
 
 // --- Settings and Presets Logic ---
 const GPUData = computed(() => configStore.config?.Gpu)
@@ -159,100 +134,101 @@ async function fetchGpuCurve() {
   }
 }
 
+/**
+ * 通用「执行动作 → 保存配置 → 提示」骨架: 各 apply/reset 处理共用。
+ * action 每步失败时提示错误并返回 false (骨架直接结束);
+ * 成功后保存配置, 失败提示 saveFailMsg, 成功按 okLevel 提示 action 返回的消息 (缺省 fallbackOkMsg)。
+ */
+async function runAndSave(
+  busy: Ref<boolean>,
+  action: () => Promise<string | false>,
+  okLevel: 'success' | 'info',
+  fallbackOkMsg: string,
+  saveFailMsg: string,
+  errMsg: string,
+  afterSave?: () => Promise<void>,
+) {
+  busy.value = true
+  try {
+    const okMessage = await action()
+    if (okMessage === false) return
+    const saveRes = await configStore.saveConfig()
+    if (!saveRes?.Success) {
+      Message.error(saveRes?.Message || saveFailMsg)
+      return
+    }
+    okLevel === 'info' ? Message.info(okMessage || fallbackOkMsg) : Message.success(okMessage || fallbackOkMsg)
+    await afterSave?.()
+  } catch {
+    Message.error(errMsg)
+  } finally {
+    busy.value = false
+  }
+}
+
 // 常规设置: 只应用 GPU/显存最低频率限制, 不动高级超频
 async function handleApplyNormal() {
-  if (!GPUData.value) return
-  loading.value = true
-  try {
-    const clockRes = await NvidiaGpu.LockGpuClock(GPUData.value.GpuClock)
+  const gpu = GPUData.value
+  if (!gpu) return
+  await runAndSave(loading, async () => {
+    const clockRes = await NvidiaGpu.LockGpuClock(gpu.GpuClock)
     if (!clockRes.Success) {
       Message.error(clockRes.Message || 'GPU 最低频率限制失败')
-      return
+      return false
     }
-    const memClockRes = await NvidiaGpu.LockMemoryClock(GPUData.value.MemoryClock)
+    const memClockRes = await NvidiaGpu.LockMemoryClock(gpu.MemoryClock)
     if (!memClockRes.Success) {
       Message.error(memClockRes.Message || '显存最低频率限制失败')
-      return
+      return false
     }
-    const saveRes = await configStore.saveConfig()
-    if (saveRes?.Success) {
-      Message.success('常规设置已应用并保存')
-    } else {
-      Message.error(saveRes?.Message || '设置保存失败')
-    }
-  } catch {
-    Message.error('应用失败，请检查显卡驱动及桥接服务')
-  } finally {
-    loading.value = false
-  }
+    return '常规设置已应用并保存'
+  }, 'success', '常规设置已应用并保存', '设置保存失败', '应用失败，请检查显卡驱动及桥接服务')
 }
 
 // 常规设置: 只解除频率限制并重置滑条, 不动高级超频
 async function handleResetNormal() {
-  loading.value = true
-  try {
+  await runAndSave(loading, async () => {
     const clockRes = await NvidiaGpu.ResetGpuClock()
     if (!clockRes.Success) {
       Message.error(clockRes.Message || 'GPU 频率重置失败')
-      return
+      return false
     }
     const memClockRes = await NvidiaGpu.ResetMemoryClock()
     if (!memClockRes.Success) {
       Message.error(memClockRes.Message || '显存频率重置失败')
-      return
+      return false
     }
     if (GPUData.value) {
       GPUData.value.GpuClock = coreClockRange.value.Max
       GPUData.value.MemoryClock = memClockRange.value.Max
     }
-    const saveRes = await configStore.saveConfig()
-    if (saveRes?.Success) {
-      Message.info('常规设置已恢复默认')
-    } else {
-      Message.error(saveRes?.Message || '重置值保存失败')
-    }
-  } catch {
-    Message.error('重置失败，请检查显卡驱动及桥接服务')
-  } finally {
-    loading.value = false
-  }
+    return '常规设置已恢复默认'
+  }, 'info', '常规设置已恢复默认', '重置值保存失败', '重置失败，请检查显卡驱动及桥接服务')
 }
 
 // 高级超频: 只应用核心/显存频率偏移, 不动常规锁频
 async function handleApplyCurve() {
-  if (!GPUData.value) return
-  curveApplying.value = true
-  try {
+  const gpu = GPUData.value
+  if (!gpu) return
+  await runAndSave(curveApplying, async () => {
     const curveRes = await NvidiaGpu.SetGpuOffsets(coreOffset.value, memOffset.value)
     if (!curveRes.Success) {
       Message.error(curveRes.Message || '频率偏移设置失败')
-      return
+      return false
     }
-    GPUData.value.CoreClockOffsetMhz = coreOffset.value
-    GPUData.value.MemoryClockOffsetMhz = memOffset.value
-    const saveRes = await configStore.saveConfig()
-    if (!saveRes?.Success) {
-      Message.error(saveRes?.Message || '设置已应用但保存失败')
-      return
-    }
-    Message.success(curveRes.Message || '高级超频已应用')
-    // 刷新曲线状态, 让「驱动锁频上限读数」反映偏移后的即时值
-    await fetchGpuCurve()
-  } catch {
-    Message.error('应用失败，请检查显卡驱动及桥接服务')
-  } finally {
-    curveApplying.value = false
-  }
+    gpu.CoreClockOffsetMhz = coreOffset.value
+    gpu.MemoryClockOffsetMhz = memOffset.value
+    return curveRes.Message || '高级超频已应用'
+  }, 'success', '高级超频已应用', '设置已应用但保存失败', '应用失败，请检查显卡驱动及桥接服务', fetchGpuCurve)
 }
 
 // 高级超频: 只清零核心/显存偏移, 不动常规锁频
 async function handleResetCurve() {
-  curveApplying.value = true
-  try {
+  await runAndSave(curveApplying, async () => {
     const curveRes = await NvidiaGpu.ResetGpuCurve()
     if (!curveRes.Success) {
       Message.error(curveRes.Message || '偏移重置失败')
-      return
+      return false
     }
     coreOffset.value = 0
     memOffset.value = 0
@@ -260,17 +236,8 @@ async function handleResetCurve() {
       GPUData.value.CoreClockOffsetMhz = 0
       GPUData.value.MemoryClockOffsetMhz = 0
     }
-    const saveRes = await configStore.saveConfig()
-    if (saveRes?.Success) {
-      Message.info('高级超频已重置为默认')
-    } else {
-      Message.error(saveRes?.Message || '重置值保存失败')
-    }
-  } catch {
-    Message.error('重置失败，请检查显卡驱动及桥接服务')
-  } finally {
-    curveApplying.value = false
-  }
+    return '高级超频已重置为默认'
+  }, 'info', '高级超频已重置为默认', '重置值保存失败', '重置失败，请检查显卡驱动及桥接服务')
 }
 
 // --- 名词解释 ---
@@ -301,9 +268,6 @@ const glossary = [
     desc: '驱动根据当前负载、温度与功耗上限自动选择的电压/频率点，会随负载动态变化。',
   },
 ]
-
-await fetchGpuRanges()
-await fetchGpuCurve()
 </script>
 
 <template>
@@ -319,7 +283,7 @@ await fetchGpuCurve()
 
         <!-- 1. 选择 GPU 与卡片详情 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg flex flex-col md:flex-row justify-between gap-6"
+          class="panel-card flex flex-col md:flex-row justify-between gap-6"
         >
           <div class="space-y-3 md:w-1/2">
             <span class="text-[11px] text-gray-500 font-semibold block uppercase">当前 GPU</span>
@@ -379,7 +343,7 @@ await fetchGpuCurve()
         <!-- 常规设置面板 -->
         <div
           v-if="!showAdvanced"
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-5"
+          class="panel-card space-y-5"
         >
           <div class="space-y-5">
             <div class="space-y-2">
@@ -457,7 +421,7 @@ await fetchGpuCurve()
         <!-- 高级超频面板 -->
         <div
           v-if="showAdvanced"
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-6"
+          class="panel-card space-y-6"
         >
           <div
             v-if="curveCaps && !curveCaps.Supported"
@@ -565,160 +529,30 @@ await fetchGpuCurve()
       <div class="w-full lg:w-[360px] shrink-0 space-y-6 lg:pt-[115px]">
         <!-- 3. 实时监控面板 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-4"
+          class="panel-card space-y-4"
         >
           <div class="flex justify-between items-center">
             <h2 class="text-[13px] font-semibold text-gray-300">实时监控</h2>
           </div>
           <div class="grid grid-cols-2 gap-3">
-            <!-- GPU 使用率 -->
-            <div
-              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
-            >
-              <div>
-                <span class="text-[10px] text-gray-500 block">GPU 使用率</span>
-                <span class="text-base font-bold text-ink font-mono"
-                  >{{ gpuUtilization }}
-                  <span class="text-[10px] text-gray-500 font-bold">%</span></span
-                >
-              </div>
-              <svg
-                class="w-full h-8 opacity-70 mt-1"
-                viewBox="0 0 160 40"
-                preserveAspectRatio="none"
-              >
-                <defs>
-                  <linearGradient id="g-purple" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#8A2BE2" stop-opacity="0.3" />
-                    <stop offset="100%" stop-color="#8A2BE2" stop-opacity="0" />
-                  </linearGradient>
-                </defs>
-                <path :d="utilChart.line" fill="none" stroke="#8A2BE2" stroke-width="1.2" />
-                <path :d="utilChart.area" fill="url(#g-purple)" />
-              </svg>
-            </div>
-
-            <!-- 显存使用率 -->
-            <div
-              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
-            >
-              <div>
-                <span class="text-[10px] text-gray-500 block">显存使用率</span>
-                <span class="text-base font-bold text-ink font-mono"
-                  >{{ gpuMemoryUtilization }}
-                  <span class="text-[10px] text-gray-500 font-bold">%</span></span
-                >
-              </div>
-              <svg
-                class="w-full h-8 opacity-70 mt-1"
-                viewBox="0 0 160 40"
-                preserveAspectRatio="none"
-              >
-                <defs>
-                  <linearGradient id="g-blue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.3" />
-                    <stop offset="100%" stop-color="#3B82F6" stop-opacity="0" />
-                  </linearGradient>
-                </defs>
-                <path :d="memUtilChart.line" fill="none" stroke="#3B82F6" stroke-width="1.2" />
-                <path :d="memUtilChart.area" fill="url(#g-blue)" />
-              </svg>
-            </div>
-
-            <!-- 核心频率 -->
-            <div
-              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
-            >
-              <div>
-                <span class="text-[10px] text-gray-500 block">核心频率</span>
-                <span class="text-base font-bold text-ink font-mono"
-                  >{{ gpuCoreClock }}
-                  <span class="text-[9px] text-gray-500 font-bold">MHz</span></span
-                >
-              </div>
-              <svg
-                class="w-full h-8 opacity-70 mt-1"
-                viewBox="0 0 160 40"
-                preserveAspectRatio="none"
-              >
-                <path :d="coreClockChart.line" fill="none" stroke="#8A2BE2" stroke-width="1.2" />
-                <path :d="coreClockChart.area" fill="url(#g-purple)" />
-              </svg>
-            </div>
-
-            <!-- 显存频率 -->
-            <div
-              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
-            >
-              <div>
-                <span class="text-[10px] text-gray-500 block">显存频率</span>
-                <span class="text-base font-bold text-ink font-mono"
-                  >{{ gpuMemoryClock }}
-                  <span class="text-[9px] text-gray-500 font-bold">MHz</span></span
-                >
-              </div>
-              <svg
-                class="w-full h-8 opacity-70 mt-1"
-                viewBox="0 0 160 40"
-                preserveAspectRatio="none"
-              >
-                <path :d="memClockChart.line" fill="none" stroke="#3B82F6" stroke-width="1.2" />
-                <path :d="memClockChart.area" fill="url(#g-blue)" />
-              </svg>
-            </div>
-
-            <!-- GPU 温度 -->
-            <div
-              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
-            >
-              <div>
-                <span class="text-[10px] text-gray-500 block">GPU 温度</span>
-                <span class="text-base font-bold text-ink font-mono"
-                  >{{ gpuTemp }} <span class="text-[10px] text-gray-500 font-bold">°C</span></span
-                >
-              </div>
-              <svg
-                class="w-full h-8 opacity-70 mt-1"
-                viewBox="0 0 160 40"
-                preserveAspectRatio="none"
-              >
-                <defs>
-                  <linearGradient id="g-green" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#10B981" stop-opacity="0.3" />
-                    <stop offset="100%" stop-color="#10B981" stop-opacity="0" />
-                  </linearGradient>
-                </defs>
-                <path :d="tempChart.line" fill="none" stroke="#10B981" stroke-width="1.2" />
-                <path :d="tempChart.area" fill="url(#g-green)" />
-              </svg>
-            </div>
-
-            <!-- 风扇转速 -->
-            <div
-              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
-            >
-              <div>
-                <span class="text-[10px] text-gray-500 block">风扇转速</span>
-                <span class="text-base font-bold text-ink font-mono"
-                  >{{ gpuFanSpeed }}
-                  <span class="text-[9px] text-gray-500 font-bold">RPM</span></span
-                >
-              </div>
-              <svg
-                class="w-full h-8 opacity-70 mt-1"
-                viewBox="0 0 160 40"
-                preserveAspectRatio="none"
-              >
-                <path :d="fanChart.line" fill="none" stroke="#3B82F6" stroke-width="1.2" />
-                <path :d="fanChart.area" fill="url(#g-blue)" />
-              </svg>
-            </div>
+            <SparklineCard
+              v-for="card in metricCards"
+              :key="card.key"
+              :color="card.color"
+              :gradient-id="`gpu-sg-${card.key}`"
+              :history="card.buffer"
+              :label="card.label"
+              :max="card.max"
+              :unit="card.unit"
+              :unit-class="card.unitClass"
+              :value="card.source.value"
+            />
           </div>
         </div>
 
         <!-- 说明卡片 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-2.5"
+          class="panel-card space-y-2.5"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">说明</h2>
           <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">
@@ -746,18 +580,3 @@ await fetchGpuCurve()
     <a-spin dot />
   </div>
 </template>
-
-<style lang="scss" scoped>
-:deep(.arco-select-view-value) {
-  color: var(--color-text-main);
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-</style>

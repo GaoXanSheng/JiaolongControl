@@ -1,3 +1,5 @@
+import {timing} from '@/utils/timing'
+
 export enum GPUMode {
   HybridMode = 0,
   DiscreteMode = 1,
@@ -42,19 +44,6 @@ export interface SystemOverview {
   GpuName: string
   OsVersion: string
   MemoryInfo: string
-}
-
-export interface GpuStats {
-  GpuName: string
-  DriverVersion: string
-  MemoryTotal: string
-  BusWidth: string
-  GpuUtilization: string
-  MemoryUtilization: string
-  CoreClock: string
-  MemoryClock: string
-  FanSpeed: string
-  DriverDate: string
 }
 
 export interface CpuInfo {
@@ -128,8 +117,6 @@ export interface BridgeApi {
   CPU: {
     SetCpuShortPower(sp: number): HostBridgePromise<void>
     SetCpuLongPower(lp: number): HostBridgePromise<void>
-    SetCustomMode(open: boolean): HostBridgePromise<void>
-    GetCustomMode(): HostBridgePromise<boolean>
     GetCPUThermometer(): HostBridgePromise<number>
     GetCpuUsage(): HostBridgePromise<number>
     GetCpuInfo(): HostBridgePromise<CpuInfo>
@@ -142,8 +129,6 @@ export interface BridgeApi {
     GetFanSpeed(): HostBridgePromise<FanSpeedInfo>
     SetFanSpeed(fanSpeed: number): HostBridgePromise<void>
     RemoveFanSpeed(): HostBridgePromise<void>
-    GetMaxFanSpeedSwitch(): HostBridgePromise<boolean>
-    SetMaxFanSpeedSwitch(maxFanSpeedSwitch: boolean): HostBridgePromise<void>
   }
   GPU: {
     Get(): HostBridgePromise<GPUMode>
@@ -208,11 +193,8 @@ export interface BridgeApi {
   }
   Power: {
     SetCPUMaxFrequency(mhz: number): HostBridgePromise<void>
-    ResetCPUMaxFrequency(): HostBridgePromise<void>
     DisableTurbo(): HostBridgePromise<void>
     EnableTurbo(): HostBridgePromise<void>
-    GetCPUMaxFrequency(): HostBridgePromise<{ ac: number; dc: number }>
-    GetTurboEnabled(): HostBridgePromise<{ ac: boolean; dc: boolean }>
   }
   SystemInfo: {
     GetSystemOverview(): HostBridgePromise<SystemOverview>
@@ -287,13 +269,8 @@ function getBridge(): BridgeApi {
 }
 
 const raw: BridgeApi = new Proxy({} as BridgeApi, {
-  get: (_target, prop: string | symbol) => {
-    const bridge = getBridge()
-    const member = (bridge as unknown as Record<string | symbol, unknown>)[prop]
-    if (member !== undefined) return member as BridgeApi[keyof BridgeApi]
-    cachedBridge = null
-    return getBridge()[prop as keyof BridgeApi]
-  },
+  get: (_target, prop: string | symbol) =>
+    (getBridge() as unknown as Record<string | symbol, unknown>)[prop] as BridgeApi[keyof BridgeApi],
 })
 
 export async function call<T>(promise: HostBridgePromise<T>): Promise<CommandResult<T>> {
@@ -314,7 +291,10 @@ function cached<T>(
   if (hit && now - hit.ts < ttlMs) {
     return Promise.resolve(hit.result as CommandResult<T>)
   }
+  const started = performance.now()
   return exec().then((result) => {
+    const cost = performance.now() - started
+    if (cost > 300) timing(`bridge ${key}`, started)
     readCache.set(key, { result, ts: Date.now() })
     return result
   })
@@ -330,8 +310,6 @@ function toByte(value: number): number {
 export const CPU = {
   SetCpuShortPower: (sp: number) => call(raw.CPU.SetCpuShortPower(toByte(sp))),
   SetCpuLongPower: (lp: number) => call(raw.CPU.SetCpuLongPower(toByte(lp))),
-  SetCustomMode: (open: boolean) => call(raw.CPU.SetCustomMode(open)),
-  GetCustomMode: () => call(raw.CPU.GetCustomMode()),
   SetCPUTempWall: (tw: number) => call(raw.CPU.SetCPUTempWall(toByte(tw))),
   GetCPUThermometer: () =>
     cached(CACHE_TTL_MS, 'CPU.GetCPUThermometer', () => call(raw.CPU.GetCPUThermometer())),
@@ -393,69 +371,47 @@ export const KeyboardGradient = {
   IsRunning: () => call(raw.KeyboardGradient.IsRunning()),
 }
 
+type NvidiaGpuRaw = BridgeApi['NvidiaGpu']
+
+/** NvidiaGpu 的只读方法名: 签名为 (gpuIndex?: number) => HostBridgePromise<any> */
+type NvidiaGpuGetterName = {
+  [K in keyof NvidiaGpuRaw]: NvidiaGpuRaw[K] extends (gpuIndex?: number) => HostBridgePromise<any>
+    ? K
+    : never
+}[keyof NvidiaGpuRaw]
+
+/** 按方法名生成带缓存的只读包装, 消费侧类型与原手写版一致 */
+function gpuCached<K extends NvidiaGpuGetterName>(name: K, ttlMs: number) {
+  type Called = NvidiaGpuRaw[K] extends (gpuIndex?: number) => HostBridgePromise<infer T>
+    ? (gpuIndex?: number) => Promise<CommandResult<T>>
+    : never
+  return ((gpuIndex?: number) => {
+    const fn = raw.NvidiaGpu[name] as (gpuIndex?: number) => HostBridgePromise<unknown>
+    return cached(ttlMs, `NvidiaGpu.${name}(${gpuIndex ?? ''})`, () => call(fn(gpuIndex)))
+  }) as Called
+}
+
 export const NvidiaGpu = {
-  GetGpuName: (gpuIndex?: number) =>
-    cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuName(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetGpuName(gpuIndex)),
-    ),
-  GetGpuDriverVersion: (gpuIndex?: number) =>
-    cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuDriverVersion(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetGpuDriverVersion(gpuIndex)),
-    ),
-  GetGpuDriverDate: (gpuIndex?: number) =>
-    cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuDriverDate(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetGpuDriverDate(gpuIndex)),
-    ),
-  GetGpuMemoryTotal: (gpuIndex?: number) =>
-    cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuMemoryTotal(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetGpuMemoryTotal(gpuIndex)),
-    ),
-  GetGpuBusWidth: (gpuIndex?: number) =>
-    cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuBusWidth(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetGpuBusWidth(gpuIndex)),
-    ),
-  GetGpuUtilization: (gpuIndex?: number) =>
-    cached(CACHE_TTL_MS, `NvidiaGpu.GetGpuUtilization(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetGpuUtilization(gpuIndex)),
-    ),
-  GetGpuMemoryUtilization: (gpuIndex?: number) =>
-    cached(CACHE_TTL_MS, `NvidiaGpu.GetGpuMemoryUtilization(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetGpuMemoryUtilization(gpuIndex)),
-    ),
-  GetGpuCoreClock: (gpuIndex?: number) =>
-    cached(CACHE_TTL_MS, `NvidiaGpu.GetGpuCoreClock(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetGpuCoreClock(gpuIndex)),
-    ),
-  GetGpuMemoryClock: (gpuIndex?: number) =>
-    cached(CACHE_TTL_MS, `NvidiaGpu.GetGpuMemoryClock(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetGpuMemoryClock(gpuIndex)),
-    ),
-  GetGpuTemperature: (gpuIndex?: number) =>
-    cached(CACHE_TTL_MS, `NvidiaGpu.GetGpuTemperature(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetGpuTemperature(gpuIndex)),
-    ),
-  GetGpuFanSpeed: (gpuIndex?: number) =>
-    cached(CACHE_TTL_MS, `NvidiaGpu.GetGpuFanSpeed(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetGpuFanSpeed(gpuIndex)),
-    ),
-  GetGpuCoreClockRange: (gpuIndex?: number) =>
-    cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuCoreClockRange(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetGpuCoreClockRange(gpuIndex)),
-    ),
-  GetGpuMemoryClockRange: (gpuIndex?: number) =>
-    cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuMemoryClockRange(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetGpuMemoryClockRange(gpuIndex)),
-    ),
+  GetGpuName: gpuCached('GetGpuName', STATIC_TTL_MS),
+  GetGpuDriverVersion: gpuCached('GetGpuDriverVersion', STATIC_TTL_MS),
+  GetGpuDriverDate: gpuCached('GetGpuDriverDate', STATIC_TTL_MS),
+  GetGpuMemoryTotal: gpuCached('GetGpuMemoryTotal', STATIC_TTL_MS),
+  GetGpuBusWidth: gpuCached('GetGpuBusWidth', STATIC_TTL_MS),
+  GetGpuUtilization: gpuCached('GetGpuUtilization', CACHE_TTL_MS),
+  GetGpuMemoryUtilization: gpuCached('GetGpuMemoryUtilization', CACHE_TTL_MS),
+  GetGpuCoreClock: gpuCached('GetGpuCoreClock', CACHE_TTL_MS),
+  GetGpuMemoryClock: gpuCached('GetGpuMemoryClock', CACHE_TTL_MS),
+  GetGpuTemperature: gpuCached('GetGpuTemperature', CACHE_TTL_MS),
+  GetGpuFanSpeed: gpuCached('GetGpuFanSpeed', CACHE_TTL_MS),
+  GetGpuCoreClockRange: gpuCached('GetGpuCoreClockRange', STATIC_TTL_MS),
+  GetGpuMemoryClockRange: gpuCached('GetGpuMemoryClockRange', STATIC_TTL_MS),
+  GetGpuCurveCapabilities: gpuCached('GetGpuCurveCapabilities', STATIC_TTL_MS),
   LockGpuClock: (freq: number, gpuIndex?: number) =>
     call(raw.NvidiaGpu.LockGpuClock(freq, gpuIndex)),
   ResetGpuClock: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetGpuClock(gpuIndex)),
   LockMemoryClock: (freq: number, gpuIndex?: number) =>
     call(raw.NvidiaGpu.LockMemoryClock(freq, gpuIndex)),
   ResetMemoryClock: (gpuIndex?: number) => call(raw.NvidiaGpu.ResetMemoryClock(gpuIndex)),
-  GetGpuCurveCapabilities: (gpuIndex?: number) =>
-    cached(STATIC_TTL_MS, `NvidiaGpu.GetGpuCurveCapabilities(${gpuIndex ?? ''})`, () =>
-      call(raw.NvidiaGpu.GetGpuCurveCapabilities(gpuIndex)),
-    ),
   GetGpuCurveStatus: (gpuIndex?: number) => call(raw.NvidiaGpu.GetGpuCurveStatus(gpuIndex)),
   SetGpuOffsets: (coreOffsetMhz: number, memoryOffsetMhz: number, gpuIndex?: number) =>
     call(raw.NvidiaGpu.SetGpuOffsets(coreOffsetMhz, memoryOffsetMhz, gpuIndex)),
@@ -498,11 +454,8 @@ export const RyzenSmu = {
 }
 export const Power = {
   SetCPUMaxFrequency: (mhz: number) => call(raw.Power.SetCPUMaxFrequency(mhz)),
-  ResetCPUMaxFrequency: () => call(raw.Power.ResetCPUMaxFrequency()),
   DisableTurbo: () => call(raw.Power.DisableTurbo()),
   EnableTurbo: () => call(raw.Power.EnableTurbo()),
-  GetCPUMaxFrequency: () => call(raw.Power.GetCPUMaxFrequency()),
-  GetTurboEnabled: () => call(raw.Power.GetTurboEnabled()),
 }
 
 export const Osd = {

@@ -8,9 +8,6 @@ import {Osd} from '@/utils/bridge'
 import type {OsdPosition} from '@/types/config'
 
 const configStore = useConfigStore()
-if (!configStore.config) {
-  await configStore.fetchConfig()
-}
 const osdData = computed(() => configStore.config?.Osd)
 
 // ===== 显示效果 =====
@@ -30,6 +27,35 @@ function selectPosition(value: OsdPosition) {
 function saveDebounced() {
   configStore.debouncedSave()
 }
+
+/** 右栏可调参数行: 字段/范围/步进/单位/滑条配色 (step 缺省走组件默认 1) */
+interface OsdSliderRow {
+  key: 'AnimationMs' | 'DurationMs' | 'Opacity' | 'Scale' | 'PollIntervalMs'
+  label: string
+  min: number
+  max: number
+  step: number
+  unit: string
+  sliderClass: string
+  note?: string
+}
+
+const sliderRows: OsdSliderRow[] = [
+  { key: 'AnimationMs', label: '出入场时长', min: 200, max: 3000, step: 20, unit: 'ms', sliderClass: 'slider-purple' },
+  { key: 'DurationMs', label: '显示时长', min: 500, max: 5000, step: 100, unit: 'ms', sliderClass: 'slider-purple' },
+  { key: 'Opacity', label: '面板不透明度', min: 30, max: 100, step: 1, unit: '%', sliderClass: 'slider-blue' },
+  { key: 'Scale', label: '界面缩放', min: 100, max: 200, step: 5, unit: '%', sliderClass: 'slider-orange' },
+  {
+    key: 'PollIntervalMs',
+    label: 'EC 状态轮询间隔',
+    min: 500,
+    max: 5000,
+    step: 100,
+    unit: 'ms',
+    sliderClass: 'slider-red',
+    note: '原生 Fn 热键（性能模式 / 背光 / Fn 锁 / 触摸板锁）优先经 HID_EVENT20\n事件通道即时检测；此间隔仅在事件通道不可用时作为轮询兜底',
+  },
+]
 
 // ===== 自定义位置: 屏幕比例预览区拖拽 (与服务端相同的行程百分比映射) =====
 const PILL_W = 52
@@ -211,7 +237,7 @@ onMounted(() => {
         <div class="w-full lg:w-[380px] shrink-0 space-y-6">
           <!-- 显示效果 -->
           <div
-            class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-5"
+            class="panel-card space-y-5"
           >
             <h3
               class="text-xs font-black text-purple-400 uppercase tracking-widest border-l-4 border-purple-600 pl-2.5"
@@ -264,127 +290,36 @@ onMounted(() => {
               </p>
             </div>
 
-            <div class="space-y-1.5">
+            <div v-for="row in sliderRows" :key="row.key" class="space-y-1.5">
               <div class="flex justify-between items-center text-[11px]">
-                <span class="text-gray-400">出入场时长</span>
+                <span class="text-gray-400">{{ row.label }}</span>
                 <EditableValue
-                  v-model="osdData.AnimationMs"
-                  :max="3000"
-                  :min="200"
-                  :step="20"
+                  v-model="osdData[row.key]"
+                  :max="row.max"
+                  :min="row.min"
+                  :step="row.step"
                   class="text-ink font-mono"
-                  unit="ms"
+                  :unit="row.unit"
                   @commit="saveDebounced"
                 />
               </div>
               <a-slider
-                v-model="osdData.AnimationMs"
-                :max="3000"
-                :min="200"
-                :step="20"
-                class="slider-purple"
+                v-model="osdData[row.key]"
+                :class="row.sliderClass"
+                :max="row.max"
+                :min="row.min"
+                :step="row.step"
                 @change="saveDebounced"
               />
-            </div>
-
-            <div class="space-y-1.5">
-              <div class="flex justify-between items-center text-[11px]">
-                <span class="text-gray-400">显示时长</span>
-                <EditableValue
-                  v-model="osdData.DurationMs"
-                  :max="5000"
-                  :min="500"
-                  :step="100"
-                  class="text-ink font-mono"
-                  unit="ms"
-                  @commit="saveDebounced"
-                />
-              </div>
-              <a-slider
-                v-model="osdData.DurationMs"
-                :max="5000"
-                :min="500"
-                :step="100"
-                class="slider-purple"
-                @change="saveDebounced"
-              />
-            </div>
-
-            <div class="space-y-1.5">
-              <div class="flex justify-between items-center text-[11px]">
-                <span class="text-gray-400">面板不透明度</span>
-                <EditableValue
-                  v-model="osdData.Opacity"
-                  :max="100"
-                  :min="30"
-                  class="text-ink font-mono"
-                  unit="%"
-                  @commit="saveDebounced"
-                />
-              </div>
-              <a-slider
-                v-model="osdData.Opacity"
-                :max="100"
-                :min="30"
-                class="slider-blue"
-                @change="saveDebounced"
-              />
-            </div>
-
-            <div class="space-y-1.5">
-              <div class="flex justify-between items-center text-[11px]">
-                <span class="text-gray-400">界面缩放</span>
-                <EditableValue
-                  v-model="osdData.Scale"
-                  :max="200"
-                  :min="100"
-                  :step="5"
-                  class="text-ink font-mono"
-                  unit="%"
-                  @commit="saveDebounced"
-                />
-              </div>
-              <a-slider
-                v-model="osdData.Scale"
-                :max="200"
-                :min="100"
-                :step="5"
-                class="slider-orange"
-                @change="saveDebounced"
-              />
-            </div>
-
-            <div class="space-y-1.5">
-              <div class="flex justify-between items-center text-[11px]">
-                <span class="text-gray-400">EC 状态轮询间隔</span>
-                <EditableValue
-                  v-model="osdData.PollIntervalMs"
-                  :max="5000"
-                  :min="500"
-                  :step="100"
-                  class="text-ink font-mono"
-                  unit="ms"
-                  @commit="saveDebounced"
-                />
-              </div>
-              <a-slider
-                v-model="osdData.PollIntervalMs"
-                :max="5000"
-                :min="500"
-                :step="100"
-                class="slider-red"
-                @change="saveDebounced"
-              />
-              <p class="text-[10px] text-gray-600 leading-relaxed">
-                原生 Fn 热键（性能模式 / 背光 / Fn 锁 / 触摸板锁）优先经 HID_EVENT20
-                事件通道即时检测；此间隔仅在事件通道不可用时作为轮询兜底
+              <p v-if="row.note" class="text-[10px] text-gray-600 leading-relaxed whitespace-pre-line">
+                {{ row.note }}
               </p>
             </div>
           </div>
 
           <!-- 效果预览 -->
           <div
-            class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-4"
+            class="panel-card space-y-4"
           >
             <h3
               class="text-xs font-black text-blue-400 uppercase tracking-widest border-l-4 border-blue-500 pl-2.5"
@@ -429,7 +364,7 @@ onMounted(() => {
 
           <!-- 说明 -->
           <div
-            class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg"
+            class="panel-card"
           >
             <h2 class="text-[13px] font-semibold text-gray-300 mb-3">名词解释</h2>
             <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">
@@ -459,46 +394,3 @@ onMounted(() => {
     <a-spin dot />
   </div>
 </template>
-
-<style lang="scss" scoped>
-/* 与 RyzenSmu 页一致的分色滑条 */
-:deep(.slider-purple .arco-slider-bar) {
-  background: linear-gradient(90deg, #6366f1 0%, var(--color-accent-purple) 100%) !important;
-  height: 5px !important;
-  border-radius: 99px;
-}
-:deep(.slider-purple .arco-slider-button) {
-  border: 2px solid var(--color-accent-purple) !important;
-  box-shadow: 0 0 8px rgba(138, 43, 226, 0.6) !important;
-}
-
-:deep(.slider-blue .arco-slider-bar) {
-  background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%) !important;
-  height: 5px !important;
-  border-radius: 99px;
-}
-:deep(.slider-blue .arco-slider-button) {
-  border: 2px solid #3b82f6 !important;
-  box-shadow: 0 0 8px rgba(59, 130, 246, 0.6) !important;
-}
-
-:deep(.slider-orange .arco-slider-bar) {
-  background: linear-gradient(90deg, #ff7d00 0%, #ff5000 100%) !important;
-  height: 5px !important;
-  border-radius: 99px;
-}
-:deep(.slider-orange .arco-slider-button) {
-  border: 2px solid #ff7d00 !important;
-  box-shadow: 0 0 8px rgba(255, 125, 0, 0.6) !important;
-}
-
-:deep(.slider-red .arco-slider-bar) {
-  background: linear-gradient(90deg, #f43f5e 0%, #e11d48 100%) !important;
-  height: 5px !important;
-  border-radius: 99px;
-}
-:deep(.slider-red .arco-slider-button) {
-  border: 2px solid #f43f5e !important;
-  box-shadow: 0 0 8px rgba(225, 29, 72, 0.6) !important;
-}
-</style>

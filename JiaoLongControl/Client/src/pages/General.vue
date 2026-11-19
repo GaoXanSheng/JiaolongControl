@@ -76,7 +76,7 @@ onMounted(() => {
         <!-- ==================== 左列: 锁定控制与设备开关 ==================== -->
         <div class="flex-1 space-y-6">
           <div
-            class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-4"
+            class="panel-card space-y-4"
           >
             <h3
               class="text-xs font-black text-emerald-400 uppercase tracking-widest border-l-4 border-emerald-500 pl-2.5"
@@ -123,7 +123,7 @@ onMounted(() => {
         <!-- ==================== 右列: 说明 ==================== -->
         <div class="w-full lg:w-[380px] shrink-0 space-y-6">
           <div
-            class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg"
+            class="panel-card"
           >
             <h2 class="text-[13px] font-semibold text-gray-300 mb-3">名词解释</h2>
             <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">

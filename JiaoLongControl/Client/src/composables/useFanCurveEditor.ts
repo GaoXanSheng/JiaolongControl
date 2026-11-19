@@ -1,6 +1,7 @@
 import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {Message} from '@arco-design/web-vue'
 import {AutoFanControl, Fan} from '@/utils/bridge'
+import {stopAutoFanIfRunning} from '@/utils/fanControl'
 import {useConfigStore} from '@/stores/config'
 
 export interface FanCurvePoint {
@@ -319,10 +320,7 @@ export function useFanCurveEditor() {
   }
 
   async function handleRemoveFanClick() {
-    const running = await AutoFanControl.IsRunning()
-    if (running.Success && running.Data) {
-      await AutoFanControl.Stop()
-    }
+    await stopAutoFanIfRunning()
     const res = await Fan.RemoveFanSpeed()
     if (res.Success) {
       Message.success(res.Message)

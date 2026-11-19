@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Windows;
+using JiaoLongControl.Server.Core.Services;
 using JiaoLongControl.Server.Core.Utils;
 using JiaoLongControl.Server.Interop;
 
@@ -36,6 +38,8 @@ namespace JiaoLongControl.Server
             }
 
             ConfigSerializer.Initialize(version);
+
+            PreWarmHardwareMonitor();
 
             // 全局异常兜底：任何未处理异常都记录日志，避免闪退后无迹可查
             AppDomain.CurrentDomain.UnhandledException += (_, args) =>
@@ -84,6 +88,22 @@ namespace JiaoLongControl.Server
             Cleanup();
             LogSetup.Shutdown();
             base.OnExit(e);
+        }
+
+        private void PreWarmHardwareMonitor()
+        {
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    var sw = Stopwatch.StartNew();
+                    HardwareMonitorService.ReadCpu();
+                    Logger.Info($"LHM prewarm: {sw.ElapsedMilliseconds}ms");
+                }
+                catch
+                {
+                }
+            });
         }
 
         private void Cleanup()

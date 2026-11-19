@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Management;
 using System.Runtime.InteropServices;
 using JiaoLongControl.Server.Core.Models;
@@ -14,10 +15,13 @@ namespace JiaoLongControl.Server.Core.Controllers
     public class NvidiaGpuController : IDisposable
     {
         private const int MaxFanRpm = 6800;
+        private static readonly Log Logger = Log.For<NvidiaGpuController>();
 
         public NvidiaGpuController()
         {
+            var sw = Stopwatch.StartNew();
             NVIDIA.Initialize();
+            Logger.Info($"NVAPI Initialize: {sw.ElapsedMilliseconds}ms");
         }
 
         public void Dispose()
@@ -34,34 +38,6 @@ namespace JiaoLongControl.Server.Core.Controllers
                 throw new InvalidOperationException("没有找到 NVIDIA GPU");
             int idx = gpuIndex >= 0 && gpuIndex < gpus.Length ? gpuIndex : 0;
             return gpus[idx];
-        }
-
-        public CommandResult GetGpuAllStats(int gpuIndex = -1)
-        {
-            try
-            {
-                var gpu = GetGPU(gpuIndex);
-                var fan = GetGpuFanSpeed(gpuIndex);
-                var stats = new GpuStatsInfo
-                {
-                    GpuName = gpu.FullName,
-                    DriverVersion = $"{(NVIDIA.DriverVersion / 100).ToString()}.{(NVIDIA.DriverVersion % 100).ToString()}",
-                    DriverDate = GetNvidiaDriverDate(gpuIndex),
-                    MemoryTotal = $"{(gpu.MemoryInformation.DedicatedVideoMemoryInkB / 1024).ToString()} MiB",
-                    BusWidth = $"x{gpu.BusInformation.CurrentPCIeLanes}",
-                    GpuUtilization = gpu.UsageInformation.GPU.Percentage.ToString(),
-                    MemoryUtilization = gpu.UsageInformation.FrameBuffer.Percentage.ToString(),
-                    CoreClock = ((int)(gpu.CurrentClockFrequencies.GraphicsClock.Frequency / 1000)).ToString(),
-                    MemoryClock = ((int)(gpu.CurrentClockFrequencies.MemoryClock.Frequency / 1000)).ToString(),
-                    GpuTemperature = gpu.ThermalInformation.ThermalSensors.First().CurrentTemperature.ToString(),
-                    FanSpeed = fan.Success && fan.Data != null ? fan.Data.ToString() ?? "0" : "0"
-                };
-                return new CommandResult(true, "获取成功", stats);
-            }
-            catch (Exception ex)
-            {
-                return new CommandResult(false, ex.Message);
-            }
         }
 
         public CommandResult GetGpuName(int gpuIndex = -1)
@@ -183,7 +159,7 @@ namespace JiaoLongControl.Server.Core.Controllers
             try
             {
                 var fan = Bridge.Instance.Fan.GetFanSpeed();
-                if (fan.Success && fan.Data is FanSpeedInfo info && info.GPUFanSpeed is > 0 and < 10000)
+                if (fan.Success && fan.Data is FanSpeedInfo info && info.GPUFanSpeed is > 0 and < FanSpeedInfo.ValidMaxRpm)
                     return new CommandResult(true, "获取成功", info.GPUFanSpeed);
             }
             catch
@@ -236,20 +212,6 @@ namespace JiaoLongControl.Server.Core.Controllers
                 return new CommandResult(true, "获取成功", new { Min = minMhz, Max = maxMhz });
             }
             catch { return new CommandResult(true, "获取成功 (Fallback)", new { Min = 0, Max = 10000 }); }
-        }
-
-        public CommandResult GetGpuPowerLimitRange(int gpuIndex = -1)
-        {
-            try
-            {
-                var gpu = GetGPU(gpuIndex);
-                var info = gpu.PerformanceControl.PowerLimitInformation.First();
-                int minW = (int)(info.MinimumPowerInPCM / 1000);
-                int maxW = (int)(info.MaximumPowerInPCM / 1000);
-                if (maxW == 0) throw new Exception("Invalid power limit");
-                return new CommandResult(true, "获取成功", new { Min = minW, Max = maxW });
-            }
-            catch { return new CommandResult(true, "获取成功 (Fallback)", new { Min = 50, Max = 175 }); }
         }
 
         /// <summary>
@@ -324,40 +286,9 @@ namespace JiaoLongControl.Server.Core.Controllers
             }
         }
 
-        public CommandResult SetPowerLimit(int watts, int gpuIndex = -1)
-        {
-            try
-            {
-                // NVML 的功耗上限单位是毫瓦 (nvidia-smi -pl 是瓦), 先按驱动允许范围钳制
-                var (minMw, maxMw) = NvmlInterop.GetPowerManagementLimitConstraints(ResolveGpuIndex(gpuIndex));
-                int milliwatts = Math.Clamp(watts * 1000, minMw, maxMw);
-                NvmlInterop.SetPowerManagementLimit(ResolveGpuIndex(gpuIndex), milliwatts);
-                return new CommandResult(true, $"功耗限制已设置为 {milliwatts / 1000} W");
-            }
-            catch (Exception ex)
-            {
-                return new CommandResult(false, $"[NvidiaGpuController] 设置功耗限制失败: {ex.Message}");
-            }
-        }
-
         private int ResolveGpuIndex(int gpuIndex)
         {
             return gpuIndex >= 0 ? gpuIndex : 0;
-        }
-
-        public class GpuStatsInfo
-        {
-            public string GpuName { get; set; } = "";
-            public string DriverVersion { get; set; } = "";
-            public string DriverDate { get; set; } = "Unknown";
-            public string MemoryTotal { get; set; } = "";
-            public string BusWidth { get; set; } = "";
-            public string GpuUtilization { get; set; } = "";
-            public string MemoryUtilization { get; set; } = "";
-            public string CoreClock { get; set; } = "";
-            public string MemoryClock { get; set; } = "";
-            public string GpuTemperature { get; set; } = "";
-            public string FanSpeed { get; set; } = "";
         }
 
         #region GPU 曲线调校 (NVAPI ClkVfPoints — 移植自 vuplea/simple-nvidia-undervolt, MIT)
@@ -390,7 +321,7 @@ namespace JiaoLongControl.Server.Core.Controllers
                 var gpu = GetCurveGpu(gpuIndex);
                 bool supported = true;
                 string reason = "";
-                var coreRange = (-1_000_000, 1_000_000);
+                var coreRange = (-NvGpuCurveInterop.DefaultOffsetRangeKhz, NvGpuCurveInterop.DefaultOffsetRangeKhz);
                 try
                 {
                     var curve = NvGpuCurveInterop.GetVfCurve(gpu);

@@ -7,9 +7,7 @@ namespace JiaoLongControl.Server.Core.Services
     /// <summary>EC 热键事件参数。</summary>
     public class WmiHotKeyEvent : EventArgs
     {
-        public byte EventType { get; init; }
         public EventName EventName { get; init; }
-        public int Value { get; init; }
     }
 
     /// <summary>
@@ -59,11 +57,7 @@ namespace JiaoLongControl.Server.Core.Services
 
                 var evt = new WmiHotKeyEvent
                 {
-                    EventType = detail[0],
                     EventName = (EventName)detail[1],
-                    Value = detail[1] == (byte)EventName.CPUFanSpeed || detail[1] == (byte)EventName.GPUFanSpeed
-                        ? (detail[2] << 8) + (detail.Length > 3 ? detail[3] : 0)
-                        : detail[2],
                 };
                 EventArrived?.Invoke(evt);
             }

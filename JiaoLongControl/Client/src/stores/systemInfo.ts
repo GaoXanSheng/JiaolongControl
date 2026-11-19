@@ -1,12 +1,30 @@
 import {defineStore} from 'pinia'
-import {CPU, Fan, type FanSpeedInfo, type GpuStats, NvidiaGpu} from '@/utils/bridge'
+import {CPU, Fan, type FanSpeedInfo, NvidiaGpu} from '@/utils/bridge'
 import {POLL_INTERVAL_SYSTEM_INFO} from '@/constants'
+import {timing} from '@/utils/timing'
+
+let systemInfoTimed = false
+let systemInfoInflight: Promise<void> | null = null
 
 export interface CpuStatsInfo {
   FrequencyMhz: number
   Voltage: number
   Usage: number
   Temperature: number
+}
+
+/** GPU 实时监控数据: 名称类为字符串, 读数类直接存数值 (失败置 0) */
+export interface GpuStats {
+  GpuName: string
+  DriverVersion: string
+  DriverDate: string
+  MemoryTotal: string
+  BusWidth: string
+  GpuUtilization: number
+  MemoryUtilization: number
+  CoreClock: number
+  MemoryClock: number
+  FanSpeed: number
 }
 
 export interface SystemInfoState {
@@ -35,15 +53,26 @@ export const useSystemInfoStore = defineStore('systemInfo', {
     gpuDriverDate: (state) => state.gpuStats?.DriverDate || 'N/A',
     gpuMemoryTotal: (state) => state.gpuStats?.MemoryTotal || 'N/A',
     gpuBusWidth: (state) => state.gpuStats?.BusWidth || 'N/A',
-    gpuUtilization: (state) => parseInt(state.gpuStats?.GpuUtilization || '0', 10),
-    gpuMemoryUtilization: (state) => parseInt(state.gpuStats?.MemoryUtilization || '0', 10),
-    gpuCoreClock: (state) => parseInt(state.gpuStats?.CoreClock || '0', 10),
-    gpuMemoryClock: (state) => parseInt(state.gpuStats?.MemoryClock || '0', 10),
-    gpuFanSpeed: (state) => parseInt(state.gpuStats?.FanSpeed || '0', 10),
+    gpuUtilization: (state) => state.gpuStats?.GpuUtilization ?? 0,
+    gpuMemoryUtilization: (state) => state.gpuStats?.MemoryUtilization ?? 0,
+    gpuCoreClock: (state) => state.gpuStats?.CoreClock ?? 0,
+    gpuMemoryClock: (state) => state.gpuStats?.MemoryClock ?? 0,
+    gpuFanSpeed: (state) => state.gpuStats?.FanSpeed ?? 0,
   },
 
   actions: {
     async fetchSystemInfo() {
+      if (systemInfoInflight) return systemInfoInflight
+      systemInfoInflight = this.fetchSystemInfoOnce()
+      try {
+        await systemInfoInflight
+      } finally {
+        systemInfoInflight = null
+      }
+    },
+
+    async fetchSystemInfoOnce() {
+      const started = performance.now()
       try {
         const [
           cpuTemp,
@@ -95,11 +124,11 @@ export const useSystemInfoStore = defineStore('systemInfo', {
           DriverDate: gpuDriverDate.Success ? gpuDriverDate.Data : 'N/A',
           MemoryTotal: gpuMemoryTotal.Success ? gpuMemoryTotal.Data : 'N/A',
           BusWidth: gpuBusWidth.Success ? gpuBusWidth.Data : 'N/A',
-          GpuUtilization: gpuUtil.Success ? String(gpuUtil.Data) : '0',
-          MemoryUtilization: gpuMemUtil.Success ? String(gpuMemUtil.Data) : '0',
-          CoreClock: gpuCoreClock.Success ? String(gpuCoreClock.Data) : '0',
-          MemoryClock: gpuMemClock.Success ? String(gpuMemClock.Data) : '0',
-          FanSpeed: gpuFanSpeed.Success ? String(gpuFanSpeed.Data) : '0',
+          GpuUtilization: gpuUtil.Success ? gpuUtil.Data : 0,
+          MemoryUtilization: gpuMemUtil.Success ? gpuMemUtil.Data : 0,
+          CoreClock: gpuCoreClock.Success ? gpuCoreClock.Data : 0,
+          MemoryClock: gpuMemClock.Success ? gpuMemClock.Data : 0,
+          FanSpeed: gpuFanSpeed.Success ? gpuFanSpeed.Data : 0,
         }
         this.gpuTemp = gTemp.Success ? gTemp.Data : 0
 
@@ -108,6 +137,10 @@ export const useSystemInfoStore = defineStore('systemInfo', {
         }
       } catch (err) {
         console.warn('刷新系统信息失败', err)
+      }
+      if (!systemInfoTimed) {
+        systemInfoTimed = true
+        timing('systemInfo first fetch', started)
       }
     },
 

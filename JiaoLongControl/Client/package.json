@@ -33,7 +33,6 @@
     "@tsconfig/node22": "^22.0.2",
     "@types/node": "^22.18.6",
     "@vitejs/plugin-vue": "^6.0.1",
-    "@vue/test-utils": "^2.4.11",
     "@vue/tsconfig": "^0.8.1",
     "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",

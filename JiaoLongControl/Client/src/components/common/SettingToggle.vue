@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { Message } from '@arco-design/web-vue'
+import {computed, ref} from 'vue'
+import {Message} from '@arco-design/web-vue'
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
-import { useConfigStore } from '@/stores/config'
+import {useConfigStore} from '@/stores/config'
 
 const props = defineProps<{
   title: string
@@ -13,8 +13,6 @@ const props = defineProps<{
 
 const configStore = useConfigStore()
 const loading = ref(false)
-
-onMounted(() => configStore.fetchConfig())
 
 function readValue(): boolean | undefined {
   let node: unknown = configStore.config

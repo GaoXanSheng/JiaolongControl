@@ -74,18 +74,11 @@ namespace JiaoLongControl.Server.Core.Native
         public static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        public static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint dwFlags);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool GetMonitorInfoW(IntPtr hMonitor, ref MONITORINFO lpmi);
 
         [DllImport("shcore.dll")]
         public static extern int GetDpiForMonitor(IntPtr hMonitor, int dpiType, out uint dpiX, out uint dpiY);
-
-        /// <summary>窗口的有效 DPI (每英寸点数, 96 = 100%), Win10 1607+ 可用。</summary>
-        [DllImport("user32.dll")]
-        public static extern uint GetDpiForWindow(IntPtr hWnd);
 
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]

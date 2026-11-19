@@ -19,7 +19,18 @@ public enum RyzenSmuFamily
 [ClassInterface(ClassInterfaceType.AutoDual)]
 public class RyzenSmuController : PawnIO
 {
+    /// <summary>SMU 忙碌/响应轮询上限（沿用历史值 8096）。</summary>
+    private const int SmuPollLimit = 8096;
+
     private static readonly Log Logger = Log.For<RyzenSmuController>();
+
+    /// <summary>STAPM/FAST/SLOW 限值指令的家族序列表（TrySend 依序尝试直到成功）。</summary>
+    private static readonly ((uint, bool)[] Fp, (uint, bool)[] Am5)
+        StapmLimitCmds = (new[] { (0x14u, true), (0x31u, false) }, new[] { (0x4Fu, true) }),
+        StapmTimeCmds  = (new[] { (0x18u, true), (0x36u, false) }, new[] { (0x53u, true) }),
+        FastLimitCmds  = (new[] { (0x15u, true), (0x32u, false) }, new[] { (0x3Eu, true) }),
+        SlowLimitCmds  = (new[] { (0x16u, true), (0x33u, false) }, new[] { (0x5Fu, true), (0xCBu, false) }),
+        SlowTimeCmds   = (new[] { (0x17u, true), (0x35u, false) }, new[] { (0x60u, true) });
 
     public RyzenSmuController()
     {
@@ -38,6 +49,9 @@ public class RyzenSmuController : PawnIO
     }
 
     public RyzenSmuFamily CurrentFamily { get; set; } = RyzenSmuFamily.AM5_V1;
+
+    /// <summary>FP 家族（FP6/FP7_FP8/Strix）与 AM5 指令集不同，按当前平台判定家族。</summary>
+    private bool IsFpFamily => CurrentFamily is not RyzenSmuFamily.AM5_V1;
 
     /// <summary>
     /// 快速获取 CPU 身份: 注册表同键一次读出品牌串与 Identifier（即 CPUID Family/Model 的十进制文本）。
@@ -102,7 +116,7 @@ public class RyzenSmuController : PawnIO
         try
         {
             uint rsp = 0;
-            for (int i = 0; i < 8096; ++i)
+            for (int i = 0; i < SmuPollLimit; ++i)
             {
                 rsp = (uint)Execute("ioctl_read_smu_register", new ulong[] { addrRsp }, 1)[0];
                 if (rsp != 0) break;
@@ -119,7 +133,7 @@ public class RyzenSmuController : PawnIO
             Execute("ioctl_write_smu_register", new ulong[] { addrMsg, cmd }, 0);
             
             rsp = 0;
-            for (int i = 0; i < 8096; ++i)
+            for (int i = 0; i < SmuPollLimit; ++i)
             {
                 rsp = (uint)Execute("ioctl_read_smu_register", new ulong[] { addrRsp }, 1)[0];
                 if (rsp != 0) break;
@@ -152,6 +166,21 @@ public class RyzenSmuController : PawnIO
         }
         return lastResult ?? new CommandResult(false, $"{name} 设置失败: 无可用指令");
     }
+
+    /// <summary>按家族二选一取指令后经 Send 下发（消息文案与原实现一致）。</summary>
+    private CommandResult SendForFamily(uint fpCmd, uint am5Cmd, uint arg, bool isMp1, string name)
+        => Send(IsFpFamily ? fpCmd : am5Cmd, arg, isMp1, name);
+
+    /// <summary>FP6 / FP7_FP8+Strix / AM5 三家族指令各不相同时按当前家族取指令。</summary>
+    private CommandResult SendPerFamily(uint fp6Cmd, uint fp7Cmd, uint am5Cmd, uint arg, bool isMp1, string name)
+        => Send(CurrentFamily switch {
+            RyzenSmuFamily.FP6 => fp6Cmd,
+            RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => fp7Cmd,
+            _ => am5Cmd
+        }, arg, isMp1, name);
+
+    private CommandResult TrySendForFamily(((uint, bool)[] Fp, (uint, bool)[] Am5) cmds, uint arg, string name)
+        => TrySend(arg, name, IsFpFamily ? cmds.Fp : cmds.Am5);
 
     /// <summary>
     /// 调试用：向指定邮箱发送原始 SMU 命令（测试工具 --smu-cmd 使用）
@@ -192,179 +221,66 @@ public class RyzenSmuController : PawnIO
     #region (Power Limits - PPT)
 
     public CommandResult SetStapmLimit(double watts)
-    {
-        uint arg = (uint)(watts * 1000);
-        return CurrentFamily switch {
-            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix
-                => TrySend(arg, "STAPM Limit", (0x14, true), (0x31, false)),
-            _ => TrySend(arg, "STAPM Limit", (0x4F, true))
-        };
-    }
+        => TrySendForFamily(StapmLimitCmds, (uint)(watts * 1000), "STAPM Limit");
 
     public CommandResult SetStapmTime(uint seconds)
-    {
-        return CurrentFamily switch {
-            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix
-                => TrySend(seconds, "STAPM Time", (0x18, true), (0x36, false)),
-            _ => TrySend(seconds, "STAPM Time", (0x53, true))
-        };
-    }
+        => TrySendForFamily(StapmTimeCmds, seconds, "STAPM Time");
 
     public CommandResult SetFastLimit(double watts)
-    {
-        uint arg = (uint)(watts * 1000);
-        return CurrentFamily switch {
-            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix
-                => TrySend(arg, "Fast Limit", (0x15, true), (0x32, false)),
-            _ => TrySend(arg, "Fast Limit", (0x3E, true))
-        };
-    }
+        => TrySendForFamily(FastLimitCmds, (uint)(watts * 1000), "Fast Limit");
 
     public CommandResult SetSlowLimit(double watts)
-    {
-        uint arg = (uint)(watts * 1000);
-        return CurrentFamily switch {
-            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix
-                => TrySend(arg, "Slow Limit", (0x16, true), (0x33, false)),
-            _ => TrySend(arg, "Slow Limit", (0x5F, true), (0xCB, false))
-        };
-    }
+        => TrySendForFamily(SlowLimitCmds, (uint)(watts * 1000), "Slow Limit");
 
     public CommandResult SetSlowTime(uint seconds)
-    {
-        return CurrentFamily switch {
-            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix
-                => TrySend(seconds, "Slow Time", (0x17, true), (0x35, false)),
-            _ => TrySend(seconds, "Slow Time", (0x60, true))
-        };
-    }
+        => TrySendForFamily(SlowTimeCmds, seconds, "Slow Time");
 
     public CommandResult SetPptLimitRsmu(double watts)
-    {
-        uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 => 0x33u, 
-            RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x31u,
-            _ => 0x56u 
-        };
-        return Send(cmd, (uint)(watts * 1000), false, "PPT Limit (RSMU)");
-    }
+        => SendPerFamily(0x33u, 0x31u, 0x56u, (uint)(watts * 1000), false, "PPT Limit (RSMU)");
 
     #endregion
 
     #region (Current & Temp Limits)
 
     public CommandResult SetVrmCurrentMp1(uint milliamps)
-    {
-        uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x1Au,
-            _ => 0x3Cu 
-        };
-        return Send(cmd, milliamps, true, "VRM Current (MP1)");
-    }
+        => SendForFamily(0x1Au, 0x3Cu, milliamps, true, "VRM Current (MP1)");
 
     public CommandResult SetVrmCurrentRsmu(uint milliamps)
-    {
-        uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x38u,
-            _ => 0x57u 
-        };
-        return Send(cmd, milliamps, false, "VRM Current (RSMU)");
-    }
+        => SendForFamily(0x38u, 0x57u, milliamps, false, "VRM Current (RSMU)");
 
     public CommandResult SetEdcLimitMp1(uint milliamps)
-    {
-        uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x1Cu,
-            _ => 0x3Du 
-        };
-        return Send(cmd, milliamps, true, "EDC Limit (MP1)");
-    }
+        => SendForFamily(0x1Cu, 0x3Du, milliamps, true, "EDC Limit (MP1)");
 
     public CommandResult SetEdcLimitRsmu(uint milliamps)
-    {
-        uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x3Au,
-            _ => 0x58u 
-        };
-        return Send(cmd, milliamps, false, "EDC Limit (RSMU)");
-    }
+        => SendForFamily(0x3Au, 0x58u, milliamps, false, "EDC Limit (RSMU)");
 
     public CommandResult SetTempLimitMp1(uint celsius)
-    {
-        uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x19u,
-            _ => 0x3Fu 
-        };
-        return Send(cmd, celsius, true, "Temp Limit (MP1)");
-    }
+        => SendForFamily(0x19u, 0x3Fu, celsius, true, "Temp Limit (MP1)");
 
     public CommandResult SetTempLimitRsmu(uint celsius)
-    {
-        uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x37u,
-            _ => 0x59u 
-        };
-        return Send(cmd, celsius, false, "Temp Limit (RSMU)");
-    }
+        => SendForFamily(0x37u, 0x59u, celsius, false, "Temp Limit (RSMU)");
 
     #endregion
 
     #region (PBO & Overclocking)
 
     public CommandResult SetPboScalar(uint value)
-    {
-        uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 => 0x3Fu, 
-            RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x3Eu,
-            _ => 0x5Bu 
-        };
-        return Send(cmd, value, false, "PBO Scalar");
-    }
+        => SendPerFamily(0x3Fu, 0x3Eu, 0x5Bu, value, false, "PBO Scalar");
 
     public CommandResult SetOcClk(int mhz)
-    {
-        uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x19u,
-            _ => 0x5Fu 
-        };
-        return Send(cmd, (uint)mhz, false, "OC Clock");
-    }
+        => SendForFamily(0x19u, 0x5Fu, (uint)mhz, false, "OC Clock");
 
     public CommandResult SetPerCoreOcClk(uint coreIdx, uint mhz)
-    {
-        uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x1Au,
-            _ => 0x60u 
-        };
-        return Send(cmd, (coreIdx << 8) | (mhz & 0xFF), false, "Per Core OC Clock");
-    }
+        => SendForFamily(0x1Au, 0x60u, (coreIdx << 8) | (mhz & 0xFF), false, "Per Core OC Clock");
 
     public CommandResult SetOcVolt(uint millivolts)
-    {
-        uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x1Bu,
-            _ => 0x61u 
-        };
-        return Send(cmd, millivolts, false, "OC Voltage");
-    }
+        => SendForFamily(0x1Bu, 0x61u, millivolts, false, "OC Voltage");
 
     public CommandResult EnableOc()
-    {
-        uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x17u,
-            _ => 0x5Du 
-        };
-        return Send(cmd, 0, false, "Enable OC Mode");
-    }
+        => SendForFamily(0x17u, 0x5Du, 0, false, "Enable OC Mode");
 
     public CommandResult DisableOc()
-    {
-        uint cmd = CurrentFamily switch { 
-            RyzenSmuFamily.FP6 or RyzenSmuFamily.FP7_FP8 or RyzenSmuFamily.FP7_FP8_Strix => 0x18u,
-            _ => 0x5Eu 
-        };
-        return Send(cmd, 0, false, "Disable OC Mode");
-    }
+        => SendForFamily(0x18u, 0x5Eu, 0, false, "Disable OC Mode");
 
     #endregion
 

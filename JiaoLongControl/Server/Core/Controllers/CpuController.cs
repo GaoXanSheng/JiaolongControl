@@ -9,55 +9,17 @@ namespace JiaoLongControl.Server.Core.Controllers
     [ClassInterface(ClassInterfaceType.AutoDual)]
     public class CpuController
     {
-        public CommandResult SetCpuShortPower(byte sp)
+        private CommandResult SetCpuPowerItem(CPUPower kind, byte value)
         {
-            var res = MethodServices.SetValue(MethodName.CPUPower, new byte[2]
-            {
-                (byte)CPUPower.ShortPower,
-                sp
-            });
+            var res = MethodServices.SetValue(MethodName.CPUPower, new byte[2] { (byte)kind, value });
             return new CommandResult(res, res ? "设置成功" : "设置失败");
         }
 
-        public CommandResult SetCpuLongPower(byte lp)
-        {
-            var res = MethodServices.SetValue(MethodName.CPUPower, new byte[2]
-            {
-                (byte)CPUPower.LongPower,
-                lp
-            });
-            return new CommandResult(res, res ? "设置成功" : "设置失败");
-        }
+        public CommandResult SetCpuShortPower(byte sp) => SetCpuPowerItem(CPUPower.ShortPower, sp);
 
-        public CommandResult SetCustomMode(bool open)
-        {
-            var res = false;
-            if (open)
-            {
-                res = MethodServices.SetValue(MethodName.CPUPower, CPUPower.OpenState);
-            }
-            else
-            {
-                res = MethodServices.SetValue(MethodName.CPUPower, CPUPower.CloseState);
-            }
-            return new CommandResult(res, res ? "设置成功" : "设置失败");
-        }
+        public CommandResult SetCpuLongPower(byte lp) => SetCpuPowerItem(CPUPower.LongPower, lp);
 
-        public CommandResult SetCPUTempWall(byte tw)
-        {
-            var res = MethodServices.SetValue(MethodName.CPUPower, new byte[2]
-            {
-                (byte)CPUPower.CpuTempWallState,
-                tw
-            });
-            return new CommandResult(res, res ? "设置成功" : "设置失败");
-        }
-
-        public CommandResult GetCustomMode()
-        {
-            var res = MethodServices.GetValue<CPUPower>(MethodName.CPUPower);
-            return new CommandResult(res == CPUPower.OpenState, res == CPUPower.OpenState ? "已开启" : "已关闭");
-        }
+        public CommandResult SetCPUTempWall(byte tw) => SetCpuPowerItem(CPUPower.CpuTempWallState, tw);
 
         public CommandResult GetCpuUsage()
         {

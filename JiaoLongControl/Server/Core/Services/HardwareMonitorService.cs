@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using JiaoLongControl.Server.Core.Utils;
 using LibreHardwareMonitor.Hardware;
 using Microsoft.Win32;
 
@@ -25,6 +26,7 @@ namespace JiaoLongControl.Server.Core.Services
     {
         private const int CacheMilliseconds = 300;
 
+        private static readonly Log Logger = Log.For(nameof(HardwareMonitorService));
         private static readonly object Gate = new();
         private static readonly int BaseFrequencyMhz = ReadBaseFrequency();
         private static PerformanceCounter? _perfCounter;
@@ -36,7 +38,14 @@ namespace JiaoLongControl.Server.Core.Services
 
         public static CpuHardwareInfo ReadCpuInfo()
         {
-            lock (Gate)
+            if (!Monitor.TryEnter(Gate))
+                return _info ?? new CpuHardwareInfo
+                {
+                    Threads = Environment.ProcessorCount,
+                    BaseFrequencyMhz = BaseFrequencyMhz,
+                };
+
+            try
             {
                 if (_info != null)
                     return _info;
@@ -45,6 +54,10 @@ namespace JiaoLongControl.Server.Core.Services
                 if (!string.IsNullOrEmpty(info.Name))
                     _info = info;
                 return info;
+            }
+            finally
+            {
+                Monitor.Exit(Gate);
             }
         }
 
@@ -95,23 +108,36 @@ namespace JiaoLongControl.Server.Core.Services
 
         public static CpuSensors ReadCpu()
         {
-            lock (Gate)
+            if (!Monitor.TryEnter(Gate))
+                return _cached ?? new CpuSensors();
+
+            try
             {
                 long now = Environment.TickCount64;
                 if (_cached != null && now - _cachedAt < CacheMilliseconds)
                     return _cached;
 
+                var totalSw = Stopwatch.StartNew();
+                long openMs = 0, updateMs = 0, collectMs = 0;
                 var sensors = new CpuSensors();
                 try
                 {
+                    var openSw = Stopwatch.StartNew();
                     _computer ??= Open();
+                    openMs = openSw.ElapsedMilliseconds;
+
                     foreach (var hardware in _computer.Hardware)
                     {
                         if (hardware.HardwareType != HardwareType.Cpu)
                             continue;
 
+                        var updateSw = Stopwatch.StartNew();
                         hardware.Update();
+                        updateMs = updateSw.ElapsedMilliseconds;
+
+                        var collectSw = Stopwatch.StartNew();
                         Collect(hardware, sensors);
+                        collectMs = collectSw.ElapsedMilliseconds;
                         break;
                     }
                 }
@@ -119,16 +145,25 @@ namespace JiaoLongControl.Server.Core.Services
                 {
                 }
 
+                if (totalSw.ElapsedMilliseconds > 500)
+                    Logger.Info($"LHM ReadCpu: open={openMs} update={updateMs} collect={collectMs} total={totalSw.ElapsedMilliseconds}ms");
+
                 _cached = sensors;
                 _cachedAt = now;
                 return sensors;
+            }
+            finally
+            {
+                Monitor.Exit(Gate);
             }
         }
 
         private static Computer Open()
         {
             var computer = new Computer { IsCpuEnabled = true };
+            var sw = Stopwatch.StartNew();
             computer.Open();
+            Logger.Info($"LHM Open: {sw.ElapsedMilliseconds}ms");
             return computer;
         }
 

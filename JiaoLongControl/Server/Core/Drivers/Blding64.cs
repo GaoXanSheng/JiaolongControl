@@ -13,30 +13,6 @@ public class Blding64 : IDisposable
     private const string ServiceName = "JiaoLongDriver64";
     private readonly object _ioLock = new();
     private IntPtr _dllHandle = IntPtr.Zero;
-    public bool IsInitialized { get; set; }
-
-    [DllImport(DllName, EntryPoint = "InitializeBldring", CallingConvention = CallingConvention.StdCall)]
-    private static extern bool InitializeBldring();
-
-    [DllImport(DllName, EntryPoint = "ShutdownBldring", CallingConvention = CallingConvention.StdCall)]
-    private static extern void ShutdownBldring();
-
-    [DllImport(DllName, EntryPoint = "GetBLDPortVal", CallingConvention = CallingConvention.StdCall)]
-    private static extern bool GetBLDPortVal(ushort wPortAddr, ref byte pdwPortVal, byte bSize);
-
-    [DllImport(DllName, EntryPoint = "SetBLDPortVal", CallingConvention = CallingConvention.StdCall)]
-    private static extern bool SetBLDPortVal(ushort wPortAddr, byte dwPortVal, byte bSize);
-
-    private bool ReadPort(ushort portAddr, out byte value)
-    {
-        value = 0;
-        return GetBLDPortVal(portAddr, ref value, 1);
-    }
-
-    private bool WritePort(ushort portAddr, byte value)
-    {
-        return SetBLDPortVal(portAddr, value, 1);
-    }
 
     public Blding64()
     {
@@ -68,88 +44,7 @@ public class Blding64 : IDisposable
         }
     }
 
-    private void EC_init()
-    {
-        byte EC_CHIP_ID1 = EC_RAM_READ(0x2000);
-        if (EC_CHIP_ID1 == 0x55)
-        {
-            byte val = EC_RAM_READ(0x1060);
-            val = (byte)(val | 0x80);
-            EC_RAM_WRITE(0x1060, val);
-        }
-    }
-
-    public void CpuFanSetSpeed(byte speed)
-    {
-        EC_RAM_WRITE(ECMemoryTable.Fan1_RPM_SET, speed);
-        var mask = EC_RAM_READ(0xB20) | 0x02;
-        EC_RAM_WRITE(0xB20, (byte)mask);
-    }
-
-    public void GpuFanSetSpeed(byte speed)
-    {
-        EC_RAM_WRITE(ECMemoryTable.Fan2_RPM_SET, speed);
-        var mask = EC_RAM_READ(0xB20) | 0x08;
-        EC_RAM_WRITE(0xB20, (byte)mask);
-    }
-
-    public void RemoveFanSpeed()
-    {
-        GpuFanSetSpeed(0);
-        CpuFanSetSpeed(0);
-        EC_RAM_WRITE(0xB20, 0x00);
-    }
-
-    private bool EC_RAM_WRITE(ushort iIndex, byte data)
-    {
-        lock (_ioLock)
-        {
-            byte highByte = (byte)(iIndex >> 8);
-            byte lowByte = (byte)(iIndex & 0xFF);
-
-            if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E)) return false;
-            if (!WritePort(ECMemoryTable.EC_DATA_PORT, 0x11)) return false;
-            if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F)) return false;
-            if (!WritePort(ECMemoryTable.EC_DATA_PORT, highByte)) return false;
-
-            if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E)) return false;
-            if (!WritePort(ECMemoryTable.EC_DATA_PORT, 0x10)) return false;
-            if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F)) return false;
-            if (!WritePort(ECMemoryTable.EC_DATA_PORT, lowByte)) return false;
-
-            if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E)) return false;
-            if (!WritePort(ECMemoryTable.EC_DATA_PORT, 0x12)) return false;
-            if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F)) return false;
-
-            return WritePort(ECMemoryTable.EC_DATA_PORT, data);
-        }
-    }
-
-    private byte EC_RAM_READ(ushort iIndex)
-    {
-        lock (_ioLock)
-        {
-            byte highByte = (byte)(iIndex >> 8);
-            byte lowByte = (byte)(iIndex & 0xFF);
-
-            WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E);
-            WritePort(ECMemoryTable.EC_DATA_PORT, 0x11);
-            WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F);
-            WritePort(ECMemoryTable.EC_DATA_PORT, highByte);
-
-            WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E);
-            WritePort(ECMemoryTable.EC_DATA_PORT, 0x10);
-            WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F);
-            WritePort(ECMemoryTable.EC_DATA_PORT, lowByte);
-
-            WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E);
-            WritePort(ECMemoryTable.EC_DATA_PORT, 0x12);
-            WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F);
-
-            ReadPort(ECMemoryTable.EC_DATA_PORT, out byte data);
-            return data;
-        }
-    }
+    public bool IsInitialized { get; set; }
 
     public void Dispose()
     {
@@ -181,6 +76,113 @@ public class Blding64 : IDisposable
         }
 
         GC.SuppressFinalize(this);
+    }
+
+    [DllImport(DllName, EntryPoint = "InitializeBldring", CallingConvention = CallingConvention.StdCall)]
+    private static extern bool InitializeBldring();
+
+    [DllImport(DllName, EntryPoint = "ShutdownBldring", CallingConvention = CallingConvention.StdCall)]
+    private static extern void ShutdownBldring();
+
+    [DllImport(DllName, EntryPoint = "GetBLDPortVal", CallingConvention = CallingConvention.StdCall)]
+    private static extern bool GetBLDPortVal(ushort wPortAddr, ref byte pdwPortVal, byte bSize);
+
+    [DllImport(DllName, EntryPoint = "SetBLDPortVal", CallingConvention = CallingConvention.StdCall)]
+    private static extern bool SetBLDPortVal(ushort wPortAddr, byte dwPortVal, byte bSize);
+
+    private bool ReadPort(ushort portAddr, out byte value)
+    {
+        value = 0;
+        return GetBLDPortVal(portAddr, ref value, 1);
+    }
+
+    private bool WritePort(ushort portAddr, byte value)
+    {
+        return SetBLDPortVal(portAddr, value, 1);
+    }
+
+    private void EC_init()
+    {
+        byte EC_CHIP_ID1 = EC_RAM_READ(0x2000);
+        if (EC_CHIP_ID1 == 0x55)
+        {
+            byte val = EC_RAM_READ(0x1060);
+            val = (byte)(val | 0x80);
+            EC_RAM_WRITE(0x1060, val);
+        }
+    }
+
+    public void CpuFanSetSpeed(byte speed)
+    {
+        EC_RAM_WRITE(ECMemoryTable.Fan1_RPM_SET, speed);
+        var mask = EC_RAM_READ(0xB20) | 0x02;
+        EC_RAM_WRITE(0xB20, (byte)mask);
+    }
+
+    public void GpuFanSetSpeed(byte speed)
+    {
+        EC_RAM_WRITE(ECMemoryTable.Fan2_RPM_SET, speed);
+        var mask = EC_RAM_READ(0xB20) | 0x08;
+        EC_RAM_WRITE(0xB20, (byte)mask);
+    }
+
+    protected void RemoveFanSpeed()
+    {
+        GpuFanSetSpeed(0);
+        CpuFanSetSpeed(0);
+        EC_RAM_WRITE(0xB20, 0x00);
+    }
+
+    /// <summary>选中 EC RAM 寄存器（地址高/低字节经 0x11/0x10 通道写入 0x2F），READ/WRITE 共用并统一容错。</summary>
+    private bool EcSelectRegister(byte highByte, byte lowByte)
+    {
+        // 高字节: 0x2E/0x11 → 0x2F/高字节; 低字节: 0x2E/0x10 → 0x2F/低字节
+        if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E)) return false;
+        if (!WritePort(ECMemoryTable.EC_DATA_PORT, 0x11)) return false;
+        if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F)) return false;
+        if (!WritePort(ECMemoryTable.EC_DATA_PORT, highByte)) return false;
+
+        if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E)) return false;
+        if (!WritePort(ECMemoryTable.EC_DATA_PORT, 0x10)) return false;
+        if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F)) return false;
+        if (!WritePort(ECMemoryTable.EC_DATA_PORT, lowByte)) return false;
+
+        return true;
+    }
+
+    private bool EC_RAM_WRITE(ushort iIndex, byte data)
+    {
+        lock (_ioLock)
+        {
+            byte highByte = (byte)(iIndex >> 8);
+            byte lowByte = (byte)(iIndex & 0xFF);
+
+            if (!EcSelectRegister(highByte, lowByte)) return false;
+
+            if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E)) return false;
+            if (!WritePort(ECMemoryTable.EC_DATA_PORT, 0x12)) return false;
+            if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F)) return false;
+
+            return WritePort(ECMemoryTable.EC_DATA_PORT, data);
+        }
+    }
+
+    private byte EC_RAM_READ(ushort iIndex)
+    {
+        lock (_ioLock)
+        {
+            byte highByte = (byte)(iIndex >> 8);
+            byte lowByte = (byte)(iIndex & 0xFF);
+
+            if (!EcSelectRegister(highByte, lowByte)) return 0;
+
+            if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E)) return 0;
+            if (!WritePort(ECMemoryTable.EC_DATA_PORT, 0x12)) return 0;
+            if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F)) return 0;
+
+            ReadPort(ECMemoryTable.EC_DATA_PORT, out byte data);
+            return data;
+        }
     }
 
     ~Blding64() => Dispose();

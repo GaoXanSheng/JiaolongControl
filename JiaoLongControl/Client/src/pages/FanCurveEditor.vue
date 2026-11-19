@@ -312,13 +312,6 @@ function onNodeContextMenu(index: number, e: MouseEvent) {
 </script>
 
 <style lang="scss" scoped>
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
 
 .fan-curve-card {
   height: 400px;

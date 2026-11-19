@@ -8,7 +8,8 @@ import {type CommandResult, CPU, RyzenSmu, type SmuTelemetry} from '@/utils/brid
 import {useConfigStore} from '@/stores/config'
 import type {SmuSectionType} from '@/types/config'
 import {POLL_INTERVAL_SMU} from '@/constants'
-import {buildSparkline, type SparklineResult} from '@/utils/chart'
+import SparklineCard from '@/components/common/SparklineCard.vue'
+import {useRingBuffer} from '@/composables/useRingBuffer'
 
 // CONFIG_GROUPS 走 Set+key 的动态应用，仅允许数值型 Smu 字段（数组字段如 CurveOptimizerPerCore 不适用）
 type NumericSmuKey = {
@@ -180,9 +181,6 @@ const CONFIG_GROUPS: ConfigGroup[] = [
 
 const loadingMap = reactive<Record<string, boolean>>({})
 const configStore = useConfigStore()
-if (!configStore.config) {
-  await configStore.fetchConfig()
-}
 const smuData = computed(() => configStore.config?.Smu)
 
 // Physical core count fetched from backend (excludes hyperthreading)
@@ -260,22 +258,18 @@ const applyPerCoreCurve = (index: number) => {
 }
 
 // ====== Real-time SMU Telemetry ======
-const HISTORY_LEN = 24
 const telemetry = ref<SmuTelemetry>({ Ppt: 0, Temp: 0, FreqMhz: 0, Usage: 0 })
-const pptHistory = ref<number[]>(Array(HISTORY_LEN).fill(0))
-const tempHistory = ref<number[]>(Array(HISTORY_LEN).fill(0))
+const pptSeries = useRingBuffer(24)
+const tempSeries = useRingBuffer(24)
 
-function pushHistory(arr: number[], value: number) {
-  arr.push(value)
-  if (arr.length > HISTORY_LEN) arr.shift()
-}
-
-function sparkline(history: number[], yMax: number): SparklineResult {
-  return buildSparkline(history, { width: 160, height: 40, max: yMax, smooth: true, area: true })
-}
-
-const pptChart = computed(() => sparkline(pptHistory.value, 150))
-const tempChart = computed(() => sparkline(tempHistory.value, 110))
+// 温度值颜色: >90 红 / >75 橙 / 常规
+const tempValueClass = computed(() =>
+  telemetry.value.Temp > 90
+    ? 'text-base font-bold font-mono text-red-400'
+    : telemetry.value.Temp > 75
+      ? 'text-base font-bold font-mono text-orange-400'
+      : 'text-base font-bold font-mono text-ink',
+)
 
 let pollingTimer: ReturnType<typeof setInterval> | null = null
 
@@ -284,8 +278,8 @@ async function fetchTelemetry() {
     const res = await RyzenSmu.GetSmuTelemetry()
     if (res.Success && res.Data) {
       telemetry.value = res.Data
-      pushHistory(pptHistory.value, res.Data.Ppt)
-      pushHistory(tempHistory.value, res.Data.Temp)
+      pptSeries.push(res.Data.Ppt)
+      tempSeries.push(res.Data.Temp)
     }
   } catch (e) {
     console.warn('读取 SMU 遥测失败', e)
@@ -343,7 +337,7 @@ onUnmounted(() => {
           <div
             v-for="group in CONFIG_GROUPS"
             :key="group.title"
-            class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg flex flex-col justify-between"
+            class="panel-card flex flex-col justify-between"
           >
             <div>
               <h3
@@ -422,7 +416,7 @@ onUnmounted(() => {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
           <!-- Curve Optimizer 面板 -->
           <div
-            class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg flex flex-col justify-between"
+            class="panel-card flex flex-col justify-between"
           >
             <div>
               <div class="flex justify-between items-center mb-4">
@@ -504,7 +498,7 @@ onUnmounted(() => {
 
           <!-- Per Core OC Clocks 面板 -->
           <div
-            class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg flex flex-col justify-between"
+            class="panel-card flex flex-col justify-between"
           >
             <div>
               <h3
@@ -548,7 +542,7 @@ onUnmounted(() => {
       <div class="w-full lg:w-[360px] shrink-0 space-y-6 lg:pt-[115px]">
         <!-- 1. AMD Ryzen 处理器芯片详情 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg"
+          class="panel-card"
         >
           <h2 class="text-[13px] font-semibold text-gray-300 mb-4">Ryzen 芯片架构</h2>
           <div class="flex items-center gap-4">
@@ -579,7 +573,7 @@ onUnmounted(() => {
 
         <!-- 2. 电源实时监视器（遥测 PPT / 温度波形图） -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-4"
+          class="panel-card space-y-4"
         >
           <div class="flex items-center justify-between">
             <h2 class="text-[13px] font-semibold text-gray-300">SMU 电源遥测</h2>
@@ -590,85 +584,37 @@ onUnmounted(() => {
           </div>
 
           <div class="grid grid-cols-2 gap-3">
-            <!-- PPT 功耗 -->
-            <div
-              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
-            >
-              <div>
-                <span class="text-[10px] text-gray-500 block">PPT 封装功耗</span>
-                <span class="text-base font-bold text-ink font-mono"
-                  >{{ telemetry.Ppt.toFixed(1) }}
-                  <span class="text-[10px] text-gray-500 font-bold">W</span></span
-                >
-              </div>
-              <svg
-                class="w-full h-8 opacity-80 mt-1"
-                viewBox="0 0 160 40"
-                preserveAspectRatio="none"
-              >
-                <defs>
-                  <linearGradient id="smu-g-purple" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#8A2BE2" stop-opacity="0.35" />
-                    <stop offset="100%" stop-color="#8A2BE2" stop-opacity="0" />
-                  </linearGradient>
-                </defs>
-                <path
-                  :d="pptChart.line"
-                  fill="none"
-                  stroke="#8A2BE2"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                />
-                <path :d="pptChart.area" fill="url(#smu-g-purple)" />
-              </svg>
-            </div>
-
-            <!-- 核心温度 -->
-            <div
-              class="bg-ink/[0.02] border border-ink/[0.04] p-3 rounded-lg flex flex-col justify-between"
-            >
-              <div>
-                <span class="text-[10px] text-gray-500 block">核心温度</span>
-                <span
-                  class="text-base font-bold font-mono"
-                  :class="
-                    telemetry.Temp > 90
-                      ? 'text-red-400'
-                      : telemetry.Temp > 75
-                        ? 'text-orange-400'
-                        : 'text-ink'
-                  "
-                  >{{ telemetry.Temp.toFixed(1) }}
-                  <span class="text-[10px] text-gray-500 font-bold">°C</span></span
-                >
-              </div>
-              <svg
-                class="w-full h-8 opacity-80 mt-1"
-                viewBox="0 0 160 40"
-                preserveAspectRatio="none"
-              >
-                <defs>
-                  <linearGradient id="smu-g-red" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#EF4444" stop-opacity="0.35" />
-                    <stop offset="100%" stop-color="#EF4444" stop-opacity="0" />
-                  </linearGradient>
-                </defs>
-                <path
-                  :d="tempChart.line"
-                  fill="none"
-                  stroke="#EF4444"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                />
-                <path :d="tempChart.area" fill="url(#smu-g-red)" />
-              </svg>
-            </div>
+            <SparklineCard
+              :gradient-opacity="0.35"
+              :history="pptSeries.buffer"
+              :max="150"
+              :stroke-width="1.5"
+              :value="telemetry.Ppt.toFixed(1)"
+              color="#8A2BE2"
+              gradient-id="smu-sg-ppt"
+              label="PPT 封装功耗"
+              svg-class="w-full h-8 opacity-80 mt-1"
+              unit="W"
+            />
+            <SparklineCard
+              :gradient-opacity="0.35"
+              :history="tempSeries.buffer"
+              :max="110"
+              :stroke-width="1.5"
+              :value="telemetry.Temp.toFixed(1)"
+              :value-class="tempValueClass"
+              color="#EF4444"
+              gradient-id="smu-sg-temp"
+              label="核心温度"
+              svg-class="w-full h-8 opacity-80 mt-1"
+              unit="°C"
+            />
           </div>
         </div>
 
         <!-- 3. 技术名释说明 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-2.5"
+          class="panel-card space-y-2.5"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">名词解释</h2>
           <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">
@@ -702,55 +648,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped lang="scss">
-/* 隐藏自定义滚动条 */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* 分色重写 Slider 轨道（紫 / 蓝 / 红 / 橘） */
-:deep(.slider-purple .arco-slider-bar) {
-  background: linear-gradient(90deg, #6366f1 0%, var(--color-accent-purple) 100%) !important;
-  height: 5px !important;
-  border-radius: 99px;
-}
-:deep(.slider-purple .arco-slider-button) {
-  border: 2px solid var(--color-accent-purple) !important;
-  box-shadow: 0 0 8px rgba(138, 43, 226, 0.6) !important;
-}
-
-:deep(.slider-blue .arco-slider-bar) {
-  background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%) !important;
-  height: 5px !important;
-  border-radius: 99px;
-}
-:deep(.slider-blue .arco-slider-button) {
-  border: 2px solid #3b82f6 !important;
-  box-shadow: 0 0 8px rgba(59, 130, 246, 0.6) !important;
-}
-
-:deep(.slider-red .arco-slider-bar) {
-  background: linear-gradient(90deg, #f43f5e 0%, #e11d48 100%) !important;
-  height: 5px !important;
-  border-radius: 99px;
-}
-:deep(.slider-red .arco-slider-button) {
-  border: 2px solid #e11d48 !important;
-  box-shadow: 0 0 8px rgba(225, 29, 72, 0.6) !important;
-}
-
-:deep(.slider-orange .arco-slider-bar) {
-  background: linear-gradient(90deg, #ff7d00 0%, #ff5000 100%) !important;
-  height: 5px !important;
-  border-radius: 99px;
-}
-:deep(.slider-orange .arco-slider-button) {
-  border: 2px solid #ff7d00 !important;
-  box-shadow: 0 0 8px rgba(255, 125, 0, 0.6) !important;
-}
+/* no-scrollbar 与分色滑条样式已上移至 assets/Global.scss */
 
 .boot-check {
   --primary-6: 138, 43, 226;
@@ -769,14 +667,5 @@ onUnmounted(() => {
 .boot-check:hover :deep(.arco-checkbox-icon-hover::before),
 .boot-check:focus-within :deep(.arco-checkbox-icon-hover::before) {
   background-color: var(--color-line-soft);
-}
-
-/* 深色模式下拉选择框 */
-:deep(.arco-select-view-single) {
-  background-color: var(--color-panel-elevated) !important;
-  border: 1px solid var(--color-line-soft) !important;
-  color: var(--color-text-main) !important;
-  border-radius: 6px !important;
-  height: 28px !important;
 }
 </style>

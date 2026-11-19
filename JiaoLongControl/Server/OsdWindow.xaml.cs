@@ -35,14 +35,18 @@ namespace JiaoLongControl.Server
         private const int ExitMs = 620;
 
         private static readonly Log Logger = Log.For<OsdWindow>();
+
+        // ===== 交互状态 =====
+
+        /// <summary>强调色解析失败时的兜底色 (蓝, 与 OsdItem.DefaultAccentHex 同值)。</summary>
+        private static readonly Color DefaultAccentColor = Color.FromRgb(0x3B, 0x82, 0xF6);
+
         private readonly DispatcherTimer _cursorTimer;
 
         private readonly DispatcherTimer _hideTimer;
 
-        // ===== 交互状态 =====
-
         // 主题缓存: 背光分段激活色 / 未激活色 / 音量条基准高度
-        private Color _accentColor = Color.FromRgb(0x3B, 0x82, 0xF6);
+        private Color _accentColor = DefaultAccentColor;
 
         // 入场/出场动画的总时长 (= 配置的出入场时长, 默认 480ms), 各阶段节奏按基准编排等比缩放
         private double _animMs = 480;
@@ -317,7 +321,7 @@ namespace JiaoLongControl.Server
 
         private void ApplyTheme(bool light, string accentHex, double panelOpacity)
         {
-            var a = TryParseColor(accentHex, Color.FromRgb(0x3B, 0x82, 0xF6));
+            var a = TryParseColor(accentHex, DefaultAccentColor);
             _accentColor = a;
 
             HaloStop.Color = Color.FromArgb(0x59, a.R, a.G, a.B);

@@ -5,7 +5,6 @@
  * ============================================================ */
 :root {
   --color-bg-primary: #0d0e15;
-  --color-bg-secondary: #11121a;
   --color-bg-grad-top: #0d1025;
   --color-bg-grad-bottom: #070b1c;
   --color-card-bg: rgba(26, 27, 38, 0.6);
@@ -17,15 +16,11 @@
   --color-popover-bg: rgba(26, 27, 43, 0.95);
   --color-shadow-pop: rgba(0, 0, 0, 0.5);
   --color-accent-purple: #8a2be2;
-  --color-accent-blue: #3b82f6;
-  --color-accent-green: #00ff7f;
   --color-glow-purple: rgba(138, 43, 226, 0.4);
   --color-text-main: #ffffff;
   --color-text-muted: #a0aec0;
   --color-line: rgba(255, 255, 255, 0.08);
   --color-line-soft: rgba(255, 255, 255, 0.04);
-  --color-overlay: rgba(255, 255, 255, 0.04);
-  --color-overlay-strong: rgba(255, 255, 255, 0.08);
   --color-scroll-thumb: rgba(255, 255, 255, 0.12);
   --color-shadow-card: rgba(0, 0, 0, 0.3);
 
@@ -58,7 +53,6 @@
 
 [data-theme='light'] {
   --color-bg-primary: #f2f4f9;
-  --color-bg-secondary: #ffffff;
   --color-bg-grad-top: #f7f9fd;
   --color-bg-grad-bottom: #e9edf5;
   --color-card-bg: rgba(255, 255, 255, 0.85);
@@ -70,15 +64,11 @@
   --color-popover-bg: rgba(255, 255, 255, 0.95);
   --color-shadow-pop: rgba(31, 38, 60, 0.18);
   --color-accent-purple: #8a2be2;
-  --color-accent-blue: #2563eb;
-  --color-accent-green: #059669;
   --color-glow-purple: rgba(138, 43, 226, 0.16);
   --color-text-main: #1a1b26;
   --color-text-muted: #5a6478;
   --color-line: rgba(13, 14, 21, 0.1);
   --color-line-soft: rgba(13, 14, 21, 0.06);
-  --color-overlay: rgba(13, 14, 21, 0.045);
-  --color-overlay-strong: rgba(13, 14, 21, 0.08);
   --color-scroll-thumb: rgba(13, 14, 21, 0.15);
   --color-shadow-card: rgba(31, 38, 60, 0.08);
 
@@ -145,48 +135,6 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--color-scroll-thumb);
   border-radius: 10px;
-}
-
-.glowing-card {
-  background: var(--color-card-bg);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--color-line-soft);
-  border-radius: 24px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-  &:hover {
-    border-color: rgba(138, 43, 226, 0.3);
-    box-shadow: 0 0 20px var(--color-glow-purple);
-    transform: translateY(-2px);
-  }
-}
-
-.active-glow {
-  border-color: var(--color-accent-purple) !important;
-  box-shadow: 0 0 15px var(--color-glow-purple);
-  background: rgba(138, 43, 226, 0.1) !important;
-}
-
-.cyber-button {
-  background: var(--color-overlay);
-  border: 1px solid var(--color-line-soft);
-  border-radius: 12px;
-  padding: 12px 24px;
-  color: var(--color-text-muted);
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background: var(--color-overlay-strong);
-    color: var(--color-text-main);
-  }
-
-  &.active {
-    border-color: var(--color-accent-purple);
-    color: var(--color-text-main);
-    box-shadow: 0 0 10px var(--color-glow-purple);
-  }
 }
 
 /* 单色剪影图标: 遮罩填色机制(不依赖 filter 反转), 深色白剪影, 浅色黑剪影。
@@ -290,4 +238,24 @@ body {
 
 [data-theme='light'] .badge-neutral {
   background: rgba(13, 14, 21, 0.05);
+}
+
+/* ===== 分色滑条 (RyzenSmu / Osd 等页面共用): 按钮色 = 渐变起点色 ===== */
+$accent-sliders: (
+  purple: (#6366f1, var(--color-accent-purple), var(--color-accent-purple), rgba(138, 43, 226, 0.6)),
+  blue: (#3b82f6, #1d4ed8, #3b82f6, rgba(59, 130, 246, 0.6)),
+  red: (#f43f5e, #e11d48, #f43f5e, rgba(225, 29, 72, 0.6)),
+  orange: (#ff7d00, #ff5000, #ff7d00, rgba(255, 125, 0, 0.6)),
+);
+
+@each $name, $colors in $accent-sliders {
+  .slider-#{$name} .arco-slider-bar {
+    background: linear-gradient(90deg, nth($colors, 1) 0%, nth($colors, 2) 100%) !important;
+    height: 5px !important;
+    border-radius: 99px;
+  }
+  .slider-#{$name} .arco-slider-button {
+    border: 2px solid nth($colors, 3) !important;
+    box-shadow: 0 0 8px nth($colors, 4) !important;
+  }
 }

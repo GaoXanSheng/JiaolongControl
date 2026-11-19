@@ -227,18 +227,6 @@
     main.ts 永远不执行、应用白屏。bridge 的就绪等待统一在 utils/bridge.ts 中
     以「调用时惰性获取 + 超时」的方式处理，绝不阻塞模块加载。
 -->
-    <script>
-      // 仅做探测与日志，不阻塞任何后续脚本执行
-      try {
-        if (window.chrome && window.chrome.webview) {
-          console.log('WebView2 detected, readyState: ' + document.readyState)
-        } else {
-          console.warn('Not running inside WebView2 (bridge will be unavailable)')
-        }
-      } catch (e) {
-        console.warn('WebView2 detection warning', e)
-      }
-    </script>
     <script type="module" src="src/main.ts"></script>
   </body>
 </html>

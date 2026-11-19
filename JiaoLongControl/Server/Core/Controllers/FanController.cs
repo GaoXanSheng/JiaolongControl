@@ -39,14 +39,14 @@ public class FanController : Blding64
         return new CommandResult(false, "设置失败");
     }
 
-    public CommandResult RemoveFanSpeed()
+
+    public new CommandResult RemoveFanSpeed()
     {
         if (IsInitialized)
         {
             base.RemoveFanSpeed();
             return new CommandResult(true, "设置成功");
         }
-
         return new CommandResult(false, "设置失败");
     }
 

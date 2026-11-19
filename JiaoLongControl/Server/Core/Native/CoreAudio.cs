@@ -15,51 +15,36 @@ namespace JiaoLongControl.Server.Core.Native
         private static DeviceNotificationClient? _notificationClient;
 
         /// <summary>获取系统音量 (0~1) 与静音状态；失败抛出异常由调用方处理。</summary>
-        public static VolumeState GetVolumeState()
-        {
-            lock (Lock)
-            {
-                try
-                {
-                    return ReadState();
-                }
-                catch (COMException)
-                {
-                    // 当前 endpoint 失效（如设备被移除），重建后再试一次；仍失败则抛给调用方
-                    _endpoint = null;
-                    return ReadState();
-                }
-            }
-        }
+        public static VolumeState GetVolumeState() => WithEndpoint(_ => ReadState());
 
-        public static void SetVolume(float volume)
+        public static void SetVolume(float volume) => WithEndpoint(ep =>
         {
-            lock (Lock)
-            {
-                try
-                {
-                    GetEndpoint().SetMasterVolumeLevelScalar(Math.Clamp(volume, 0f, 1f), Guid.Empty);
-                }
-                catch (COMException)
-                {
-                    _endpoint = null;
-                    GetEndpoint().SetMasterVolumeLevelScalar(Math.Clamp(volume, 0f, 1f), Guid.Empty);
-                }
-            }
-        }
+            ep.SetMasterVolumeLevelScalar(Math.Clamp(volume, 0f, 1f), Guid.Empty);
+            return 0;
+        });
 
-        public static void SetMute(bool muted)
+        public static void SetMute(bool muted) => WithEndpoint(ep =>
+        {
+            ep.SetMute(muted, Guid.Empty);
+            return 0;
+        });
+
+        /// <summary>
+        /// 在锁内对 endpoint 执行一次操作；COMException（设备失效等）时
+        /// 重建 endpoint 再试一次，仍失败则抛给调用方。
+        /// </summary>
+        private static T WithEndpoint<T>(Func<IAudioEndpointVolume, T> op)
         {
             lock (Lock)
             {
                 try
                 {
-                    GetEndpoint().SetMute(muted, Guid.Empty);
+                    return op(GetEndpoint());
                 }
                 catch (COMException)
                 {
                     _endpoint = null;
-                    GetEndpoint().SetMute(muted, Guid.Empty);
+                    return op(GetEndpoint());
                 }
             }
         }
