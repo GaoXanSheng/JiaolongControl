@@ -8,6 +8,7 @@ import {GridComponent, LegendComponent, TooltipComponent} from 'echarts/componen
 import {PerformanceMode, SystemInfo, SystemPerMode} from '@/utils/bridge'
 import {useSystemInfoStore} from '@/stores/systemInfo'
 import {chartTheme} from '@/theme/theme'
+import {timing} from '@/utils/timing'
 import {storeToRefs} from 'pinia'
 import {Message} from '@arco-design/web-vue'
 import imgCPU from '@/assets/icon/iconCPU.png'
@@ -176,6 +177,7 @@ function handleVisibilityChange() {
 }
 
 onMounted(() => {
+  timing('Home onMounted')
   fetchStaticInfo()
   fetchPerformanceMode()
   startTimers()

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref, watch} from 'vue'
+import {onMounted, ref, watch} from 'vue'
 import {Message} from '@arco-design/web-vue'
 import {Keyboard, KeyboardGradient} from '@/utils/bridge.ts'
 import EditableValue from '@/components/common/EditableValue.vue'
@@ -7,6 +7,12 @@ import EditableValue from '@/components/common/EditableValue.vue'
 const loading = ref(false)
 const gradientRunning = ref(false)
 const gradientLoading = ref(false)
+
+/** 渐变开关操作失败后的状态回查 (读取失败按未运行处理) */
+async function syncGradientState() {
+  const runningRes = await KeyboardGradient.IsRunning().catch(() => null)
+  gradientRunning.value = !!runningRes?.Success
+}
 
 const color = ref({ red: 0, green: 0, blue: 0 })
 const LightBrightness = ref(0)
@@ -46,7 +52,9 @@ async function loadInitialData() {
   }
 }
 
-await loadInitialData()
+onMounted(() => {
+  void loadInitialData()
+})
 
 function rgbToHex(r: number, g: number, b: number) {
   return `#${[r, g, b].map((x) => Math.max(0, Math.min(255, x)).toString(16).padStart(2, '0')).join('')}`
@@ -98,14 +106,12 @@ async function handleGradientToggle(newValue: string | number | boolean) {
         Message.info(res.Message || '键盘渐变已停止')
       } else {
         Message.error(res.Message || '渐变停止失败')
-        const runningRes = await KeyboardGradient.IsRunning().catch(() => null)
-        gradientRunning.value = !!runningRes?.Success
+        await syncGradientState()
       }
     }
   } catch {
     Message.error('渐变操作异常，请检查日志')
-    const runningRes = await KeyboardGradient.IsRunning().catch(() => null)
-    gradientRunning.value = !!runningRes?.Success
+    await syncGradientState()
   } finally {
     gradientLoading.value = false
   }
@@ -152,7 +158,7 @@ function handleReset() {
 
         <!-- 1. 键盘灯效可视化预览卡片 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg"
+          class="panel-card"
         >
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-[13px] font-semibold text-gray-300">灯效实时预览</h2>
@@ -208,7 +214,7 @@ function handleReset() {
 
         <!-- 2. 快捷配色预设 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg"
+          class="panel-card"
         >
           <h2 class="text-[13px] font-semibold text-gray-300 mb-3">快捷预设</h2>
           <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
@@ -232,7 +238,7 @@ function handleReset() {
 
         <!-- 3. 键盘渐变效果 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg"
+          class="panel-card"
         >
           <div class="flex items-center justify-between gap-4">
             <div class="space-y-1.5">
@@ -264,7 +270,7 @@ function handleReset() {
 
         <!-- 4. 灯光通道与亮度手动调节 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-6"
+          class="panel-card space-y-6"
           :class="{ 'opacity-40 pointer-events-none': gradientRunning }"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">RGB 通道与亮度</h2>
@@ -373,7 +379,7 @@ function handleReset() {
       <div class="w-full lg:w-[360px] shrink-0 space-y-6 lg:pt-[115px]">
         <!-- 1. 当前颜色色板卡片 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-4"
+          class="panel-card space-y-4"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">当前配色方案</h2>
           <div
@@ -399,7 +405,7 @@ function handleReset() {
 
         <!-- 2. 说明卡片 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-2.5"
+          class="panel-card space-y-2.5"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">使用说明</h2>
           <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">
@@ -414,13 +420,6 @@ function handleReset() {
 </template>
 
 <style lang="scss" scoped>
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
 
 
 

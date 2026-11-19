@@ -14,13 +14,8 @@
     {
         public const ushort EC_ADDR_PORT = 0x4E;
         public const ushort EC_DATA_PORT = 0x4F;
-        public const ushort Fan1_RPM_Level = 0xC836;
-        public const ushort Fan2_RPM_Level = 0xC837;
-        public const ushort Fan1_RPM = 0xC834;
-        public const ushort Fan2_RPM = 0xC835;
         public const ushort Fan1_RPM_SET = 0xC83C;
         public const ushort Fan2_RPM_SET = 0xC83D;
-        public const ushort EC_Version = 0xC411;
     }
 
     public enum GpuMode : byte
@@ -30,6 +25,7 @@
         Unknow = 255
     }
 
+    // EC 方法 ID 对位表: 数值是固件协议约定, 成员必须按序占位, 即使当前代码未调用也不可删除。
     public enum MethodName
     {
         SystemPerMode = 8,

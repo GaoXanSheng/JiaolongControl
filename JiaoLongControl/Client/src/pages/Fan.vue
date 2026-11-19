@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import {computed, ref} from 'vue'
 import {Message} from '@arco-design/web-vue'
-import {AutoFanControl, Fan} from '@/utils/bridge'
+import {Fan} from '@/utils/bridge'
+import {stopAutoFanIfRunning} from '@/utils/fanControl'
 import {useConfigStore} from '@/stores/config'
 import FanSpeed from '@/components/common/FanSpeed.vue'
 import EditableValue from '@/components/common/EditableValue.vue'
@@ -10,9 +11,6 @@ import {FAN_MAX_RPM, FAN_MIN_RPM} from '@/constants'
 const loading = ref(false)
 const visible = ref(false)
 const configStore = useConfigStore()
-if (!configStore.config) {
-  await configStore.fetchConfig()
-}
 
 const FanPageStore = computed(() => configStore.config?.Fan)
 
@@ -30,10 +28,7 @@ const handleOk = async () => {
   visible.value = false
   loading.value = true
   try {
-    const isRunningRes = await AutoFanControl.IsRunning()
-    if (isRunningRes.Success && isRunningRes.Data) {
-      await AutoFanControl.Stop()
-    }
+    await stopAutoFanIfRunning()
     const res = await Fan.SetFanSpeed(FanPageStore.value.ManualFanSpeed)
     if (res.Success) {
       Message.success(res.Message)
@@ -54,10 +49,7 @@ const handleCancel = () => {
 
 async function handleRemoveFanClick() {
   try {
-    const isRunningRes = await AutoFanControl.IsRunning()
-    if (isRunningRes.Success && isRunningRes.Data) {
-      await AutoFanControl.Stop()
-    }
+    await stopAutoFanIfRunning()
     const res = await Fan.RemoveFanSpeed()
     if (res.Success) {
       Message.success(res.Message)
@@ -83,7 +75,7 @@ async function handleRemoveFanClick() {
 
         <!-- 转速调节磨砂卡片 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-6 shadow-lg"
+          class="panel-card p-6"
         >
           <div class="flex flex-col gap-6">
             <div class="flex justify-between items-end">
@@ -141,7 +133,7 @@ async function handleRemoveFanClick() {
 
         <!-- 2. 安全说明卡片 -->
         <div
-          class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-2.5 select-none"
+          class="panel-card space-y-2.5 select-none"
         >
           <h2 class="text-[13px] font-semibold text-gray-300">安全提示</h2>
           <div class="text-[11px] text-gray-500 leading-relaxed space-y-2">
@@ -180,17 +172,3 @@ async function handleRemoveFanClick() {
     <a-spin dot />
   </div>
 </template>
-
-<style lang="scss" scoped>
-/* 隐藏滚动条 */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* 安全警告弹窗的深色皮肤在 src/style.css 全局覆写:
- * Arco Modal 传送至 body 渲染, scoped 样式(:deep)命中不到 */
-</style>

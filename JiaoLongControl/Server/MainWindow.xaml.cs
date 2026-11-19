@@ -323,12 +323,19 @@ namespace JiaoLongControl.Server
             }
             else
             {
-                _allowClose = true;
-                _isShuttingDown = true;
-                _taskbarIcon.Dispose();
-                DestroyWebView();
-                Application.Current.Shutdown();
+                ShutdownApp();
             }
+        }
+
+        /// <summary>统一退出序列：标记允许关闭 → 销毁 WebView → 释放托盘图标 → 关闭应用。</summary>
+        private void ShutdownApp()
+        {
+            // 标记允许真正关闭，否则 OnClosing 会拦截（隐藏到托盘）
+            _allowClose = true;
+            _isShuttingDown = true;
+            DestroyWebView();
+            _taskbarIcon.Dispose();
+            Application.Current.Shutdown();
         }
 
         /// <summary>导航并等待 NavigationCompleted，返回是否成功</summary>
@@ -579,31 +586,23 @@ namespace JiaoLongControl.Server
             }
         }
 
-        private void RemoveLoadingOverlay()
+        /// <summary>从 WebViewHost 移除指定遮罩层（加载/错误共用）。</summary>
+        private void RemoveOverlay(ref Grid? overlay)
         {
             try
             {
-                if (_loadingOverlay != null && WebViewHost.Children.Contains(_loadingOverlay))
-                    WebViewHost.Children.Remove(_loadingOverlay);
-                _loadingOverlay = null;
+                if (overlay != null && WebViewHost.Children.Contains(overlay))
+                    WebViewHost.Children.Remove(overlay);
+                overlay = null;
             }
             catch
             {
             }
         }
 
-        private void RemoveErrorOverlay()
-        {
-            try
-            {
-                if (_errorOverlay != null && WebViewHost.Children.Contains(_errorOverlay))
-                    WebViewHost.Children.Remove(_errorOverlay);
-                _errorOverlay = null;
-            }
-            catch
-            {
-            }
-        }
+        private void RemoveLoadingOverlay() => RemoveOverlay(ref _loadingOverlay);
+
+        private void RemoveErrorOverlay() => RemoveOverlay(ref _errorOverlay);
 
         /// <summary>在 WebView 区域显示错误提示 + 重新加载按钮（兜底，避免白屏无反馈）</summary>
         private void ShowWebViewError(string message)
@@ -689,15 +688,7 @@ namespace JiaoLongControl.Server
             show.Click += (_, _) => ShowMainWindow();
 
             var exit = new MenuItem { Header = "退出" };
-            exit.Click += (_, _) =>
-            {
-                // 标记允许真正关闭，否则 OnClosing 会拦截（隐藏到托盘）
-                _allowClose = true;
-                _isShuttingDown = true;
-                DestroyWebView();
-                _taskbarIcon.Dispose();
-                Application.Current.Shutdown();
-            };
+            exit.Click += (_, _) => ShutdownApp();
 
             menu.Items.Add(show);
             menu.Items.Add(exit);
@@ -759,32 +750,19 @@ namespace JiaoLongControl.Server
             return false;
         }
 
-        // 【新增】响应前端窗口控制请求的方法
         private void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
             try
             {
                 string message = e.TryGetWebMessageAsString();
 
-                if (message == "window-minimize")
+                if (message.StartsWith("[timing]", StringComparison.Ordinal))
                 {
-                    WindowState = WindowState.Minimized;
+                    Logger.Info(message);
+                    return;
                 }
-                else if (message == "window-maximize")
-                {
-                    WindowState = WindowState == WindowState.Maximized
-                        ? WindowState.Normal
-                        : WindowState.Maximized;
-                }
-                else if (message == "window-drag")
-                {
-                    DragMove();
-                }
-                else if (message == "window-close")
-                {
-                    Close();
-                }
-                else if (message.StartsWith("theme-changed:", StringComparison.Ordinal))
+
+                if (message.StartsWith("theme-changed:", StringComparison.Ordinal))
                 {
                     // 前端切换主题后同步窗口/WebView 底色
                     bool isLight = message.EndsWith(":light", StringComparison.Ordinal);
@@ -793,6 +771,25 @@ namespace JiaoLongControl.Server
                         _isLight = isLight;
                         ApplyThemeColors();
                     }
+                    return;
+                }
+
+                switch (message)
+                {
+                    case "window-minimize":
+                        WindowState = WindowState.Minimized;
+                        break;
+                    case "window-maximize":
+                        WindowState = WindowState == WindowState.Maximized
+                            ? WindowState.Normal
+                            : WindowState.Maximized;
+                        break;
+                    case "window-drag":
+                        DragMove();
+                        break;
+                    case "window-close":
+                        Close();
+                        break;
                 }
             }
             catch (Exception ex)

@@ -23,7 +23,6 @@ onMounted(async () => {
     autoStart.value = false
     Message.error(`获取开机自启状态失败：${(e as Error)?.message ?? e}`)
   }
-  await configStore.fetchConfig()
 })
 
 async function onAutoStartChange(next: string | number | boolean) {

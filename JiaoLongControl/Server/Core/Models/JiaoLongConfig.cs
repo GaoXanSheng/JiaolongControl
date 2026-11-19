@@ -45,16 +45,10 @@ public class AppSection
     [ConfigComment("界面主题: light / dark / system (默认跟随系统)")]
     public string Theme { get; set; } = "system";
 
-    [ConfigComment("主窗口记忆宽度 (物理像素), 0 = 未记忆, 默认按 1300×820 物理像素启动, 不随 DPI/缩放放大, 跨屏物理大小不变")]
-    public double WindowPixelWidth { get; set; }
-
-    [ConfigComment("主窗口记忆高度 (物理像素), 0 = 未记忆, 默认按 1300×820 物理像素启动, 不随 DPI/缩放放大, 跨屏物理大小不变")]
-    public double WindowPixelHeight { get; set; }
-
-    [ConfigComment("旧版主窗口宽度 (DIP), 仅用于老配置一次性迁移, 不再写入")]
+    [ConfigComment("主窗口记忆宽度 (DIP), 0 = 未记忆, 默认按 XAML 尺寸启动, 关闭时写入当前窗口大小")]
     public double WindowWidth { get; set; }
 
-    [ConfigComment("旧版主窗口高度 (DIP), 仅用于老配置一次性迁移, 不再写入")]
+    [ConfigComment("主窗口记忆高度 (DIP), 0 = 未记忆, 默认按 XAML 尺寸启动, 关闭时写入当前窗口大小")]
     public double WindowHeight { get; set; }
 }
 
@@ -123,9 +117,6 @@ public class GpuSection
 
     [ConfigComment("GPU显存频率 (MHz)")]
     public int MemoryClock { get; set; } = 100;
-
-    [ConfigComment("GPU功率限制 (W)")]
-    public int PowerLimit { get; set; } = 140;
 
     [ConfigComment("GPU核心频率偏移 (MHz, 负值为降压)")]
     public int CoreClockOffsetMhz { get; set; }

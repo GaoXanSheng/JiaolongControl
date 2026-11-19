@@ -3,6 +3,9 @@ namespace JiaoLongControl.Server.Core.Models
     /// <summary>单次 OSD 显示的内容模型（图标/强调色/两行文本/进度条/交互类型）。</summary>
     public class OsdItem
     {
+        /// <summary>默认强调色 (蓝), 各 OSD 视图共用的缺省取值。</summary>
+        public const string DefaultAccentHex = "#3B82F6";
+
         /// <summary>OSD 类型: volume / keyboard / media / lock / perf / fnlock / touchpad；
         /// volume、keyboard、media 为交互型 (音量滑条 / 背光分段 / 媒体控制按钮)。</summary>
         public string Kind { get; init; } = "";
@@ -17,7 +20,7 @@ namespace JiaoLongControl.Server.Core.Models
         public string? IconImage { get; init; }
 
         /// <summary>强调色 (十六进制，如 #3B82F6)，用于图标、光晕与进度条。</summary>
-        public string AccentHex { get; init; } = "#3B82F6";
+        public string AccentHex { get; init; } = DefaultAccentHex;
 
         /// <summary>主标题。</summary>
         public string Title { get; init; } = "";

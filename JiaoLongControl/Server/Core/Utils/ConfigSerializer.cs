@@ -104,9 +104,7 @@ public static class ConfigSerializer
 
     public static void Update(JiaoLongConfig LowConfig, string version)
     {
-        // 尺寸记忆回归 DIP 语义: 物理像素字段废弃; 旧 DIP 字段与残留物理值无法区分, 一并清零重记
-        LowConfig.App.WindowPixelWidth = 0;
-        LowConfig.App.WindowPixelHeight = 0;
+        // 旧版本残留的窗口尺寸无法与当前 DIP 语义区分, 一并清零重记
         LowConfig.App.WindowWidth = 0;
         LowConfig.App.WindowHeight = 0;
 

@@ -27,17 +27,6 @@ namespace JiaoLongControl.Server.Core.Controllers
             return new CommandResult(res, res ? "设置成功" : "设置失败");
         }
 
-        public CommandResult GetMode()
-        {
-            return new CommandResult(true, "获取成功", MethodServices.GetValue<RGBKeyboardMode>(MethodName.RGBKeyboardMode));
-        }
-
-        public CommandResult SetMode(RGBKeyboardMode mode)
-        {
-            var res =  MethodServices.SetValue(MethodName.RGBKeyboardMode, mode);
-            return new CommandResult(res, res ? "设置成功" : "设置失败");
-        }
-
         public CommandResult GetLightBrightness()
         {
             return new CommandResult(true, "获取成功", MethodServices.GetValue<RGBKeyboardBrightnessLevel>(MethodName.RGBKeyboardBrightness));

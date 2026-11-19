@@ -5,24 +5,17 @@ import {computed} from 'vue'
 const store = useStore()
 const currentComponent = computed(
   () =>
-    HomeCardType.find((item) => item.num === store.$state.SwitchPages)?.page ??
+    HomeCardType.find((item) => item.num === store.SwitchPages)?.page ??
     HomeCardType[0]!.page,
 )
-
-function enter(el: Element, done: () => void) {
-  el.classList.add('swap')
-  el.addEventListener('animationend', () => {
-    done()
-  })
-}
 </script>
 
 <template>
   <div class="rightSide relative">
-    <transition mode="out-in" @enter="enter">
+    <transition mode="out-in">
       <Suspense>
         <template #default>
-          <component :is="currentComponent" :key="store.$state.SwitchPages" />
+          <component :is="currentComponent" :key="store.SwitchPages" />
         </template>
         <template #fallback>
           <div class="absolute inset-0 flex items-center justify-center bg-page">

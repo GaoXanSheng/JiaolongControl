@@ -6,6 +6,8 @@ namespace JiaoLongControl.Server.Core.Controllers
 {
     public class SystemInfoController
     {
+        private static readonly Log Logger = Log.For<SystemInfoController>();
+
         // 系统概览整会话不变: 只查一次, 失败时清空缓存允许下次轮询重试
         private static Task<CommandResult>? _overviewTask;
 
@@ -58,6 +60,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         private static CommandResult QuerySystemOverview()
         {
             var overview = new SystemOverview();
+            var sw = Stopwatch.StartNew();
 
             try
             {
@@ -70,6 +73,9 @@ namespace JiaoLongControl.Server.Core.Controllers
                         break;
                     }
                 }
+
+                Logger.Info($"overview CPU: {sw.ElapsedMilliseconds}ms");
+                sw.Restart();
 
                 // 获取 独立显卡 信息 (排除集显)
                 using (var searcher = new ManagementObjectSearcher("select Name from Win32_VideoController"))
@@ -91,6 +97,9 @@ namespace JiaoLongControl.Server.Core.Controllers
                     }
                 }
 
+                Logger.Info($"overview GPU: {sw.ElapsedMilliseconds}ms");
+                sw.Restart();
+
                 // 获取 操作系统 信息
                 using (var searcher = new ManagementObjectSearcher("select Caption, Version from Win32_OperatingSystem"))
                 {
@@ -101,6 +110,9 @@ namespace JiaoLongControl.Server.Core.Controllers
                         break;
                     }
                 }
+
+                Logger.Info($"overview OS: {sw.ElapsedMilliseconds}ms");
+                sw.Restart();
 
                 // 获取 内存 信息
                 long totalCapacity = 0;
@@ -120,6 +132,9 @@ namespace JiaoLongControl.Server.Core.Controllers
                     }
                 }
                 
+                Logger.Info($"overview RAM: {sw.ElapsedMilliseconds}ms");
+                sw.Stop();
+
                 if (totalCapacity > 0)
                 {
                     var gb = Math.Round((double)totalCapacity / (1024 * 1024 * 1024));

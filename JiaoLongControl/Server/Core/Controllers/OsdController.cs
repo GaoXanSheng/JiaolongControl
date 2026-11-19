@@ -32,7 +32,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         private const int LiveRefreshMs = 40;
 
         // 强调色 = 工具箱现有主题色板
-        private const string AccentVolume = "#3B82F6";      // 蓝 (信息)
+        private const string AccentVolume = OsdItem.DefaultAccentHex; // 蓝 (信息)
         private const string AccentLock = "#FF7D00";        // 橙 (提示)
         private const string AccentKeyboard = "#8A2BE2";    // 紫 (键盘 RGB 主题色)
         private const string AccentPerf = "#34D399";        // 绿 (性能)
@@ -44,6 +44,15 @@ namespace JiaoLongControl.Server.Core.Controllers
         private const string IconPackBase = "pack://application:,,,/Assets/OSD/";
 
         private static readonly Log Logger = Log.For<OsdController>();
+
+        /// <summary>三个硬件锁定键（大小写/数字/滚动）的钩子与轮询共用参数。</summary>
+        private static readonly (int Vk, string DebounceKey, string Title)[] ToggleLockKeys =
+        {
+            (User32.VK_CAPITAL, "capslock", "大写锁定"),
+            (User32.VK_NUMLOCK, "numlock", "数字锁定"),
+            (User32.VK_SCROLL, "scrolllock", "滚动锁定"),
+        };
+
         private readonly WMIEventService _eventService = new();
 
         // 系统媒体会话 (SMTC): 仅挂接"当前会话", 切歌/播放状态变化时提示曲名与歌手
@@ -233,6 +242,8 @@ namespace JiaoLongControl.Server.Core.Controllers
                         DetectFnLock();
                         DetectTouchpadLock();
                         DetectCapsLock();
+                        DetectNumLock();
+                        DetectScrollLock();
                     }
 
                     token.WaitHandle.WaitOne(Math.Clamp(cfg.PollIntervalMs, 500, 5000));
@@ -272,32 +283,13 @@ namespace JiaoLongControl.Server.Core.Controllers
                             case User32.VK_VOLUME_MUTE:
                                 DebounceShow("volume", () => ShowVolumeOsd(force: false));
                                 break;
-                            case User32.VK_CAPITAL:
-                                DebounceShow("capslock", () =>
-                                {
-                                    // 同步事件/轮询基线, 避免对同一变化重复弹 OSD
-                                    _lastCaps = User32.IsToggleOn(User32.VK_CAPITAL);
-                                    NotifyLockStatesChanged();
-                                    ShowLockOsd(User32.VK_CAPITAL, "大写锁定", force: false);
-                                });
-                                break;
-                            case User32.VK_NUMLOCK:
-                                DebounceShow("numlock", () =>
-                                {
-                                    // 同步事件/轮询基线, 避免对同一变化重复弹 OSD
-                                    _lastNum = User32.IsToggleOn(User32.VK_NUMLOCK);
-                                    NotifyLockStatesChanged();
-                                    ShowLockOsd(User32.VK_NUMLOCK, "数字锁定", force: false);
-                                });
-                                break;
-                            case User32.VK_SCROLL:
-                                DebounceShow("scrolllock", () =>
-                                {
-                                    _lastScroll = User32.IsToggleOn(User32.VK_SCROLL);
-                                    NotifyLockStatesChanged();
-                                    ShowLockOsd(User32.VK_SCROLL, "滚动锁定", force: false);
-                                });
-                                break;
+                        }
+
+                        foreach (var (vkCode, debounceKey, title) in ToggleLockKeys)
+                        {
+                            if (vkCode != vk) continue;
+                            HandleLockKeyHook(vkCode, debounceKey, title);
+                            break;
                         }
                     }
                 }
@@ -501,8 +493,8 @@ namespace JiaoLongControl.Server.Core.Controllers
                 var res = Bridge.Instance.Fan.GetFanSpeed();
                 if (res.Success && res.Data is FanSpeedInfo fan)
                 {
-                    var cpu = fan.CPUFanSpeed is > 0 and < 10000 ? fan.CPUFanSpeed : 0;
-                    var gpu = fan.GPUFanSpeed is > 0 and < 10000 ? fan.GPUFanSpeed : 0;
+                    var cpu = fan.CPUFanSpeed is > 0 and < FanSpeedInfo.ValidMaxRpm ? fan.CPUFanSpeed : 0;
+                    var gpu = fan.GPUFanSpeed is > 0 and < FanSpeedInfo.ValidMaxRpm ? fan.GPUFanSpeed : 0;
                     if (cpu > 0 && gpu > 0) parts.Add($"风扇 {cpu}/{gpu}RPM");
                     else if (cpu > 0 || gpu > 0) parts.Add($"风扇 {Math.Max(cpu, gpu)}RPM");
                 }
@@ -519,7 +511,7 @@ namespace JiaoLongControl.Server.Core.Controllers
         private static (string Glyph, string Accent) ModeVisual(SystemPerMode mode) => mode switch
         {
             SystemPerMode.PerformanceMode => ("\uE945", "#F43F5E"),
-            SystemPerMode.BalanceMode => ("\uE9D9", "#3B82F6"),
+            SystemPerMode.BalanceMode => ("\uE9D9", OsdItem.DefaultAccentHex),
             SystemPerMode.QuietMode => ("\uE706", "#34D399"),
             _ => ("\uE945", AccentPerf),
         };
@@ -580,57 +572,62 @@ namespace JiaoLongControl.Server.Core.Controllers
             OnKeyboardBrightnessChanged((byte)level);
         }
 
-        private void DetectFnLock()
+        /// <summary>钩子侧锁定键处理: 同步事件/轮询基线（避免对同一变化重复弹 OSD）→ 推送状态 → 弹 OSD。</summary>
+        private void HandleLockKeyHook(int vk, string debounceKey, string title)
+            => DebounceShow(debounceKey, () =>
+            {
+                SetToggleBaseline(vk, User32.IsToggleOn(vk));
+                NotifyLockStatesChanged();
+                ShowLockOsd(vk, title, force: false);
+            });
+
+        private void SetToggleBaseline(int vk, bool on)
         {
-            var state = MethodServices.GetValue<ResultState>(MethodName.FnLock);
-            if (state == ResultState.Unknow) return;
-            if (!_lastFnLock.HasValue) { _lastFnLock = state; return; }
-            if (state == _lastFnLock.Value) return;
-            _lastFnLock = state;
-            NotifyLockStatesChanged();
-            OnFnLockChanged(state);
+            switch (vk)
+            {
+                case User32.VK_CAPITAL: _lastCaps = on; break;
+                case User32.VK_NUMLOCK: _lastNum = on; break;
+                case User32.VK_SCROLL: _lastScroll = on; break;
+            }
         }
 
-        private void DetectTouchpadLock()
+        /// <summary>Fn/触摸板锁轮询共用：未知值跳过，首次作基线，变化后推送状态并回调。</summary>
+        private void DetectResultLock(MethodName method, ref ResultState? baseline, Action<ResultState> onChanged)
         {
-            var state = MethodServices.GetValue<ResultState>(MethodName.TPLock);
+            var state = MethodServices.GetValue<ResultState>(method);
             if (state == ResultState.Unknow) return;
-            if (!_lastTouchpad.HasValue) { _lastTouchpad = state; return; }
-            if (state == _lastTouchpad.Value) return;
-            _lastTouchpad = state;
+            if (!baseline.HasValue) { baseline = state; return; }
+            if (state == baseline.Value) return;
+            baseline = state;
             NotifyLockStatesChanged();
-            OnTouchpadLockChanged(state);
+            onChanged(state);
+        }
+
+        private void DetectFnLock()
+            => DetectResultLock(MethodName.FnLock, ref _lastFnLock, OnFnLockChanged);
+
+        private void DetectTouchpadLock()
+            => DetectResultLock(MethodName.TPLock, ref _lastTouchpad, OnTouchpadLockChanged);
+
+        /// <summary>大小写/数字/滚动锁轮询共用：首次作基线，变化后推送状态并弹 OSD。</summary>
+        private void DetectToggleLock(int vk, string title, ref bool? baseline)
+        {
+            var on = User32.IsToggleOn(vk);
+            if (!baseline.HasValue) { baseline = on; return; }
+            if (on == baseline.Value) return;
+            baseline = on;
+            NotifyLockStatesChanged();
+            ShowLockOsd(vk, title, force: false);
         }
 
         private void DetectCapsLock()
-        {
-            var on = User32.IsToggleOn(User32.VK_CAPITAL);
-            if (!_lastCaps.HasValue) { _lastCaps = on; return; }
-            if (on == _lastCaps.Value) return;
-            _lastCaps = on;
-            NotifyLockStatesChanged();
-            ShowLockOsd(User32.VK_CAPITAL, "大写锁定", force: false);
-        }
+            => DetectToggleLock(User32.VK_CAPITAL, "大写锁定", ref _lastCaps);
 
         private void DetectNumLock()
-        {
-            var on = User32.IsToggleOn(User32.VK_NUMLOCK);
-            if (!_lastNum.HasValue) { _lastNum = on; return; }
-            if (on == _lastNum.Value) return;
-            _lastNum = on;
-            NotifyLockStatesChanged();
-            ShowLockOsd(User32.VK_NUMLOCK, "数字锁定", force: false);
-        }
+            => DetectToggleLock(User32.VK_NUMLOCK, "数字锁定", ref _lastNum);
 
         private void DetectScrollLock()
-        {
-            var on = User32.IsToggleOn(User32.VK_SCROLL);
-            if (!_lastScroll.HasValue) { _lastScroll = on; return; }
-            if (on == _lastScroll.Value) return;
-            _lastScroll = on;
-            NotifyLockStatesChanged();
-            ShowLockOsd(User32.VK_SCROLL, "滚动锁定", force: false);
-        }
+            => DetectToggleLock(User32.VK_SCROLL, "滚动锁定", ref _lastScroll);
 
         private static string ModeName(SystemPerMode mode) => mode switch
         {
@@ -954,55 +951,46 @@ namespace JiaoLongControl.Server.Core.Controllers
 
         // ===== 锁定状态控制 (OSD 页按钮) =====
 
+        /// <summary>读取四项锁定状态（FnLock/触摸板锁读取失败时为 null 表示未知）。</summary>
+        private static (bool? CapsLock, bool? NumLock, bool? FnLock, bool? TouchpadLock) ReadLockStates() => (
+            User32.IsToggleOn(User32.VK_CAPITAL),
+            User32.IsToggleOn(User32.VK_NUMLOCK),
+            ReadResultState(MethodName.FnLock),
+            ReadResultState(MethodName.TPLock));
+
         /// <summary>读取四项锁定状态; FnLock/触摸板锁读取失败时对应字段为 null (未知)。</summary>
         public CommandResult GetLockStates()
         {
-            return new CommandResult(true, "获取成功", new
-            {
-                CapsLock = User32.IsToggleOn(User32.VK_CAPITAL),
-                NumLock = User32.IsToggleOn(User32.VK_NUMLOCK),
-                FnLock = ReadResultState(MethodName.FnLock),
-                TouchpadLock = ReadResultState(MethodName.TPLock),
-            });
+            var s = ReadLockStates();
+            return new CommandResult(true, "获取成功", new { s.CapsLock, s.NumLock, s.FnLock, s.TouchpadLock });
         }
 
-        public CommandResult SetCapsLock(bool enabled)
+        private CommandResult SetToggleLock(int vk, bool enabled)
         {
-            if (User32.IsToggleOn(User32.VK_CAPITAL) == enabled)
+            if (User32.IsToggleOn(vk) == enabled)
                 return new CommandResult(true, "状态未变化");
-            User32.TapToggleKey(User32.VK_CAPITAL);
+            User32.TapToggleKey(vk);
             return new CommandResult(true, "设置成功");
         }
 
-        public CommandResult SetNumLock(bool enabled)
-        {
-            if (User32.IsToggleOn(User32.VK_NUMLOCK) == enabled)
-                return new CommandResult(true, "状态未变化");
-            User32.TapToggleKey(User32.VK_NUMLOCK);
-            return new CommandResult(true, "设置成功");
-        }
+        public CommandResult SetCapsLock(bool enabled) => SetToggleLock(User32.VK_CAPITAL, enabled);
 
-        public CommandResult SetFnLock(bool enabled)
+        public CommandResult SetNumLock(bool enabled) => SetToggleLock(User32.VK_NUMLOCK, enabled);
+
+        private CommandResult SetResultLock(MethodName method, bool enabled, Action<ResultState> onChanged)
         {
-            var res = MethodServices.SetValue(MethodName.FnLock, enabled ? (byte)1 : (byte)0);
+            var res = MethodServices.SetValue(method, enabled ? (byte)1 : (byte)0);
             if (res)
             {
-                OnFnLockChanged(enabled ? ResultState.ON : ResultState.OFF);
+                onChanged(enabled ? ResultState.ON : ResultState.OFF);
                 NotifyLockStatesChanged();
             }
             return new CommandResult(res, res ? "设置成功" : "设置失败");
         }
 
-        public CommandResult SetTouchpadLock(bool enabled)
-        {
-            var res = MethodServices.SetValue(MethodName.TPLock, enabled ? (byte)1 : (byte)0);
-            if (res)
-            {
-                OnTouchpadLockChanged(enabled ? ResultState.ON : ResultState.OFF);
-                NotifyLockStatesChanged();
-            }
-            return new CommandResult(res, res ? "设置成功" : "设置失败");
-        }
+        public CommandResult SetFnLock(bool enabled) => SetResultLock(MethodName.FnLock, enabled, OnFnLockChanged);
+
+        public CommandResult SetTouchpadLock(bool enabled) => SetResultLock(MethodName.TPLock, enabled, OnTouchpadLockChanged);
 
         private static bool? ReadResultState(MethodName method)
         {
@@ -1020,14 +1008,8 @@ namespace JiaoLongControl.Server.Core.Controllers
             {
                 try
                 {
-                    var payload = JsonSerializer.Serialize(new
-                    {
-                        type = "lock-states-changed",
-                        CapsLock = User32.IsToggleOn(User32.VK_CAPITAL),
-                        NumLock = User32.IsToggleOn(User32.VK_NUMLOCK),
-                        FnLock = ReadResultState(MethodName.FnLock),
-                        TouchpadLock = ReadResultState(MethodName.TPLock),
-                    });
+                    var s = ReadLockStates();
+                    var payload = JsonSerializer.Serialize(new { type = "lock-states-changed", s.CapsLock, s.NumLock, s.FnLock, s.TouchpadLock });
                     Application.Current?.Dispatcher.BeginInvoke(() =>
                         Bridge.Instance.PostWebMessage(payload));
                 }

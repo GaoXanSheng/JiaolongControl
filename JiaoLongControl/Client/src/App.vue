@@ -4,12 +4,14 @@ import {useConfigStore} from '@/stores/config'
 import {useLocksStore} from '@/stores/locks'
 import {useSystemInfoStore} from '@/stores/systemInfo'
 import {applyTheme} from '@/theme/theme'
+import {timing} from '@/utils/timing'
 
 const systemInfoStore = useSystemInfoStore()
 const configStore = useConfigStore()
 const locksStore = useLocksStore()
 
-let stopPolling: () => void
+let stopPolling: (() => void) | null = null
+let pollDelayTimer: ReturnType<typeof setTimeout> | null = null
 
 function hideAppLoader() {
   const loader = document.getElementById('app-loader')
@@ -41,20 +43,24 @@ watch(
   (mode) => {
     if (mode) applyTheme(mode)
   },
+  {immediate: true},
 )
 
 onMounted(() => {
-  // 主动拉取一次配置以尽早应用主题(fetchPromise 去重, 不会与页面内请求重复)
-  void configStore.fetchConfig()
-  stopPolling = systemInfoStore.startPolling()
+  pollDelayTimer = setTimeout(() => {
+    stopPolling = systemInfoStore.startPolling()
+  }, 800)
   window.chrome?.webview?.addEventListener('message', onWebViewMessage)
   hideAppLoader()
+  timing('App onMounted (loader hidden)')
 })
 
 onUnmounted(() => {
-  if (stopPolling) {
-    stopPolling()
+  if (pollDelayTimer) {
+    clearTimeout(pollDelayTimer)
+    pollDelayTimer = null
   }
+  stopPolling?.()
   window.chrome?.webview?.removeEventListener('message', onWebViewMessage)
 })
 </script>

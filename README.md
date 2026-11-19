@@ -24,7 +24,7 @@
 ## 使用说明
 
 1. 从 [Releases](../../releases) 下载最新安装包
-2. 运行安装程序（Inno Setup），安装 [PawnIO](https://pawnio.eu/) 运行时（Ryzen SMU 功能依赖）
+2. 运行安装程序（Inno Setup）；Ryzen SMU 功能需自行安装 [PawnIO](https://pawnio.eu/) 运行时（安装包不附带）
 3. 启动后会在系统托盘显示图标，右键可显示主界面或退出
 4. 在系统设置页可配置开机自启和启动最小化；在常规设置页可快捷切换各类锁定状态
 

@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
 using JiaoLongControl.Server.Core.Utils;
 
 namespace JiaoLongControl.Server.Core.Controllers;
@@ -10,115 +9,46 @@ namespace JiaoLongControl.Server.Core.Controllers;
 public class PowerController
 {
     public CommandResult SetCPUMaxFrequency(uint mhz)
-    {
-        var commands = new[]
+        => RunAll(new[]
         {
             "/overlaysetactive overlay_scheme_none",
             "/attributes SUB_PROCESSOR 75b0ae3f-bce0-45a7-8c89-c9611c25e100 -ATTRIB_HIDE",
             $"/setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCFREQMAX {mhz}",
             $"/setdcvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCFREQMAX {mhz}",
             "/setactive SCHEME_CURRENT"
-        };
-        foreach (var cmd in commands)
-        {
-            var result = RunPowerCfg(cmd);
-            if (!result.Success)
-            {
-                return result;
-            }
-        }
-        return new CommandResult(true, $"CPU 最大频率已限制为 {mhz} MHz");
-    }
-
-    public CommandResult ResetCPUMaxFrequency()
-    {
-        var commands = new[]
-        {
-            "/setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCFREQMAX 0",
-            "/setdcvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCFREQMAX 0",
-            "/setactive SCHEME_CURRENT"
-        };
-        foreach (var cmd in commands)
-        {
-            var result = RunPowerCfg(cmd);
-            if (!result.Success)
-            {
-                return result;
-            }
-        }
-        return new CommandResult(true, "CPU 频率限制已取消");
-    }
+        }, $"CPU 最大频率已限制为 {mhz} MHz");
 
     public CommandResult DisableTurbo()
-    {
-        var commands = new[]
+        => RunAll(new[]
         {
             "/attributes SUB_PROCESSOR be337238-0d82-4146-a960-4f3749d470c7 -ATTRIB_HIDE",
             "/setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PERFBOOSTMODE 0",
             "/setdcvalueindex SCHEME_CURRENT SUB_PROCESSOR PERFBOOSTMODE 0",
             "/setactive SCHEME_CURRENT"
-        };
-        foreach (var cmd in commands)
-        {
-            var result = RunPowerCfg(cmd);
-            if (!result.Success)
-            {
-                return result;
-            }
-        }
-        return new CommandResult(true, "睿频已禁用");
-    }
+        }, "睿频已禁用");
 
     public CommandResult EnableTurbo()
-    {
-        var commands = new[]
+        => RunAll(new[]
         {
             "/setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PERFBOOSTMODE 2",
             "/setdcvalueindex SCHEME_CURRENT SUB_PROCESSOR PERFBOOSTMODE 2",
             "/setactive SCHEME_CURRENT"
-        };
+        }, "睿频已开启");
+
+    /// <summary>依序执行 powercfg 命令，任一步失败立即返回该失败结果。</summary>
+    private CommandResult RunAll(string[] commands, string successMessage)
+    {
         foreach (var cmd in commands)
         {
-            var result = RunPowerCfg(cmd);
+            var result = RunPowerCfgCore(cmd, "[PowerController] ");
             if (!result.Success)
-            {
                 return result;
-            }
         }
-        return new CommandResult(true, "睿频已开启");
+        return new CommandResult(true, successMessage);
     }
 
-    public CommandResult GetCPUMaxFrequency()
-    {
-        var result = RunPowerCfgWithOutput("/query SCHEME_CURRENT SUB_PROCESSOR PROCFREQMAX");
-        if (!result.Success)
-        {
-            return new CommandResult(false, result.Message);
-        }
-
-        if (!TryParseLastTwoHex((string)result.Data!, out var ac, out var dc))
-            return new CommandResult(false, "解析失败");
-
-        return new CommandResult(true, "ok", (ac, dc));
-    }
-
-    public CommandResult GetTurboEnabled()
-    {
-        var result = RunPowerCfgWithOutput("/query SCHEME_CURRENT SUB_PROCESSOR PERFBOOSTMODE");
-        if (!result.Success)
-            return new CommandResult(false, result.Message);
-
-        if (!TryParseLastTwoHex((string)result.Data, out var acVal, out var dcVal))
-            return new CommandResult(false, "解析失败");
-
-        return new CommandResult(
-            true,
-            "ok",
-            (acVal != 0, dcVal != 0)
-        );
-    }
-
-    private CommandResult RunPowerCfg(string arguments)
+    /// <summary>执行 powercfg 并统一容错；错误文案保持原有 [PowerController] 前缀。</summary>
+    private CommandResult RunPowerCfgCore(string arguments, string errorPrefix)
     {
         try
         {
@@ -132,64 +62,20 @@ public class PowerController
                 RedirectStandardError = true
             };
             using var process = Process.Start(psi);
-            string output = process!.StandardOutput.ReadToEnd();
+            process!.StandardOutput.ReadToEnd();
             string error = process.StandardError.ReadToEnd();
             process.WaitForExit(5000);
 
             if (process.ExitCode != 0)
             {
-                return new CommandResult(false, $"[PowerController] powercfg {arguments} 失败: {error}");
+                return new CommandResult(false, $"{errorPrefix}powercfg {arguments} 失败: {error}");
             }
+
+            return new CommandResult(true, "执行成功");
         }
         catch (Exception ex)
         {
-            return new CommandResult(false, $"[PowerController] 执行 powercfg 异常: {ex.Message}");
+            return new CommandResult(false, $"{errorPrefix}执行 powercfg 异常: {ex.Message}");
         }
-
-        return new CommandResult(true, "执行成功");
-    }
-
-    private CommandResult RunPowerCfgWithOutput(string arguments)
-    {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "powercfg",
-                Arguments = arguments,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
-            };
-
-            using var process = Process.Start(psi);
-            string output = process!.StandardOutput.ReadToEnd();
-            string error = process.StandardError.ReadToEnd();
-            process.WaitForExit(5000);
-
-            if (process.ExitCode != 0)
-            {
-                return new CommandResult(false, $"powercfg {arguments} 失败: {error}");
-            }
-
-            return new CommandResult(true, "ok", output);
-        }
-        catch (Exception ex)
-        {
-            return new CommandResult(false, $"执行 powercfg 异常: {ex.Message}");
-        }
-    }
-
-    private bool TryParseLastTwoHex(string output, out uint ac, out uint dc)
-    {
-        ac = 0;
-        dc = 0;
-        var matches = Regex.Matches(output, @"0x[0-9a-fA-F]+");
-        if (matches.Count < 2)
-            return false;
-        ac = Convert.ToUInt32(matches[matches.Count - 2].Value, 16);
-        dc = Convert.ToUInt32(matches[matches.Count - 1].Value, 16);
-        return true;
     }
 }

@@ -133,6 +133,23 @@ public class Blding64 : IDisposable
         EC_RAM_WRITE(0xB20, 0x00);
     }
 
+    /// <summary>选中 EC RAM 寄存器（地址高/低字节经 0x11/0x10 通道写入 0x2F），READ/WRITE 共用并统一容错。</summary>
+    private bool EcSelectRegister(byte highByte, byte lowByte)
+    {
+        // 高字节: 0x2E/0x11 → 0x2F/高字节; 低字节: 0x2E/0x10 → 0x2F/低字节
+        if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E)) return false;
+        if (!WritePort(ECMemoryTable.EC_DATA_PORT, 0x11)) return false;
+        if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F)) return false;
+        if (!WritePort(ECMemoryTable.EC_DATA_PORT, highByte)) return false;
+
+        if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E)) return false;
+        if (!WritePort(ECMemoryTable.EC_DATA_PORT, 0x10)) return false;
+        if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F)) return false;
+        if (!WritePort(ECMemoryTable.EC_DATA_PORT, lowByte)) return false;
+
+        return true;
+    }
+
     private bool EC_RAM_WRITE(ushort iIndex, byte data)
     {
         lock (_ioLock)
@@ -140,15 +157,7 @@ public class Blding64 : IDisposable
             byte highByte = (byte)(iIndex >> 8);
             byte lowByte = (byte)(iIndex & 0xFF);
 
-            if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E)) return false;
-            if (!WritePort(ECMemoryTable.EC_DATA_PORT, 0x11)) return false;
-            if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F)) return false;
-            if (!WritePort(ECMemoryTable.EC_DATA_PORT, highByte)) return false;
-
-            if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E)) return false;
-            if (!WritePort(ECMemoryTable.EC_DATA_PORT, 0x10)) return false;
-            if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F)) return false;
-            if (!WritePort(ECMemoryTable.EC_DATA_PORT, lowByte)) return false;
+            if (!EcSelectRegister(highByte, lowByte)) return false;
 
             if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E)) return false;
             if (!WritePort(ECMemoryTable.EC_DATA_PORT, 0x12)) return false;
@@ -165,19 +174,11 @@ public class Blding64 : IDisposable
             byte highByte = (byte)(iIndex >> 8);
             byte lowByte = (byte)(iIndex & 0xFF);
 
-            WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E);
-            WritePort(ECMemoryTable.EC_DATA_PORT, 0x11);
-            WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F);
-            WritePort(ECMemoryTable.EC_DATA_PORT, highByte);
+            if (!EcSelectRegister(highByte, lowByte)) return 0;
 
-            WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E);
-            WritePort(ECMemoryTable.EC_DATA_PORT, 0x10);
-            WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F);
-            WritePort(ECMemoryTable.EC_DATA_PORT, lowByte);
-
-            WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E);
-            WritePort(ECMemoryTable.EC_DATA_PORT, 0x12);
-            WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F);
+            if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2E)) return 0;
+            if (!WritePort(ECMemoryTable.EC_DATA_PORT, 0x12)) return 0;
+            if (!WritePort(ECMemoryTable.EC_ADDR_PORT, 0x2F)) return 0;
 
             ReadPort(ECMemoryTable.EC_DATA_PORT, out byte data);
             return data;

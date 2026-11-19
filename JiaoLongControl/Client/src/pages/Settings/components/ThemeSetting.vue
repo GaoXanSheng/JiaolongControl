@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import {computed, onMounted} from 'vue'
+import {computed} from 'vue'
 import SettingCardComponent from '@/components/common/SettingCardComponent.vue'
 import {useConfigStore} from '@/stores/config'
 import {applyTheme} from '@/theme/theme'
 import type {ThemeMode} from '@/types/config'
 
 const configStore = useConfigStore()
-onMounted(() => configStore.fetchConfig())
 
 const options: Array<{ value: ThemeMode; label: string }> = [
   { value: 'light', label: '白色主题' },

@@ -158,7 +158,7 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="bg-panel/60 backdrop-blur-md border border-ink/[0.05] rounded-xl p-5 shadow-lg space-y-4"
+    class="panel-card space-y-4"
   >
     <!-- 图表顶栏标题 -->
     <div class="flex justify-between items-center select-none">

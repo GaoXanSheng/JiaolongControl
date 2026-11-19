@@ -135,6 +135,9 @@ internal static class NvGpuCurveInterop
     /// 更大的声称会环绕成垃圾字, 被驱动以误导性的"版本不兼容"拒绝。</summary>
     public const int MaxClaimedSize = 0xFFFF;
 
+    /// <summary>偏移范围的普遍上限 (±1000 MHz, kHz): 读不到驱动见证时的回退值。</summary>
+    internal const int DefaultOffsetRangeKhz = 1_000_000;
+
     private static readonly object InitLock = new();
     private static bool _initialized;
 
@@ -458,16 +461,20 @@ internal static class NvGpuCurveInterop
 
     /// <summary>卡的控制表 delta 单位 (见 <see cref="CurveDeltaUnitScale"/>); 见证读不到时按普通单位。</summary>
     private static int GetCurveDeltaUnitScale(IntPtr gpu)
+        => CurveDeltaUnitScale(GetGraphicsDeltaRange(gpu), ArchitectureId(gpu));
+
+    /// <summary>读 ClkDomainsGetInfo 的图形域 delta 见证; 读不到时返回 null。</summary>
+    private static (int RawMax, int RawMin)? GetGraphicsDeltaRange(IntPtr gpu)
     {
         try
         {
             byte[] bytes = ReadRaw(gpu, IdGpuGetClkDomainsInfo, 1, ClkDomainsSize, ClkDomainsSize,
                 requestMaskWords: 0);
-            return CurveDeltaUnitScale(GraphicsDeltaRange(bytes), ArchitectureId(gpu));
+            return GraphicsDeltaRange(bytes);
         }
         catch (Exception)
         {
-            return 1;
+            return null;
         }
     }
 
@@ -475,23 +482,14 @@ internal static class NvGpuCurveInterop
     /// 即"核心频率偏移"滑条的上下限 (通常 ±1000 MHz); 读不到时退化为 ±1000 MHz 普遍上限。</summary>
     public static (int MinKhz, int MaxKhz) GetCoreOffsetRangeKhz(IntPtr gpu)
     {
-        try
+        if (GetGraphicsDeltaRange(gpu) is { } range)
         {
-            byte[] bytes = ReadRaw(gpu, IdGpuGetClkDomainsInfo, 1, ClkDomainsSize, ClkDomainsSize,
-                requestMaskWords: 0);
-            var range = GraphicsDeltaRange(bytes);
-            if (range is { } r)
-            {
-                int scale = CurveDeltaUnitScale(range, ArchitectureId(gpu));
-                return (r.RawMin / scale, r.RawMax / scale);
-            }
-        }
-        catch (Exception)
-        {
-            // 读不到范围就用普遍上限
+            int scale = CurveDeltaUnitScale(range, ArchitectureId(gpu));
+            return (range.RawMin / scale, range.RawMax / scale);
         }
 
-        return (-1_000_000, 1_000_000);
+        // 读不到范围就用普遍上限
+        return (-DefaultOffsetRangeKhz, DefaultOffsetRangeKhz);
     }
 
     // 控制条目 j 驱动的是状态曲线的下一个锚点 (状态下标 j+1) — off-by-one 已实测验证
