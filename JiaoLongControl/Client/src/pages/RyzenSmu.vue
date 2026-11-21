@@ -657,7 +657,7 @@ onUnmounted(() => {
   color: inherit;
   font-size: 10px;
 }
-.boot-check :deep(.arco-checkbox-icon) {
+.boot-check:not(.arco-checkbox-checked) :deep(.arco-checkbox-icon) {
   background-color: transparent;
   border-color: var(--color-line);
 }
